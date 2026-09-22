@@ -90,7 +90,7 @@ put them. Your assistant writes them out and follows `SKILL.md`. Nothing is
 downloaded by you, and the copy you get always matches the server it will talk
 to. Claude Code can do this; so can most agent tools that fetch URLs.
 
-### Claude Code plugin *(when published)*
+### Claude Code plugin
 
 ```
 claude plugin marketplace add zbiewend/keepr-agent

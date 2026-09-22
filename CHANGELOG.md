@@ -3,7 +3,7 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
-## Unreleased
+## 2.0.0 — 2026-09-22
 
 First public build. Skill 2.0.0, keepr-mcp 0.2.0.
 
