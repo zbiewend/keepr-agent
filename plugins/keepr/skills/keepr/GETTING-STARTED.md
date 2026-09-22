@@ -93,7 +93,7 @@ to. Claude Code can do this; so can most agent tools that fetch URLs.
 ### Claude Code plugin *(when published)*
 
 ```
-claude plugin marketplace add keepr/keepr-agent
+claude plugin marketplace add zbiewend/keepr-agent
 claude plugin install keepr@keepr-agent
 ```
 

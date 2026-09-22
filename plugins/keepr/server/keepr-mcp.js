@@ -13856,8 +13856,16 @@ var ContractCache = class {
   get maxBatch() {
     return this.body.writeContract?.maxBatch ?? 200;
   }
-  /** One unauthenticated GET at boot. Never throws — a mute server is worse. */
+  /**
+   * One unauthenticated GET at boot. Never throws — a mute server is worse.
+   * A cache that is already live and was fetched inside the cooldown is left
+   * alone: the remote transport shares ONE cache across every credential
+   * (src/remote.ts), and a fetch per new session would be a fetch per
+   * connector for the same document.
+   */
   async load() {
+    if (this.isLive && Date.now() - this.lastFetchAttempt < REFETCH_COOLDOWN_MS)
+      return;
     await this.refetch();
   }
   /**
@@ -14110,11 +14118,18 @@ var KeeprContext = class {
   /** True when /api/user-info told us outright, rather than a write teaching us. */
   keyScopeKnownAtStartup = false;
   keyCollectionIds = null;
-  startup = { reachable: false, keyValid: false, accountEmail: null, accountName: null, problem: null };
-  constructor(env = process.env, http) {
-    this.config = loadConfig(env);
+  startup = { reachable: false, keyValid: false, keyRefused: false, accountEmail: null, accountName: null, problem: null };
+  /**
+   * Built from an environment (stdio: one process, one key, read at start)
+   * or from a ready Config (remote: one context per bearer, src/remote.ts).
+   * The contract cache may be shared: it is the deployment's vocabulary, the
+   * same for every credential, and one anonymous fetch per version is enough
+   * for a whole process.
+   */
+  constructor(envOrConfig = process.env, http, contract) {
+    this.config = isConfig(envOrConfig) ? envOrConfig : loadConfig(envOrConfig);
     this.http = http ?? new KeeprHttp(this.config.baseUrl, this.config.apiKey);
-    this.contract = new ContractCache(this.http);
+    this.contract = contract ?? new ContractCache(this.http);
   }
   /**
    * Three independent steps, each degrading on its own. The server NEVER
@@ -14152,6 +14167,7 @@ var KeeprContext = class {
         this.keyCollectionIds = who.body.auth?.collectionIds ?? null;
       } else if (who.status === 401) {
         this.startup.reachable = true;
+        this.startup.keyRefused = true;
         this.startup.problem = "The API key was refused (401): unknown, revoked, expired, or its owner is inactive. The user must create a new one. Do not retry.";
       } else {
         this.startup.reachable = true;
@@ -14337,6 +14353,9 @@ var KeeprContext = class {
     return `This key has ${list || "no known"} scope${cannot.length ? `: it ${cannot.join(" and ")}` : ""}.`;
   }
 };
+function isConfig(v) {
+  return typeof v.baseUrl === "string" && "keySource" in v;
+}
 function requiredScopeOf(body) {
   if (!body || typeof body !== "object")
     return null;

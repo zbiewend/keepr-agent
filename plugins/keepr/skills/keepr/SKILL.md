@@ -60,7 +60,9 @@ script in one of two ways, and the person does both themselves:
 - `python3 scripts/keepr.py login` — run **by them, in their own terminal**. It
   prompts without echo, verifies the key, and stores it under `~/.config/keepr/`
   readable only by them. It refuses to run when its input is not a terminal,
-  which is what stops an assistant from driving it.
+  which is what stops an assistant from driving it. When they need to run it,
+  give them the command with the **absolute path** of this skill's
+  `scripts/keepr.py` (you know where this file is; they may not) and wait.
 - `KEEPR_API_KEY` in the environment (the environment wins when both are set).
 
 `KEEPR_URL` is only for self-hosted keepr; the default is `https://api.keepr.cloud`.
