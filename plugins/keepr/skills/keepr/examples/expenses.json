@@ -1,0 +1,17 @@
+{
+  "source": { "system": "example-expenses", "ref": "march-2026-receipts" },
+  "items": [
+    { "card": "expense",
+      "elements": { "merchant": "Blue Bottle Coffee", "amount": 18.50, "spent-on": "2026-03-14",
+                    "category": "meals", "reimbursable": true, "receipt-no": "BB-4471" },
+      "source": { "externalId": "BB-4471" } },
+    { "card": "expense",
+      "elements": { "merchant": "Alaska Airlines", "amount": 412.30, "spent-on": "2026-03-02",
+                    "category": "travel", "reimbursable": true, "receipt-no": "AS-99182" },
+      "source": { "externalId": "AS-99182" } },
+    { "card": "expense",
+      "elements": { "merchant": "Figma", "amount": 15.00, "spent-on": "2026-03-01",
+                    "category": "software", "reimbursable": false, "receipt-no": "FIG-2026-03" },
+      "source": { "externalId": "FIG-2026-03" } }
+  ]
+}

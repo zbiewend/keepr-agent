@@ -1,0 +1,19 @@
+{
+  "source": { "system": "example-crm", "ref": "meeting-notes-2026-09.md" },
+  "items": [
+    { "card": "contact",
+      "elements": { "name": "Leah Park", "email": "leah@example.com", "org": "Northwind" },
+      "source": { "externalId": "leah-park" } },
+    { "card": "contact",
+      "elements": { "name": "Sam Ortiz", "email": "sam@example.com", "org": "Northwind" },
+      "source": { "externalId": "sam-ortiz" } },
+    { "card": "note",
+      "elements": { "about": { "$ref": "leah-park" }, "on": "2026-09-14",
+                    "body": "Wants the Q4 numbers before the 20th. Sam is copied on the thread." },
+      "source": { "externalId": "note-2026-09-14-leah" } },
+    { "card": "note",
+      "elements": { "about": { "$ref": "sam-ortiz" }, "on": "2026-09-16",
+                    "body": "Prefers a written summary over a call." },
+      "source": { "externalId": "note-2026-09-16-sam" } }
+  ]
+}

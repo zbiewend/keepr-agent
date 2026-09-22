@@ -1,0 +1,99 @@
+{
+	"manifest_version": "0.3",
+	"name": "keepr",
+	"display_name": "keepr",
+	"version": "0.2.0",
+	"description": "Read, add and change the records you keep in keepr, from Claude.",
+	"long_description": "Connects Claude to your keepr account through its API. Read your collections, add records from a sentence, a list or a spreadsheet, and propose changes to cards — each write is dry-run first and shown to you before anything is committed. Paste an API key from keepr (My Profile → API keys); it is stored by Claude, never in a file.",
+	"author": {
+		"name": "Zachary Biewend",
+		"url": "https://keepr.cloud"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/zbiewend/keepr-agent.git"
+	},
+	"homepage": "https://keepr.cloud/account/connect",
+	"documentation": "https://keepr.cloud/docs/guides/assistants",
+	"support": "https://github.com/zbiewend/keepr-agent/issues",
+	"icon": "icon.png",
+	"license": "MIT",
+	"keywords": [
+		"keepr",
+		"records",
+		"collections",
+		"database",
+		"api"
+	],
+	"server": {
+		"type": "node",
+		"entry_point": "server/keepr-mcp.js",
+		"mcp_config": {
+			"command": "node",
+			"args": [
+				"${__dirname}/server/keepr-mcp.js"
+			],
+			"env": {
+				"KEEPR_API_KEY": "${user_config.api_key}"
+			}
+		}
+	},
+	"user_config": {
+		"api_key": {
+			"type": "string",
+			"title": "keepr API key",
+			"description": "Create one in keepr under My Profile → API keys. Read-only keys can only read; tick Can write and Can change cards for the rest.",
+			"sensitive": true,
+			"required": true
+		}
+	},
+	"tools": [
+		{
+			"name": "keepr_collections",
+			"description": "Who this API key acts as, its scopes (read, write, cards), and every keepr collection it can reach, with the access level, whether writing is possible in each, and whether cards can be changed."
+		},
+		{
+			"name": "keepr_schema",
+			"description": "What a keepr collection accepts: its cards (record types), every element (field) on each, the data type each element wants, and which elements are written by the server and must never be sent."
+		},
+		{
+			"name": "keepr_get_items",
+			"description": "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id."
+		},
+		{
+			"name": "keepr_search",
+			"description": "Find something by text across every keepr collection this key can reach — collections, card types, and items."
+		},
+		{
+			"name": "keepr_ingest",
+			"description": "Write records into a keepr collection."
+		},
+		{
+			"name": "keepr_update_item",
+			"description": "Change specific elements on ONE existing keepr item, addressed by its id."
+		},
+		{
+			"name": "keepr_propose_card",
+			"description": "Work out what a new card (record type) would look like, or what a change to an existing card would do, WITHOUT changing anything."
+		},
+		{
+			"name": "keepr_apply_card",
+			"description": "Actually create or change the card(s) from a keepr_propose_card proposal."
+		},
+		{
+			"name": "keepr_attach_file",
+			"description": "Attach files to a keepr item."
+		}
+	],
+	"compatibility": {
+		"claude_desktop": ">=0.10.0",
+		"platforms": [
+			"darwin",
+			"win32",
+			"linux"
+		],
+		"runtimes": {
+			"node": ">=18"
+		}
+	}
+}

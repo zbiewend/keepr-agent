@@ -1,0 +1,22 @@
+{
+	"name": "keepr",
+	"displayName": "keepr",
+	"version": "2.0.0",
+	"description": "Read, add and change the records you keep in keepr. Ships the keepr skill and the keepr MCP server; the key comes from `keepr.py login`, which you run yourself.",
+	"author": {
+		"name": "Zachary Biewend",
+		"url": "https://keepr.cloud"
+	},
+	"homepage": "https://keepr.cloud/account/connect",
+	"repository": "https://github.com/zbiewend/keepr-agent",
+	"license": "MIT",
+	"keywords": [
+		"keepr",
+		"records",
+		"collections",
+		"database"
+	],
+	"metadata": {
+		"server": "0.2.0"
+	}
+}

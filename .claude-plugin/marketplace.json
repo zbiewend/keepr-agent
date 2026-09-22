@@ -1,0 +1,34 @@
+{
+	"name": "keepr-agent",
+	"owner": {
+		"name": "keepr",
+		"url": "https://keepr.cloud"
+	},
+	"description": "Connect an AI assistant to the records you keep in keepr.",
+	"metadata": {
+		"pluginRoot": "./plugins"
+	},
+	"plugins": [
+		{
+			"name": "keepr",
+			"displayName": "keepr",
+			"source": "./plugins/keepr",
+			"description": "Read, add and change the records you keep in keepr — the skill that carries the judgement and the MCP server that carries the transport, in one install.",
+			"version": "2.0.0",
+			"author": {
+				"name": "Zachary Biewend",
+				"url": "https://keepr.cloud"
+			},
+			"homepage": "https://keepr.cloud/account/connect",
+			"repository": "https://github.com/zbiewend/keepr-agent",
+			"license": "MIT",
+			"category": "productivity",
+			"keywords": [
+				"keepr",
+				"records",
+				"collections",
+				"database"
+			]
+		}
+	]
+}
