@@ -14080,6 +14080,14 @@ var ProposalStore = class {
 
 // dist/src/context.js
 var SCOPE_NAMES = ["read", "write", "cards"];
+function collectionKind(c) {
+  if (typeof c.kind === "string" && c.kind)
+    return c.kind;
+  const publication = c.publication;
+  if (publication && (publication.state === "published" || publication.state === "retiring"))
+    return "global";
+  return "standard";
+}
 function accessLabel(my) {
   if (!my)
     return { label: "none", writable: false };
@@ -14199,7 +14207,8 @@ var KeeprContext = class {
         // owner's key minted without Can change cards still cannot.
         canCreateCards: cardRole && !archived && this.hasScope("cards") !== false,
         archived,
-        allowAttachments: typeof c.allowAttachments === "boolean" ? c.allowAttachments : null
+        allowAttachments: typeof c.allowAttachments === "boolean" ? c.allowAttachments : null,
+        kind: collectionKind(c)
       };
       if (archived)
         row.blockedReason = "archived \u2014 read-only for everyone, including the owner";
@@ -22572,7 +22581,16 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.2.0";
+var SERVER_VERSION = "0.2.1";
+var WEBSITE_URL = "https://keepr.cloud";
+function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
+  const base = publicUrl.replace(/\/+$/, "");
+  return [
+    { src: `${base}/logo512.png`, mimeType: "image/png", sizes: ["512x512"] },
+    { src: `${base}/logo192.png`, mimeType: "image/png", sizes: ["192x192"] },
+    { src: `${base}/favicon.svg`, mimeType: "image/svg+xml", sizes: ["any"] }
+  ];
+}
 function neededScope(def) {
   return def.scope ?? (def.writes ? "write" : null);
 }
@@ -22620,7 +22638,7 @@ function stableStringify(value) {
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(",")}}`;
 }
 function buildServer(ctx, tools) {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { instructions: ctx.instructions() });
+  const server = new McpServer({ name: SERVER_NAME, title: "keepr", version: SERVER_VERSION, websiteUrl: WEBSITE_URL, icons: brandIcons() }, { instructions: ctx.instructions() });
   for (const def of tools) {
     const needed = neededScope(def);
     const description = needed && ctx.hasScope(needed) === false ? `UNAVAILABLE (${needed === "cards" ? "this key cannot change cards \u2014 it needs Can change cards" : "this key is read-only"}). ${def.description}` : def.description;
@@ -22654,6 +22672,10 @@ var collectionsTool = {
     lines.push("", `${rows.length} collection${rows.length === 1 ? "" : "s"}:`);
     for (const c of rows) {
       const flags = [c.access];
+      if (c.kind === "personal")
+        flags.push("personal collection");
+      else if (c.kind === "global")
+        flags.push("global collection");
       if (c.archived)
         flags.push("ARCHIVED, read-only");
       else if (!c.writable)

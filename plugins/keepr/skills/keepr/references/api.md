@@ -46,8 +46,12 @@ session-only:
 `collectionIds: null` means every collection the owner can reach. An older
 deployment returns no `auth` block at all.
 
-Collections come back with `_id`, `name`, `status`, and `myAccess` (the
-caller's role in that collection).
+Collections come back with `_id`, `name`, `status`, `myAccess` (the
+caller's role in that collection) and, on the account's own **personal
+collection**, `kind: "personal"` — the catch-all every account has, and the
+right home for a note or a to do the user has not said where to put. The
+personal collection is listed first. (`kind` is absent on an ordinary
+collection; an older deployment never sends it.)
 
 ## 2. What does this collection accept
 
