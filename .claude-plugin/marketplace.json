@@ -14,7 +14,7 @@
 			"displayName": "keepr",
 			"source": "./plugins/keepr",
 			"description": "Read, add and change the records you keep in keepr — the skill that carries the judgement and the MCP server that carries the transport, in one install.",
-			"version": "2.0.2",
+			"version": "2.0.3",
 			"author": {
 				"name": "Zachary Biewend",
 				"url": "https://keepr.cloud"

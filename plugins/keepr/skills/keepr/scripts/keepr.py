@@ -96,6 +96,9 @@ KNOWN_ERROR_CODES = {
     "source_invalid", "externalId_required", "duplicate", "card_mismatch",
     "ref_unresolved", "ref_wrong_card", "lookup_not_found",
     "private_not_allowed", "account_already_linked", "internal",
+    # Not a row status: the hint.code beside a card_not_allowed whose card
+    # belongs to a sub-collection (the message names it and its ingest path).
+    "card_in_sub_collection",
 }
 KNOWN_ELEMENT_TYPES = {
     "text-small", "text-large", "rich-text", "choice", "number", "decimal",

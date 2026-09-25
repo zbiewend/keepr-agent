@@ -3,6 +3,23 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.0.3 — 2026-09-25
+
+Skill 2.0.3, keepr-mcp 0.2.3.
+
+- **Sub-collections.** A keepr collection can now sit inside another one (a
+  family's *Health* inside *Biewend*). `keepr_collections` says which
+  collection a sub-collection belongs to, and a sub-collection's schema
+  includes the cards it inherits from the collection above it. A parent's
+  schema lists its sub-collections' cards under `familyCards`, each with the
+  collection that holds it — a record of one of those is written **there**.
+  A row sent to the parent instead fails with `card_not_allowed` and a hint
+  (`card_in_sub_collection`) naming the right collection, and the skill knows
+  to send it on.
+- An API key limited to a collection also reaches its sub-collections.
+- Nothing else changes: the same nine tools, the same key handling. A keepr
+  deployment without sub-collections simply never sends a parent.
+
 ## 2.0.2 — 2026-09-25
 
 Skill 2.0.2, keepr-mcp 0.2.2.

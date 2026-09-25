@@ -105,6 +105,14 @@ from memory or from what a similar collection looked like.
 If the user named no collection, run `keepr.py collections` and ask which one.
 Never pick one for them.
 
+A collection can be a **sub-collection** of another (the listing says
+`sub-collection of <parent>`). Its schema includes the cards it inherits from
+its parent, and records of those are written to the sub-collection. A parent's
+schema lists its sub-collections' cards under `familyCards`, each with the
+collection that holds it: a record of one of those is written **there**, never
+to the parent — a row sent to the parent fails `card_not_allowed` with a
+`hint` naming the right collection.
+
 ## Which chapter
 
 Open the one chapter the job needs; each is complete on its own and is read on

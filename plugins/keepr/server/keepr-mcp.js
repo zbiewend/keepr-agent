@@ -13557,7 +13557,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "734c67d9d70f",
+  version: "2cae5f6beb09",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13775,6 +13775,10 @@ var contract_snapshot_default = {
       {
         code: "account_already_linked",
         means: "another item of this collection already links that account"
+      },
+      {
+        code: "card_in_sub_collection",
+        means: "hint.code on a card_not_allowed row: the card belongs to a sub-collection (hint.collection_id, hint.name) \u2014 ingest the row there"
       },
       {
         code: "card_mismatch",
@@ -14225,7 +14229,11 @@ var KeeprContext = class {
         canCreateCards: cardRole && !archived && this.hasScope("cards") !== false,
         archived,
         allowAttachments: typeof c.allowAttachments === "boolean" ? c.allowAttachments : null,
-        kind: collectionKind(c)
+        kind: collectionKind(c),
+        // A sub-collection names its parent: cards defined there are
+        // usable here, and a record of one of this collection's own
+        // cards is written HERE, not to the parent.
+        parent: c.parent && typeof c.parent === "object" ? { id: String(c.parent._id ?? ""), name: String(c.parent.name ?? "") } : null
       };
       if (archived)
         row.blockedReason = "archived \u2014 read-only for everyone, including the owner";
@@ -22612,7 +22620,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.2.2";
+var SERVER_VERSION = "0.2.3";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -22722,6 +22730,8 @@ var collectionsTool = {
         flags.push("cards: yes");
       if (c.allowAttachments === false)
         flags.push("attachments off");
+      if (c.parent)
+        flags.push(`sub-collection of ${c.parent.name}`);
       lines.push(`  ${c.name}  [${flags.join(", ")}]  ${c.id}`);
     }
     lines.push("", "NEXT: call keepr_schema for the collection you are writing to. Never build rows from a guess about its shape.");

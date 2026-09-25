@@ -422,7 +422,7 @@ names the failing rule. Row errors arrive inside a 200.
 | code | what happened | what to do |
 | --- | --- | --- |
 | `card_unknown` | no card with that key or id | read `schema` again; keys are per collection |
-| `card_not_allowed` | the card exists but isn't writable in this collection | pick one the schema listed |
+| `card_not_allowed` | the card exists but isn't writable in this collection | pick one the schema listed — or, when the error carries `hint.code: card_in_sub_collection`, send the row to the sub-collection it names (`hint.collection_id`) |
 | `forbidden_card` | this key's grants don't cover that card | the user must widen the grant |
 | `forbidden_item` | upsert matched an item this key may not modify | leave it alone |
 | `duplicate` | `create` mode, and that `(system, externalId)` already exists | switch to `--mode upsert` |

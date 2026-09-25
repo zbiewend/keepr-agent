@@ -2,7 +2,7 @@
 	"manifest_version": "0.3",
 	"name": "keepr",
 	"display_name": "keepr",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Read, add and change the records you keep in keepr, from Claude.",
 	"long_description": "Connects Claude to your keepr account through its API. Read your collections, add records from a sentence, a list or a spreadsheet, and propose changes to cards — each write is dry-run first and shown to you before anything is committed. Paste an API key from keepr (My Profile → API keys); it is stored by Claude, never in a file.",
 	"author": {
