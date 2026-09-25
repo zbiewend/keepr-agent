@@ -3,6 +3,27 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.0.2 — 2026-09-25
+
+Skill 2.0.2, keepr-mcp 0.2.2.
+
+- **Money.** keepr has a currency element now. The skill reads and writes
+  amounts like `12.50 USD` or `CA$12`, knows that an element may allow only
+  some currencies, and explains the new `invalid_currency` refusal (an unknown
+  code, a currency the element does not allow, or more decimals than the
+  currency has) instead of guessing.
+- **Deleting needs its own permission.** A keepr API key or connected
+  assistant can no longer delete anything unless its key was created with
+  **Can delete records** (off by default), and deletes through a key have a
+  daily limit. Keys made before 24 September do not have it — re-create the key
+  if you want your assistant to delete. The skill recognises the refusal
+  (`insufficient_scope` with `requiredScope: "delete"`) and the daily limit
+  (`delete_budget_exhausted`, never retried), and `keepr_collections` says
+  whether the key in use can delete.
+- The server reports its version on its health check, and carries the updated
+  keepr contract.
+- Nothing else changes: the same nine tools, the same key handling.
+
 ## 2.0.1 — 2026-09-23
 
 Skill 2.0.1, keepr-mcp 0.2.1.

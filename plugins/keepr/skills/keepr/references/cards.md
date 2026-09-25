@@ -59,7 +59,7 @@ not ask for; ask.
 
 `PATCH /api/card-definitions/{id}` **replaces the card's element list whole.**
 A payload that carries only the element you meant to touch removes every other
-one, and their stored values with them. So neither the script nor the tool
+one, and hides their stored values on every item. So neither the script nor the tool
 ever sends a partial list: they read the card's own elements, lay your change
 over them, and send all of them — and then the server's **change-preview**
 says, from the real stored data, what that payload would do. You do not get
@@ -111,18 +111,20 @@ change and leads the summary with `DESTRUCTIVE —` when anything is:
 | --- | --- | --- |
 | `added` | a new element; existing items have it empty | no |
 | `labelChanged`, `optionsChanged`, `reordered` | display and validation changes; stored values untouched | no |
-| `removed` | the element goes and **its stored values with it**. The preview reports how many items hold a value | **yes** |
-| `retyped` | the data type changes. A number ↔ measurement move is a `conversion: measurement` (values converted); anything else is `conversion: none` — the stored values are **reinterpreted, not converted**, and may stop matching or sorting | **yes** |
+| `removed` | the element goes and **its stored values are hidden** on every item — kept, but no list, form, export, search or title shows them — until an element of the same name is added back (they all return) or a manager purges them from the card's settings in the web app. The preview reports how many items hold a value (`values_hidden`) | **yes** |
+| `retyped` | the data type changes. A number ↔ measurement move is a `conversion: measurement` and a number ↔ currency move a `conversion: currency` (values converted); anything else is `conversion: none` — the stored values are **reinterpreted, not converted**, and may stop matching or sorting | **yes** |
 
 Plus `cardFields` (name, description…) and `sideEffects` the server knows
 about — an account link that would be un-linked, automation rules that would
-retire, a primary date that would stop resolving. Read them out.
+retire, rules and notifications that read a removed element and will see it
+as unset (`rules_reference_removed_element`, by name), a primary date that
+would stop resolving. Read them out.
 
 ### Say aloud what cannot be undone
 
 Before asking for a yes, name the destructive parts in plain words, with the
-server's numbers: *"Removing `shelf` loses the shelf on 12 books. There is no
-undo for that from here."* *"Changing `rating` from a rating to a number keeps
+server's numbers: *"Removing `shelf` hides the shelf on 12 books. They come
+back only if `shelf` is added again, and a manager can purge them for good."* *"Changing `rating` from a rating to a number keeps
 the 40 stored numbers but they are no longer a 0–10 scale."* Do not soften it,
 and do not bundle it: a destructive change is its own question, separate from
 the safe ones in the same spec, and the user may say yes to one and no to the

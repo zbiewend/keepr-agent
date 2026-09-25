@@ -78,10 +78,12 @@ variable, and wait. No key yet? `GETTING-STARTED.md` in this skill walks them
 through creating one (web app → **My Profile** → **API keys**).
 
 A key carries a **subset** of its owner's authority: at most what they can do,
-only in the collections they allowed, never admin. Three scopes: `read` (every
+only in the collections they allowed, never admin. Scopes: `read` (every
 GET), `write` (items), `cards` (**Can change cards** — creating and changing
-cards). It cannot share, delete collections, or manage keys — a 403 on one of
-those is the design, not a bug. **A 404 on a collection means it is not this
+cards), and `delete` (**Can delete records** — off by default; keys made before
+2026-09-24 do not have it, and this skill never deletes). It cannot share,
+delete collections, or manage keys — a 403 on one of those is the design, not
+a bug. **A 404 on a collection means it is not this
 key's** — the id is wrong, or the key's allowlist does not include it.
 
 ## The collection tells you what it accepts

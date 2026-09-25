@@ -90,7 +90,7 @@ RETRIES = 3
 # right move is to go read the contract rather than guess.
 KNOWN_ERROR_CODES = {
     "unknown_element", "driven_element", "sequence_element", "type", "required", "invalid_choice",
-    "invalid_lookup", "invalid_unit", "range", "invalid_phone", "invalid_email",
+    "invalid_lookup", "invalid_unit", "invalid_currency", "range", "invalid_phone", "invalid_email",
     "invalid_location", "user_not_found",
     "card_unknown", "card_not_allowed", "forbidden_card", "forbidden_item",
     "source_invalid", "externalId_required", "duplicate", "card_mismatch",
@@ -100,7 +100,7 @@ KNOWN_ERROR_CODES = {
 KNOWN_ELEMENT_TYPES = {
     "text-small", "text-large", "rich-text", "choice", "number", "decimal",
     "integer", "boolean", "date", "date-time", "time", "url", "phone", "email",
-    "location", "rating", "card-lookup", "measurement", "user",
+    "location", "rating", "card-lookup", "measurement", "user", "currency",
 }
 STALE_HINT = ("This keepr deployment uses %s this skill does not know: %s.\n"
               "  Run `keepr.py contract` — it returns the live contract from the server, "
@@ -193,7 +193,7 @@ def request(method, path, body=None, headers=None, raw=None, key=None, url=None,
                 parsed = json.loads(text)
             except ValueError:
                 parsed = text
-            if e.code in RETRY_STATUSES and attempt < RETRIES - 1:
+            if e.code in RETRY_STATUSES and attempt < RETRIES - 1 and not is_final_refusal(e.code, parsed):
                 wait = float(e.headers.get("Retry-After") or 0) or 2 ** attempt
                 print(f"  HTTP {e.code}; retrying in {wait:.0f}s", file=sys.stderr)
                 time.sleep(wait)
@@ -211,28 +211,57 @@ def request(method, path, body=None, headers=None, raw=None, key=None, url=None,
 # the words that tell the user what to change.
 STATUS_HINTS = {
     401: "the key is missing, revoked, expired, or its owner's account is inactive",
-    403: "the key lacks the scope this needs (write for items, cards for card changes), "
-         "or the collection is archived, or this surface is closed to keys "
-         "(sharing, deleting a collection, managing keys)",
+    403: "the key lacks the scope this needs (write for items, cards for card changes, "
+         "delete for removing anything), or the collection is archived, or this surface "
+         "is closed to keys (sharing, deleting a collection, managing keys)",
     404: "the collection is not visible to this key — wrong id, or outside the key's collection allowlist",
     413: "the payload is over the 5 MB ingest limit; send fewer rows per call",
 }
 
 # The server names the missing scope on a 403 (`code: insufficient_scope`,
-# `requiredScope`). Three scopes exist; each has one sentence that says what
-# the person changes on the key.
+# `requiredScope`). Four scopes exist; each has one sentence that says what
+# the person changes on the key. `delete` (2026-09-24) is off by default and
+# no key made before then has it; this script never deletes, but a person
+# relaying a refusal from another client should hear the right checkbox.
 SCOPE_HINTS = {
     "cards": "This key cannot change cards. Create or edit a key with Can change cards turned on.",
     "write": "This key is read-only. Create or edit a key with Read and write scope.",
+    "delete": "This key cannot delete records. Create a key with Can delete records turned on "
+              "(keys made before 2026-09-24 do not have it), or delete in the web app.",
     "read": "This key has no read scope.",
 }
+
+# A 429 that is an ANSWER, not back-pressure: the key's daily delete budget is
+# spent until the next UTC midnight, so retrying in a second only repeats the
+# refusal. Said in the words of what happened, with when it comes back.
+BUDGET_CODE = "delete_budget_exhausted"
+
+
+def error_payload(body):
+    if not isinstance(body, dict):
+        return {}
+    return body.get("payload") if isinstance(body.get("payload"), dict) else body
+
+
+def is_final_refusal(status, body):
+    """True for a status in RETRY_STATUSES that must not be retried."""
+    return status == 429 and error_payload(body).get("code") == BUDGET_CODE
+
+
+def budget_hint(status, body):
+    """The sentence for a spent delete budget, or None."""
+    if not is_final_refusal(status, body):
+        return None
+    p = error_payload(body)
+    return (f"This key has used its daily delete budget ({p.get('used', '?')} of {p.get('limit', '?')}); "
+            f"nothing was deleted. It resets at {p.get('resetsAt') or 'the next UTC midnight'}.")
 
 
 def scope_hint(status, body):
     """The sentence for a scope refusal, or None when the 403 is something else."""
     if status != 403 or not isinstance(body, dict):
         return None
-    payload = body.get("payload") if isinstance(body.get("payload"), dict) else body
+    payload = error_payload(body)
     if payload.get("code") != "insufficient_scope" and body.get("message") != "insufficient_scope":
         return None
     required = str(payload.get("requiredScope") or body.get("requiredScope") or "")
@@ -243,7 +272,7 @@ def fail_on(status, body, what):
     if status < 400:
         return
     message = body.get("message") if isinstance(body, dict) else body
-    hint = scope_hint(status, body) or STATUS_HINTS.get(status, "")
+    hint = scope_hint(status, body) or budget_hint(status, body) or STATUS_HINTS.get(status, "")
     die(f"{what}: HTTP {status} {message or ''}".rstrip() + (f"\n  ({hint})" if hint else ""))
 
 
@@ -328,6 +357,7 @@ def describe_scopes(who):
     can.append("read items" if "read" in scopes else "cannot read")
     can.append("write items" if "write" in scopes else "cannot write items")
     can.append("change cards" if "cards" in scopes else "cannot change cards")
+    can.append("delete records" if "delete" in scopes else "cannot delete records")
     ids = auth.get("collectionIds")
     where = ("every collection the owner can reach" if ids is None
              else f"{len(ids)} collection(s) on its allowlist")
@@ -351,7 +381,8 @@ def cmd_check(a):
         print(f"  {str(c.get('_id')):<26} {c.get('name', '')}  [{access_label(c)}]{flags}")
     print("\nA key can only do what its owner can, and only where its allowlist permits.\n"
           "Writing items needs `write` scope; creating or changing cards needs the `cards` scope\n"
-          "(Can change cards) and `manage` on the collection.")
+          "(Can change cards) and `manage` on the collection. Deleting needs `delete` (Can delete\n"
+          "records) beside those — this script never deletes.")
 
 
 def cmd_collections(a):
@@ -386,6 +417,10 @@ def describe_element(el):
     if el.get("dataType") == "measurement":
         bits.append(f"{el.get('measure', '')} in {el.get('defaultUnit', '')}"
                     + (f" (allowed: {', '.join(el.get('units') or [])})" if el.get("units") else ""))
+    if el.get("dataType") == "currency":
+        codes = el.get("currencies") or []
+        bits.append("money in " + ", ".join(codes)
+                    + (f" (a bare number is {el.get('defaultCurrency')})" if el.get("defaultCurrency") and len(codes) > 1 else ""))
     for bound in ("min", "max"):
         if isinstance(el.get(bound), (int, float)):
             bits.append(f"{bound} {el[bound]}")
@@ -441,6 +476,7 @@ def placeholder(el):
         "email": "<name@example.com>", "url": "<https://...>", "phone": "<phone number>",
         "location": "<address, or {\"lat\": 0, \"lng\": 0}>",
         "measurement": f"<number in {el.get('defaultUnit', 'the default unit')}>",
+        "currency": f"<amount in {el.get('defaultCurrency') or (el.get('currencies') or ['the default currency'])[0]}, e.g. 12.50, or \"12.50 CAD\">",
         "card-lookup": "<24-hex item id, or {\"$ref\": \"<externalId>\"}>",
         "user": "<24-hex account id>",
     }.get(kind, "<text>")
@@ -901,11 +937,12 @@ ELEMENT_OPTION_KEYS = {
     "lookupCardId", "measure", "defaultUnit", "units", "decimals", "leadingZeros",
     "nonNegative", "min", "max", "trueLabel", "falseLabel", "country", "accept",
     "rangeEnd", "minuteStep", "weekdays", "precision", "identity", "drivenFrom",
+    "currencies", "defaultCurrency", "display",
 }
 KNOWN_TYPES = {
     "text-small", "text-large", "rich-text", "choice", "number", "decimal", "integer",
     "boolean", "date", "date-time", "time", "url", "phone", "email", "location",
-    "rating", "card-lookup", "measurement", "user",
+    "rating", "card-lookup", "measurement", "user", "currency",
 }
 
 
@@ -1107,7 +1144,7 @@ def print_preview(preview, collection_name):
             print(f"  - REMOVED    {el} ({change.get('dataType')}) — {held} item(s) hold a value; "
                   "those values are lost and cannot be recovered from here")
         elif kind == "retyped":
-            how = ("converted" if change.get("conversion") == "measurement"
+            how = ("converted" if change.get("conversion") in ("measurement", "currency")
                    else "reinterpreted, not converted")
             print(f"  ~ RETYPED    {el}: {change.get('from')} -> {change.get('to')} — "
                   f"{held} item(s) hold a value; they are {how}")
@@ -1320,10 +1357,30 @@ def cards_by_id(schema):
     return {c.get("id"): c for c in (schema or {}).get("cards", [])}
 
 
+# ISO 4217 minor-unit exponents that are not 2 (keepr-api utils/currency/
+# registry.js is the source; a stored amount is an integer of minor units).
+CURRENCY_EXPONENTS = {
+    **{c: 0 for c in ("BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG",
+                      "RWF", "UGX", "UYI", "VND", "VUV", "XAF", "XOF", "XPF")},
+    **{c: 3 for c in ("BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND")},
+    "CLF": 4, "UYW": 4,
+}
+
+
+def render_money(amount, code):
+    """{amount: 1250, currency: 'USD'} -> '12.50 USD' (major units, the code)."""
+    places = CURRENCY_EXPONENTS.get(code, 2)
+    sign = "-" if amount < 0 else ""
+    digits = str(abs(int(amount))).rjust(places + 1, "0")
+    major = digits[:-places] + "." + digits[-places:] if places else digits
+    return f"{sign}{major} {code}"
+
+
 def render_value(value):
-    """A stored value as one line. Measurements print as entered; a location
-    as its address; a list member-wise. Nothing is reformatted beyond that —
-    the number of decimals, the date form, the casing are the user's."""
+    """A stored value as one line. Measurements print as entered; money as
+    its major amount and code; a location as its address; a list member-wise.
+    Nothing is reformatted beyond that — the number of decimals, the date
+    form, the casing are the user's."""
     if value is None or value == "" or value == [] or value == {}:
         return "(empty)"
     if isinstance(value, bool):
@@ -1333,6 +1390,8 @@ def render_value(value):
     if isinstance(value, dict):
         if "value" in value and "unit" in value:
             return f"{value['value']} {value['unit']}"
+        if isinstance(value.get("amount"), int) and isinstance(value.get("currency"), str):
+            return render_money(value["amount"], value["currency"])
         if value.get("address"):
             return str(value["address"])
         if "lat" in value and "lng" in value:

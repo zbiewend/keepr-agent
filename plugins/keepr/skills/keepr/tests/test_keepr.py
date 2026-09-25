@@ -372,6 +372,42 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertIn("scopes: read, write, cards", cards.stdout)
         self.assertNotIn("cannot change cards", cards.stdout)
 
+    def test_the_delete_scope_is_reported_and_refused_in_the_key_forms_words(self):
+        keepr = load_module()
+        self.assertIn("cannot delete records",
+                      keepr.describe_scopes({"auth": {"scopes": ["read", "write"], "collectionIds": None}}))
+        self.assertIn("; delete records",
+                      keepr.describe_scopes({"auth": {"scopes": ["read", "write", "delete"], "collectionIds": None}}))
+        hint = keepr.scope_hint(403, {"message": "insufficient_scope", "code": "insufficient_scope",
+                                      "requiredScope": "delete"})
+        self.assertIn("Can delete records", hint)
+        self.assertIn("2026-09-24", hint)
+
+    def test_a_spent_delete_budget_is_an_answer_never_retried(self):
+        keepr = load_module()
+        body = {"statusCode": 429, "message": "This key has used its 500 deletes for today.",
+                "code": "delete_budget_exhausted", "limit": 500, "used": 500, "remaining": 0,
+                "requested": 3, "resetsAt": "2026-09-25T00:00:00.000Z"}
+        self.assertTrue(keepr.is_final_refusal(429, body))
+        self.assertFalse(keepr.is_final_refusal(429, {"message": "Too Many Requests"}))
+        self.assertIn("500 of 500", keepr.budget_hint(429, body))
+        self.assertIn("2026-09-25T00:00:00.000Z", keepr.budget_hint(429, body))
+
+        import io
+        import urllib.error
+        calls = []
+
+        def refuse(req, timeout=None):
+            calls.append(req.full_url)
+            raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", {},
+                                         io.BytesIO(json.dumps(body).encode()))
+        keepr.urllib.request.urlopen = refuse
+        keepr.time.sleep = lambda s: self.fail("a spent budget must not be retried")
+        status, parsed = keepr.request("DELETE", "/api/items/x", key="kpr_testkey", url=BASE)
+        self.assertEqual(status, 429)
+        self.assertEqual(parsed["code"], "delete_budget_exhausted")
+        self.assertEqual(len(calls), 1)
+
     def test_key_that_is_not_a_keepr_key_is_refused_before_the_call(self):
         result = run("check", env={"KEEPR_API_KEY": "sk-not-a-keepr-key"})
         self.assertEqual(result.returncode, 1)

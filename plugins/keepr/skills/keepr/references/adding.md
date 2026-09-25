@@ -90,6 +90,9 @@ The API validates types and refuses rather than guessing, so:
 - **Driven** elements are system-owned. The schema marks them; never send one.
 - **Measurements** take a number in the element's default unit, or
   `{"value": 8.5, "unit": "lb"}`.
+- **Currency** elements take a number in MAJOR units (`12.50`, the default
+  currency) or a string naming the currency (`"12.50 CAD"`); there are no
+  exchange rates, and extra decimals are refused, not rounded.
 
 The full type-by-type reference is `references/elements.md`; every error code
 and what to do about it is in `references/api.md`.

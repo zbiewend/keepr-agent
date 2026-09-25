@@ -18,8 +18,9 @@ authority — never a new account, never admin.
 | scope `read` | every GET |
 | scope `write` | item writes too (write implies read) |
 | scope `cards` | **Can change cards**: creating and changing card definitions, element sets and card layouts. Needs `read`; does not imply `write`. A key without it gets **403** `insufficient_scope` with `requiredScope: "cards"` on those routes |
+| scope `delete` | **Can delete records**, off by default: every DELETE that removes something, bulk `op: delete`/`reject`, an intake reject, a **replace** write that carries `elements` (`PUT /api/items/{id}`, a bulk update or an ingest `upsert` whose effective `merge` is false — it blanks what it leaves out), and a collection `PUT` that drops a card from `cards[]` — asked **beside** `write` (or `cards` on a card route), never instead of it. A key without it gets **403** `insufficient_scope` with `requiredScope: "delete"`. Keys made before 2026-09-24 do not have it. A key with it may hard-delete at most 500 items a UTC day (`limits.deletesPerKeyPerDay` in the contract); past that, **429** `delete_budget_exhausted` with `limit`, `used`, `remaining`, `requested`, `resetsAt` — nothing was deleted, and retrying before `resetsAt` repeats the answer. This skill never deletes |
 | collection allowlist | the key sees only the collections it was created for; everything else answers **404**, exactly as an unshared collection would |
-| closed to keys entirely | sharing and grants, collection delete/transfer, share links, password/email changes, managing API keys, all `/api/admin/*` |
+| closed to keys entirely | sharing and grants, collection delete/transfer, share links, password/email changes, managing API keys, all `/api/admin/*` — **403** `code: session_required` whatever the key holds; no scope fixes it |
 | archived collection | readable, but every write answers **403** |
 
 Revoking a key takes effect on the next request.
@@ -124,7 +125,8 @@ filter — not the page — is the **`X-Total-Count`** header, which is where
 ```
 
 A `measurement` element's value is `{ "value": 8.4375, "unit": "lb-oz", "base": 3.8272 }`;
-a `location`'s is an address string or `{ "address", "lat", "lng" }`. The web
+a `currency`'s is `{ "amount": 1250, "currency": "USD" }` — amount in **minor
+units** ($12.50); a `location`'s is an address string or `{ "address", "lat", "lng" }`. The web
 address of an item is `https://keepr.cloud/collections/<collection_id>/items/<_id>`.
 
 `GET /api/items/count` takes the same filter params and returns `{ "count": n }`.
@@ -238,9 +240,12 @@ descendant of it), and must be readable by this key.
 ### Upsert merges
 
 In `upsert` mode the element keys you send overwrite the stored ones and the
-keys you omit are **kept** — unlike `PUT /api/items`, which replaces the whole
-map. So a second pass can enrich records without re-sending everything. The
+keys you omit are **kept** — as on `PUT /api/items/{id}`, which merges by
+default too (since 2026-09-24; `merge: false` replaces the whole map). So a
+second pass can enrich records without re-sending everything. The
 stored `source` never changes, and `card` cannot change on upsert.
+`merge: false` (replace, blanking what a row omits) needs the `delete` scope;
+this skill never sends it.
 
 ## 4. Audit
 
@@ -339,7 +344,9 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
 count of items holding a value under that element, from the stored data.
 A `retyped` with `conversion: "measurement"` is a number ↔ measurement
 conversion the PATCH performs (it then carries `options.convertFrom` /
-`convertTo` on the element); `conversion: "none"` means the stored values are
+`convertTo` on the element); `conversion: "currency"` is the same for number ↔
+currency (`convertFrom: { "currency": "USD" }`; numbers are major units,
+rounded to the currency's decimals); `conversion: "none"` means the stored values are
 reinterpreted, not converted.
 
 Then, and only after the user has seen that, the PATCH with the identical
@@ -406,6 +413,7 @@ names the failing rule. Row errors arrive inside a 200.
 | `invalid_lookup` | not a 24-hex id or `{"$ref"}`, or a list on a single-valued element |
 | `range` | a rating outside 0..max, a number past min/max, a date outside its bounds or on a disallowed weekday |
 | `invalid_unit` | not a unit of that measurement's measure, or outside its allowlist |
+| `invalid_currency` | not a currency keepr knows, an ambiguous symbol (`kr`), or not one of the element's currencies — there are no exchange rates |
 | `invalid_phone` / `invalid_email` / `invalid_location` | unparseable for that type |
 | `user_not_found` | no active account with that id |
 
@@ -433,7 +441,7 @@ names the failing rule. Row errors arrive inside a 200.
 | status | meaning |
 | --- | --- |
 | 401 | key missing, revoked, expired, or its owner is inactive |
-| 403 | wrong scope (`code: insufficient_scope`, with `requiredScope` naming `write` or `cards`), archived collection, or a surface closed to keys |
+| 403 | wrong scope (`code: insufficient_scope`, with `requiredScope` naming `write`, `cards` or `delete`), archived collection, or a surface closed to keys |
 | 404 | the collection isn't visible to this key — wrong id, or outside its allowlist |
 | 413 | over the 5 MB per-call limit; send fewer rows |
-| 429 | rate limited; honour `Retry-After` |
+| 429 | rate limited; honour `Retry-After` — except `code: delete_budget_exhausted`, the key's daily delete budget, which is an answer until `resetsAt` and is never retried |

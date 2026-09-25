@@ -75,6 +75,7 @@ lookup element, whatever it is called: `@person = "Molly Blake"`,
 | another element | `{{reorder-at}}` — compares two elements of the **same** record: `on-hand <= {{reorder-at}}` |
 | list | `("Molly", "Leah")`, `(open, blocked)` — for `in` / `not in` |
 | measurement | a bare number is the element's default unit (`weight > 20`); with a unit, `weight > 20lb` or `weight > "8 lb 7 oz"` |
+| currency | on a one-currency element a bare number is that currency (`price > 20`); otherwise name it — `total > 20USD`, `total > "20 USD"`, `total >= "CA$12.50"`; quote any amount with a decimal point (`"12.50 USD"` — unquoted `12.50USD` is a parse error). A bare number on a multi-currency element is a **400 `currency_required`** |
 
 A bare run of exactly 24 hex digits is an id, not a number. The words `and`,
 `or`, `not`, `is`, `in`, `contains`, `empty` must be quoted to be values.
@@ -101,6 +102,8 @@ three days ago, and `spent-on = 2026-03-14` matches a datetime stored that day.
   are not queryable.
 - **measurement**: compared in the canonical unit, so `weight = "8 lb 7 oz"`
   finds 8.4375 lb; `~` matches nothing.
+- **currency**: compared only within one currency — `total > 20USD` never
+  matches a CAD amount, and a CAD amount IS `!= 20USD`. `~` matches nothing.
 
 ## What does not error
 

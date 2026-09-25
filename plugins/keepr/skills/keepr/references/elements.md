@@ -33,6 +33,7 @@ Two rules hold for every type:
 | `card-lookup` | `"65a1…"` or `{"$ref": "shelf-scifi"}` | see below |
 | `measurement` | `8.5`, `{"value": 8.5, "unit": "lb"}`, or `"8 lb 7 oz"` | unit must be one the element allows |
 | `user` | `"65a1…"` | a 24-hex account id of an active account |
+| `currency` | `12.5`, `"$12.50"`, `"12.50 CAD"`, `{"value": 12.5, "currency": "CAD"}` or `{"amount": 1250, "currency": "CAD"}` | see below |
 
 ## Dates
 
@@ -82,6 +83,25 @@ a free no-op) or look the id up and send it plain.
 The element declares a `measure` (mass, length, volume…), a `defaultUnit`, and
 sometimes a `units` allowlist. A bare number means the default unit. The stored
 `base` is computed — never send it.
+
+## Currency
+
+The element declares `currencies` (ISO 4217 codes such as `["USD", "CAD"]`) and
+sometimes a `defaultCurrency`. It is stored as `{ "amount": 1250, "currency": "USD" }`
+— `amount` is an integer of **minor units** (cents; a yen amount has none, a
+Bahraini dinar has three). Send what the user gave you:
+
+- a bare number or `"12.50"` means **major units** in the default currency;
+- `"12.50 CAD"`, `"CA$12.50"`, `"$12.50"` or `{"value": 12.5, "currency": "CAD"}`
+  name the currency (major units);
+- `{"amount": 1250, "currency": "CAD"}` is the stored shape (minor units) — use it
+  only when you really have cents.
+
+There are **no exchange rates**: a currency the element does not list is
+`invalid_currency`, never converted. More decimals than the currency has
+(`"1.234 USD"`, `12.5` into a yen element) is `type` — never rounded, so ask
+rather than round. A symbol shared by several currencies (`kr`) is refused;
+write the code.
 
 ## Driven elements
 

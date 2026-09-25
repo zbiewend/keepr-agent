@@ -13557,7 +13557,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "b5db61df9eea",
+  version: "734c67d9d70f",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13571,14 +13571,17 @@ var contract_snapshot_default = {
     scopes: {
       read: "GET, HEAD, OPTIONS",
       write: "creating and changing items, attachments and ingest \u2014 every other method except the card surface",
-      cards: "creating and changing cards, element sets and card layouts (never delete of a collection)"
+      cards: "creating and changing cards, element sets and card layouts (never delete of a collection)",
+      delete: "deleting, beside write or cards: every DELETE that removes something, bulk op delete and reject, intake-review reject, a replace-mode write carrying elements (PUT /api/items/{id}, bulk update rows, ingest upsert \u2014 whenever the effective merge is false), and a collection PUT that drops a card from cards[] \u2014 off by default, and never implied"
     },
     notes: [
       "A key acts as its owner, never as a new principal, and is never an administrator.",
-      'write and cards each imply read; neither implies the other. A 403 insufficient_scope carries requiredScope ("write" or "cards") naming the scope the key lacks.',
+      'write and cards each imply read; neither implies the other. A 403 insufficient_scope carries requiredScope ("write", "cards" or "delete") naming the scope the key lacks.',
       'A key minted before the cards scope existed cannot change cards until it is re-minted or edited with "Can change cards".',
+      'delete is added to write or cards, never alone: a destructive route needs its base scope AND delete. Keys and grants made before 2026-09-24 do not have it; deleting needs a new key (or a reconnect) with "Can delete records".',
+      "A key or grant with delete may hard-delete at most deletesPerKeyPerDay items per UTC day; past that, 429 delete_budget_exhausted with limit, used, remaining, requested and resetsAt, and nothing is deleted. A bulk that would overrun the budget is refused whole.",
       "A key confined to a collection allowlist gets 404 \u2014 not 403 \u2014 for everything outside it.",
-      "Session-only surfaces refuse keys: sharing and grants, collection delete and transfer, share links, password and email changes, API key management, all /api/admin/*."
+      "Session-only surfaces refuse keys: sharing and grants, collection delete and transfer, share links, password and email changes, API key management, all /api/admin/*. The refusal is 403 code session_required whatever the key holds \u2014 no scope fixes it."
     ]
   },
   endpoints: {
@@ -13603,7 +13606,8 @@ var contract_snapshot_default = {
   limits: {
     maxRowsPerCall: 200,
     maxIngestBytes: "5 MB per ingest call",
-    activeApiKeysPerUser: 25
+    activeApiKeysPerUser: 25,
+    deletesPerKeyPerDay: 500
   },
   elementTypes: [
     {
@@ -13700,6 +13704,11 @@ var contract_snapshot_default = {
       name: "user",
       send: "a 24-hex account id",
       note: "the account must exist and be active"
+    },
+    {
+      name: "currency",
+      send: '{ amount, currency } with amount in MINOR units (1250 = 12.50), { value, currency } in major units, a number in the default currency, or a string like "$12.50" / "12.5 CAD"',
+      note: "the currency must be one of the element's currencies; more decimals than the currency has (1.234 USD) is refused, never rounded"
     }
   ],
   emptyValue: 'null, "" or omitting the key means empty. On upsert, an omitted key KEEPS its stored value while "" overwrites it.',
@@ -13712,6 +13721,10 @@ var contract_snapshot_default = {
       {
         code: "invalid_choice",
         means: "not one of the element's choice values"
+      },
+      {
+        code: "invalid_currency",
+        means: `not an ISO 4217 code keepr knows, a symbol that names several currencies ("kr"), or outside the element's currencies`
       },
       {
         code: "invalid_email",
@@ -14079,7 +14092,7 @@ var ProposalStore = class {
 };
 
 // dist/src/context.js
-var SCOPE_NAMES = ["read", "write", "cards"];
+var SCOPE_NAMES = ["read", "write", "cards", "delete"];
 function collectionKind(c) {
   if (typeof c.kind === "string" && c.kind)
     return c.kind;
@@ -14123,6 +14136,8 @@ var KeeprContext = class {
   scopesReported = null;
   /** The server itself mentioned a `cards` scope — proof the deployment mints one even when the contract in hand is an old snapshot. */
   cardsScopeSeen = false;
+  /** The same, for `delete`. */
+  deleteScopeSeen = false;
   /** True when /api/user-info told us outright, rather than a write teaching us. */
   keyScopeKnownAtStartup = false;
   keyCollectionIds = null;
@@ -14168,6 +14183,8 @@ var KeeprContext = class {
           this.scopesReported = scopes.map(String);
           if (this.scopesReported.includes("cards"))
             this.cardsScopeSeen = true;
+          if (this.scopesReported.includes("delete"))
+            this.deleteScopeSeen = true;
           for (const name of SCOPE_NAMES)
             this.scopeFacts.set(name, this.scopesReported.includes(name));
           this.keyScopeKnownAtStartup = true;
@@ -14279,6 +14296,8 @@ var KeeprContext = class {
   hasScope(scope) {
     if (scope === "cards" && !this.cardsScopeExists())
       return this.hasScope("write");
+    if (scope === "delete" && !this.deleteScopeExists())
+      return this.hasScope("write");
     const fact = this.scopeFacts.get(scope);
     if (fact !== void 0)
       return fact;
@@ -14288,7 +14307,7 @@ var KeeprContext = class {
   }
   /** The scopes this key is known to hold, for reporting. */
   knownScopes() {
-    return SCOPE_NAMES.filter((s) => this.hasScope(s) === true);
+    return SCOPE_NAMES.filter((s) => (s !== "delete" || this.deleteScopeExists()) && this.hasScope(s) === true);
   }
   /**
    * Learn from a response to a call that needed `needed`. A success proves
@@ -14305,6 +14324,8 @@ var KeeprContext = class {
     const named = requiredScopeOf(res.body);
     if (named === "cards")
       this.cardsScopeSeen = true;
+    if (named === "delete")
+      this.deleteScopeSeen = true;
     const refused = named ?? needed;
     this.scopeFacts.set(refused, false);
     if (named === null && refused === "cards" && !this.cardsScopeExists())
@@ -14313,6 +14334,10 @@ var KeeprContext = class {
   /** Does the deployment mint a `cards` scope at all? The contract says, or the server has said. */
   cardsScopeExists() {
     return this.cardsScopeSeen || this.contract.knowsScope("cards");
+  }
+  /** Does the deployment mint a `delete` scope? The contract says, or the server has said. */
+  deleteScopeExists() {
+    return this.deleteScopeSeen || this.contract.knowsScope("delete");
   }
   /**
    * `code` first, which is what every other refusal here is read by. The
@@ -14332,7 +14357,13 @@ var KeeprContext = class {
   cardsRefusal() {
     return 'This key cannot change cards \u2014 it needs Can change cards. Creating or changing a card (or an element set or layout) is its own scope, and a "Read and write" key does not have it. Create or edit a key with Can change cards turned on (web app -> My Profile -> API keys).';
   }
+  /** The sentence for a delete this key is not allowed. No tool here deletes; this is for relaying a refusal honestly. */
+  deleteRefusal() {
+    return 'This key cannot delete records \u2014 it needs Can delete records, a scope of its own that is off by default; "Read and write" does not include it, and keys made before 2026-09-24 do not have it. Deleting is best done by the user in the web app.';
+  }
   refusalFor(scope) {
+    if (scope === "delete")
+      return this.deleteRefusal();
     return scope === "cards" ? this.cardsRefusal() : this.readOnlyRefusal();
   }
   /** One line the client shows on connect. Computed, never canned. */
@@ -14369,7 +14400,7 @@ function requiredScopeOf(body) {
   if (!body || typeof body !== "object")
     return null;
   const v = body.requiredScope;
-  return v === "write" || v === "cards" || v === "read" ? v : null;
+  return v === "write" || v === "cards" || v === "read" || v === "delete" ? v : null;
 }
 
 // node_modules/zod/v3/external.js
@@ -22581,7 +22612,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.2.1";
+var SERVER_VERSION = "0.2.2";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -22653,7 +22684,7 @@ function buildServer(ctx, tools) {
 // dist/src/tools/collections.js
 var collectionsTool = {
   name: "keepr_collections",
-  description: "Who this API key acts as, its scopes (read, write, cards), and every keepr collection it can reach, with the access level, whether writing is possible in each, and whether cards can be changed. Call this first when you do not already know which collections exist. Never guess a collection name.",
+  description: "Who this API key acts as, its scopes (read, write, cards, delete), and every keepr collection it can reach, with the access level, whether writing is possible in each, and whether cards can be changed. Call this first when you do not already know which collections exist. Never guess a collection name.",
   inputSchema: { refresh: external_exports.boolean().optional().describe("Re-read from the API instead of the roster cached at startup. Only when the user says a collection was just created or just shared with them.") },
   handler: async (args, ctx) => {
     if (args.refresh === true || !ctx.hasCollections)
@@ -22669,6 +22700,11 @@ var collectionsTool = {
     ];
     if (ctx.hasScope("cards") === false)
       lines.push('This key cannot change cards \u2014 it needs Can change cards (a scope of its own; "Read and write" does not include it).');
+    const canDelete = ctx.deleteScopeExists() ? ctx.hasScope("delete") : null;
+    if (canDelete === true)
+      lines.push("This key has Can delete records, but no keepr MCP tool deletes \u2014 removing records is done in the web app.");
+    else if (canDelete === false)
+      lines.push("This key cannot delete records (Can delete records is off). No keepr MCP tool deletes either \u2014 removing records is done in the web app.");
     lines.push("", `${rows.length} collection${rows.length === 1 ? "" : "s"}:`);
     for (const c of rows) {
       const flags = [c.access];
@@ -22696,6 +22732,7 @@ var collectionsTool = {
       keyScopes: scopes,
       scopesReported: ctx.scopesReported,
       canChangeCards: ctx.hasScope("cards"),
+      canDelete,
       contractVersion: ctx.contract.version,
       collections: rows
     });
@@ -23373,7 +23410,7 @@ function describeChanges(body) {
         lines.push(`  - REMOVED  ${c.element}${c.dataType ? `  [${c.dataType}]` : ""}${itemsClause(c.itemsWithValues)}${(c.itemsWithValues ?? 0) > 0 ? "; THOSE VALUES WILL BE LOST" : ""}`);
         break;
       case "retyped":
-        lines.push(`  ~ RETYPED  ${c.element}  ${String(c.from ?? "?")} -> ${String(c.to ?? "?")}${itemsClause(c.itemsWithValues)}${(c.itemsWithValues ?? 0) > 0 ? c.conversion === "measurement" ? "; converted (measurement)" : "; NOT converted \u2014 stored values are reinterpreted, and may be lost" : ""}`);
+        lines.push(`  ~ RETYPED  ${c.element}  ${String(c.from ?? "?")} -> ${String(c.to ?? "?")}${itemsClause(c.itemsWithValues)}${(c.itemsWithValues ?? 0) > 0 ? c.conversion === "measurement" || c.conversion === "currency" ? `; converted (${c.conversion})` : "; NOT converted \u2014 stored values are reinterpreted, and may be lost" : ""}`);
         break;
       case "optionsChanged":
         lines.push(`  ~ options  ${c.element}${Array.isArray(c.keys) && c.keys.length ? `  (${c.keys.join(", ")})` : ""}`);
