@@ -2,7 +2,10 @@
 	"mcpServers": {
 		"keepr": {
 			"command": "node",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/server/keepr-mcp.js"]
+			"args": ["${CLAUDE_PLUGIN_ROOT}/server/keepr-mcp.js"],
+			"env": {
+				"KEEPR_CLIENT_CHANNEL": "plugin"
+			}
 		}
 	}
 }

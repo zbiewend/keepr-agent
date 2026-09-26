@@ -138,9 +138,20 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This bundle is a copy. The deployment it talks to may be newer, so:
+This is keepr skill **2.0.4**. keepr moves faster than any copy of it, so:
 
-- `schema` prints the deployment's `contractVersion`.
+- Every command names this copy to keepr and, once a day, asks whether a newer
+  release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
+  keepr MCP tools add the same note to one result). **Act on it after you have
+  answered the person**: when it names commands you can run — `keepr.py update`
+  for a copy installed from the skill link, the `claude plugin` commands for
+  the plugin — run them (asking first if your environment needs permission),
+  then tell the person in one sentence. When it gives steps instead, pass them
+  on in one short sentence. Once per conversation, never in place of an answer.
+- Working through the MCP tools, `keepr_collections` reports the latest keepr
+  skill. When it is newer than **2.0.4**, tell the person once that their keepr
+  skill is out of date, with this link:
+  https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this
   skill does not document, the script says so and tells you to run:
 

@@ -8,31 +8,37 @@ skill (the judgement — how to read, add and change records without guessing)
 and `keepr-mcp` (the transport — nine tools over the keepr API). Nothing here
 is edited by hand; `skills/publish.sh` in keepr-api regenerates it.
 
-You need a keepr account and an API key: in keepr, **My Profile → API keys →
-Create key**. A key is shown once. Read-only keys read; tick *Can write* to add
-records and *Can change cards* to change a collection's schema.
-
 The guided version of everything below is at
 **[keepr.cloud/account/connect](https://keepr.cloud/account/connect)**, and the
 guide is at [keepr.cloud/docs/guides/assistants](https://keepr.cloud/docs/guides/assistants).
 
-## Three ways in
+## The simplest way: the keepr connector
 
-### 1. Claude desktop and Cowork — the extension
+If you use **Claude** (web, desktop, phone, Cowork) or **ChatGPT**, you don't
+need anything from this repository. Add keepr as a connector —
+`https://api.keepr.cloud/mcp` — and sign in when it asks. There is no key to
+handle, you can disconnect it from your keepr account at any time, and it is
+always up to date. In Claude Code:
+`claude mcp add --transport http keepr https://api.keepr.cloud/mcp`, then `/mcp`
+to sign in.
 
-Download `keepr-<version>.mcpb` from the
-[latest release](https://github.com/zbiewend/keepr-agent/releases/latest) and
-open it. Claude desktop asks for the API key in its own settings field and
-keeps it in the OS keychain; it also supplies the Node runtime, so nothing
-else needs to be installed. Then ask Claude: *what keepr collections can you
-reach?*
+The three ways below are for bringing in big files from your computer, for
+other coding agents, and for setups that can't add a connector. They use an API
+key — in keepr, **My Profile → API keys → Create key** (shown once) — and they
+are copies on your machine, so they need updating:
+[Keep your assistant up to date](https://keepr.cloud/docs/guides/assistants/update-your-assistant).
 
-### 2. Claude Code — the plugin
+## Three other ways in
+
+### 1. Claude Code — the plugin
 
 ```
 /plugin marketplace add zbiewend/keepr-agent
 /plugin install keepr@keepr-agent
 ```
+
+To keep it current by itself: type `/plugin`, open **Marketplaces**, choose
+**keepr-agent** and pick **Enable auto-update**.
 
 Then, **in your own terminal**, store the key once. `keepr.py` is in the
 installed plugin (ask Claude Code where its `keepr` plugin lives), or fetch a
@@ -48,7 +54,7 @@ The key is typed with no echo and stored in `~/.config/keepr/credentials`
 environment to configure. `keepr.py logout` forgets it. The plugin needs a
 `node` on your PATH, which Claude Code itself already needs.
 
-### 3. Any other assistant — the skill on its own
+### 2. Any other assistant — the skill on its own
 
 Paste this to an assistant that can run a script:
 
@@ -57,7 +63,16 @@ Paste this to an assistant that can run a script:
 `GET /api/docs/skill` returns every file of the skill inline with instructions
 for writing them down. The skill zip is also on each release. The assistant
 runs `keepr.py`, which makes ordinary HTTPS calls to `api.keepr.cloud`; you
-run `keepr.py login` yourself, or set `KEEPR_API_KEY`.
+run `keepr.py login` yourself, or set `KEEPR_API_KEY`. When a new version is
+out, the skill says so and the assistant can run `keepr.py update` itself.
+
+### 3. Claude desktop — the extension
+
+Only if your Claude can't add connectors. Download
+[`keepr.mcpb`](https://github.com/zbiewend/keepr-agent/releases/latest/download/keepr.mcpb)
+and open it. Claude desktop asks for the API key in its own settings field and
+keeps it in the OS keychain. It does not update itself: download it again when
+your assistant says a new version is out.
 
 ## What is in here
 
@@ -65,15 +80,16 @@ run `keepr.py login` yourself, or set `KEEPR_API_KEY`.
 .claude-plugin/marketplace.json    the marketplace Claude Code adds
 plugins/keepr/                     the plugin
   .claude-plugin/plugin.json
-  .mcp.json                        starts server/keepr-mcp.js with node
+  .mcp.json                        starts server/keepr-mcp.js with node (channel: plugin)
   skills/keepr/                    the skill, as published
   server/keepr-mcp.js              keepr-mcp, one file, SDK inlined
 mcpb/manifest.json                 the extension manifest, for reference
 CHANGELOG.md
 ```
 
-The `.mcpb` itself and the skill zip are release assets, not files in this
-repository.
+The `.mcpb` and the skill zip are release assets, not files in this
+repository. Each release also carries them as `keepr.mcpb` and `keepr.zip`, so
+`releases/latest/download/keepr.mcpb` (and `…/keepr.zip`) is always the newest.
 
 ## Versions
 

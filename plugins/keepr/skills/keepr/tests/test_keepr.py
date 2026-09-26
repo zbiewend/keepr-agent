@@ -11,6 +11,7 @@ Run: python3 tests/test_keepr.py   (or tests/run.sh)
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -139,6 +140,12 @@ CONTRACT = {
 }
 
 
+# The two public /api/docs resources `update` reads. Tests set them; None is
+# an older deployment that answers 404.
+DOCS = {"clients": None, "skill": None}
+CLIENT_HEADERS = []     # X-Keepr-Client on every request, in order
+
+
 class Stub(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -159,6 +166,11 @@ class Stub(BaseHTTPRequestHandler):
 
     def do_GET(self):
         CALLS.append(("GET", self.path, None))
+        CLIENT_HEADERS.append(self.headers.get("X-Keepr-Client"))
+        docs_path = urllib.parse.urlparse(self.path).path
+        if docs_path in ("/api/docs/clients", "/api/docs/skill"):
+            doc = DOCS[docs_path.rsplit("/", 1)[1]]
+            return self._send(200, doc) if doc is not None else self._send(404, {"message": "Not Found"})
         key = self._key()
         if not key:
             return self._send(401, {"message": "Invalid API key."})
@@ -279,10 +291,13 @@ class Stub(BaseHTTPRequestHandler):
 HOME = None     # a fresh HOME per test, so ~/.config/keepr is the test's own
 
 
-def run(*args, env=None, cwd=None, stdin=None):
-    environ = dict(os.environ, KEEPR_URL=BASE, KEEPR_API_KEY="kpr_testkey", HOME=HOME)
+def run(*args, env=None, cwd=None, stdin=None, script=None):
+    # The daily update check is off unless a test is about it: it is one more
+    # request, and most tests count requests.
+    environ = dict(os.environ, KEEPR_URL=BASE, KEEPR_API_KEY="kpr_testkey", HOME=HOME, KEEPR_UPDATE_CHECK="off")
+    environ.pop("KEEPR_CLIENT_CHANNEL", None)
     environ.update(env or {})
-    return subprocess.run([sys.executable, SCRIPT, *args], capture_output=True, text=True,
+    return subprocess.run([sys.executable, script or SCRIPT, *args], capture_output=True, text=True,
                           env=environ, cwd=cwd, stdin=stdin)
 
 
@@ -307,6 +322,8 @@ class KeeprScriptTest(unittest.TestCase):
         global HOME
         CALLS.clear()
         ATTACHED.clear()
+        CLIENT_HEADERS.clear()
+        DOCS.update(clients=None, skill=None)
         self.tmp = tempfile.mkdtemp()
         HOME = tempfile.mkdtemp()
 
@@ -965,6 +982,192 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertIn("HTTP 403", out.stderr)
         self.assertIn("This key cannot change cards. Create or edit a key with Can change cards turned on.", out.stderr)
         self.assertFalse(os.path.isdir(self.config_path("proposals")), "no proposal without a preview")
+
+    # -------------------------------------------------- staying current
+
+    def current_version(self):
+        with open(os.path.join(HERE, "..", "VERSION"), encoding="utf-8") as fh:
+            return fh.read().strip()
+
+    def clients_doc(self, latest):
+        return {"latest": {"skill": latest, "server": "0.2.4"}, "summary": "Something new.",
+                "channels": {
+                    "skill": {"name": "the keepr skill", "how": "assistant",
+                              "commands": ["python3 scripts/keepr.py update"],
+                              "steps": ["The new version is used from the next command on."],
+                              "guide": "https://keepr.cloud/docs/guides/assistants/update-your-assistant#another-coding-agent"},
+                    "plugin": {"name": "the keepr plugin for Claude Code", "how": "assistant",
+                               "commands": ["claude plugin marketplace update keepr-agent", "claude plugin update keepr@keepr-agent"],
+                               "steps": ["Restart Claude Code to use the new version."],
+                               "guide": "https://keepr.cloud/docs/guides/assistants/update-your-assistant#claude-code-plugin"},
+                    "claude-ai": {"name": "the keepr skill in Claude", "how": "manual",
+                                  "steps": ["Download the new skill.", "In Claude, open Settings, then Skills."],
+                                  "guide": "https://keepr.cloud/docs/guides/assistants/update-your-assistant#the-skill-in-claude"}}}
+
+    def copy_of_skill(self):
+        """A throwaway install of this skill, so `update` rewrites a copy and never the source."""
+        target = os.path.join(self.tmp, "skills", "keepr")
+        shutil.copytree(os.path.join(HERE, ".."), target, ignore=shutil.ignore_patterns("__pycache__", "tests"))
+        return target
+
+    def test_every_request_names_this_copy(self):
+        run("collections")
+        want = f"keepr-skill/{self.current_version()} (skill)"
+        self.assertTrue(CLIENT_HEADERS and all(h == want for h in CLIENT_HEADERS), CLIENT_HEADERS)
+        CLIENT_HEADERS.clear()
+        run("collections", env={"KEEPR_CLIENT_CHANNEL": "plugin"})
+        self.assertEqual(CLIENT_HEADERS[0], f"keepr-skill/{self.current_version()} (plugin)")
+
+    def test_a_copy_behind_says_so_once_a_day_with_the_steps_for_its_channel(self):
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        # A throwaway install: the repo's own copy sits in a git checkout, where
+        # the note sends people to the guide instead of offering to rewrite it.
+        script = os.path.join(self.copy_of_skill(), "scripts", "keepr.py")
+        first = run("collections", env={"KEEPR_UPDATE_CHECK": "on"}, script=script)
+        self.assertEqual(first.returncode, 0)
+        self.assertIn(f"KEEPR UPDATE: the keepr skill is out of date (keepr skill {self.current_version()}; 99.0.0 is out: Something new.).", first.stderr)
+        self.assertLess(first.stderr.find("KEEPR UPDATE"), len(first.stderr), "on stderr")
+        self.assertNotIn("KEEPR UPDATE", first.stdout, "never mixed into the command's own output")
+        self.assertIn("You can update it yourself: run `python3 scripts/keepr.py update`", first.stderr)
+        self.assertIn("after answering what they asked", first.stderr)
+        second = run("collections", env={"KEEPR_UPDATE_CHECK": "on"}, script=script)
+        self.assertNotIn("KEEPR UPDATE", second.stderr, "asked once a day, not on every command")
+
+    def test_a_copy_in_a_git_checkout_is_sent_to_the_guide_not_told_to_rewrite_itself(self):
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        copy = self.copy_of_skill()
+        os.makedirs(os.path.join(self.tmp, ".git"))
+        note = run("collections", env={"KEEPR_UPDATE_CHECK": "on"}, script=os.path.join(copy, "scripts", "keepr.py")).stderr
+        self.assertIn("KEEPR UPDATE", note)
+        self.assertNotIn("keepr.py update", note)
+        self.assertIn("How to update: https://keepr.cloud/docs/guides/assistants/update-your-assistant#another-coding-agent", note)
+
+    def test_a_current_copy_and_an_older_deployment_say_nothing(self):
+        DOCS["clients"] = self.clients_doc(self.current_version())
+        self.assertNotIn("KEEPR UPDATE", run("collections", env={"KEEPR_UPDATE_CHECK": "on"}).stderr)
+        os.remove(self.config_path("update-check.json"))
+        DOCS["clients"] = None
+        result = run("collections", env={"KEEPR_UPDATE_CHECK": "on"})
+        self.assertEqual(result.returncode, 0)
+        self.assertNotIn("KEEPR UPDATE", result.stderr)
+
+    def test_update_rewrites_a_copy_installed_from_the_skill_link(self):
+        copy = self.copy_of_skill()
+        with open(os.path.join(copy, "references", "retired.md"), "w") as fh:
+            fh.write("a file the new release no longer has")
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        DOCS["skill"] = {"version": "99.0.0", "files": {
+            "SKILL.md": "---\nname: keepr\n---\nnew", "VERSION": "99.0.0\n", "scripts/keepr.py": "print('new')\n"}}
+        # Run from INSIDE the skill folder, the way the note says to: the shell's
+        # working directory must survive the update.
+        result = run("update", script="scripts/keepr.py", cwd=copy)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"Updated the keepr skill from {self.current_version()} to 99.0.0.", result.stdout)
+        with open(os.path.join(copy, "VERSION")) as fh:
+            self.assertEqual(fh.read().strip(), "99.0.0")
+        self.assertFalse(os.path.exists(os.path.join(copy, "references", "retired.md")), "what the release dropped is removed")
+        self.assertTrue(os.access(os.path.join(copy, "scripts", "keepr.py"), os.X_OK), "the script stays executable")
+        self.assertEqual(os.listdir(os.path.dirname(copy)), ["keepr"], "nothing is left beside the skill")
+        backups = os.listdir(self.config_path("skill-backups"))
+        self.assertEqual(len(backups), 1, "the previous version is kept")
+        after = subprocess.run([sys.executable, "scripts/keepr.py", "--help"], cwd=copy, capture_output=True, text=True)
+        self.assertEqual(after.returncode, 0, "the same shell can run the next command")
+
+    def test_update_never_touches_a_folder_that_is_not_a_keepr_skill(self):
+        # keepr.py copied into somebody's project, beside that project's VERSION.
+        project = os.path.join(self.tmp, "myproject")
+        os.makedirs(os.path.join(project, "scripts"))
+        os.makedirs(os.path.join(project, "src"))
+        shutil.copy(SCRIPT, os.path.join(project, "scripts", "keepr.py"))
+        with open(os.path.join(project, "VERSION"), "w") as fh:
+            fh.write("1.2.3\n")
+        with open(os.path.join(project, "src", "precious.c"), "w") as fh:
+            fh.write("int main(void) { return 0; }\n")
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        DOCS["skill"] = {"version": "99.0.0", "files": {"SKILL.md": "x", "VERSION": "99.0.0", "scripts/keepr.py": "x"}}
+        result = run("update", script=os.path.join(project, "scripts", "keepr.py"))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not a keepr skill", result.stderr)
+        self.assertTrue(os.path.exists(os.path.join(project, "src", "precious.c")))
+        CLIENT_HEADERS.clear()
+        run("collections", script=os.path.join(project, "scripts", "keepr.py"))
+        self.assertTrue(CLIENT_HEADERS and all(h is None for h in CLIENT_HEADERS), "and it never claims to be one")
+
+    def test_update_refuses_a_skill_holding_things_that_are_not_the_skills(self):
+        copy = self.copy_of_skill()
+        with open(os.path.join(copy, "my-notes.md"), "w") as fh:
+            fh.write("mine")
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        DOCS["skill"] = {"version": "99.0.0", "files": {"SKILL.md": "x", "VERSION": "99.0.0", "scripts/keepr.py": "x"}}
+        result = run("update", script=os.path.join(copy, "scripts", "keepr.py"))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("my-notes.md", result.stderr)
+        self.assertTrue(os.path.exists(os.path.join(copy, "my-notes.md")))
+
+    def test_update_leaves_a_git_checkout_alone(self):
+        copy = self.copy_of_skill()
+        os.makedirs(os.path.join(self.tmp, ".git"))
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        result = run("update", script=os.path.join(copy, "scripts", "keepr.py"))
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("git checkout", result.stdout)
+        with open(os.path.join(copy, "VERSION")) as fh:
+            self.assertEqual(fh.read().strip(), self.current_version())
+
+    def test_a_plugin_is_recognised_by_its_manifest_wherever_it_lives(self):
+        plugin = os.path.join(self.tmp, "anywhere", "keepr")
+        os.makedirs(os.path.join(plugin, ".claude-plugin"))
+        with open(os.path.join(plugin, ".claude-plugin", "plugin.json"), "w") as fh:
+            fh.write("{}")
+        target = os.path.join(plugin, "skills", "keepr")
+        shutil.copytree(os.path.join(HERE, ".."), target, ignore=shutil.ignore_patterns("__pycache__", "tests"))
+        run("collections", script=os.path.join(target, "scripts", "keepr.py"))
+        self.assertEqual(CLIENT_HEADERS[0], f"keepr-skill/{self.current_version()} (plugin)")
+
+    def test_a_malformed_clients_answer_never_breaks_a_command(self):
+        for doc in ([1, 2], {"latest": "2.0.4"}, {"latest": {"skill": "99.0.0"}, "channels": {"skill": "x"}},
+                    {"latest": {"skill": "99.0.0"}, "channels": {"skill": {"steps": "not a list"}}}):
+            with self.subTest(doc=doc):
+                try:
+                    os.remove(self.config_path("update-check.json"))
+                except OSError:
+                    pass
+                DOCS["clients"] = doc
+                result = run("collections", env={"KEEPR_UPDATE_CHECK": "on"})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+        os.makedirs(self.config_path(), exist_ok=True)
+        with open(self.config_path("update-check.json"), "w") as fh:
+            fh.write('{"checkedAt": [1]}')
+        result = run("collections", env={"KEEPR_UPDATE_CHECK": "on"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_update_refuses_a_bundle_that_would_write_outside_the_skill(self):
+        copy = self.copy_of_skill()
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        DOCS["skill"] = {"version": "99.0.0", "files": {
+            "SKILL.md": "x", "VERSION": "99.0.0", "scripts/keepr.py": "x", "../escaped.py": "x"}}
+        result = run("update", script=os.path.join(copy, "scripts", "keepr.py"))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Nothing was changed", result.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "skills", "escaped.py")))
+        with open(os.path.join(copy, "VERSION")) as fh:
+            self.assertEqual(fh.read().strip(), self.current_version())
+
+    def test_update_in_a_plugin_says_how_and_writes_nothing(self):
+        copy = self.copy_of_skill()
+        DOCS["clients"] = self.clients_doc("99.0.0")
+        result = run("update", script=os.path.join(copy, "scripts", "keepr.py"), env={"KEEPR_CLIENT_CHANNEL": "plugin"})
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("run: claude plugin marketplace update keepr-agent", result.stdout)
+        self.assertIn("Restart Claude Code", result.stdout)
+        self.assertFalse(any("/api/docs/skill" in c[1] for c in CALLS), "a plugin's folder is never rewritten")
+
+    def test_update_when_current_says_so(self):
+        DOCS["clients"] = self.clients_doc(self.current_version())
+        result = run("update")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn(f"The keepr skill {self.current_version()} is up to date.", result.stdout)
 
 
 if __name__ == "__main__":

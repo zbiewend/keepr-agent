@@ -33,6 +33,7 @@ Commands
                                          apply a proposal the user has seen
   runs        --collection X             recent ingest runs, for audit
   contract    [--check]                  the live write contract this deployment publishes
+  update                                 update this skill to the latest release, or say how
 
 The write loop the skill runs: schema -> build rows -> ingest --dry-run ->
 fix -> ingest. Rows carrying `source.externalId` are idempotent: re-running
@@ -40,6 +41,14 @@ with --mode upsert updates what changed and reports the rest as `skipped`.
 
 Exit status: 0 all good, 2 some rows failed validation, 1 the call itself
 failed (bad key, unreachable collection, malformed file).
+
+Staying current
+  Every request names this copy (X-Keepr-Client: keepr-skill/<version> (<channel>)).
+  Once a day the script asks the deployment which release is current, and when
+  this copy is behind it prints a `KEEPR UPDATE:` note on stderr saying what to
+  do. `keepr.py update` does it: a copy installed from the skill link rewrites
+  itself from the deployment; a plugin or an upload to Claude says how instead.
+  KEEPR_UPDATE_CHECK=off turns the daily check off.
 """
 
 import argparse
@@ -49,8 +58,10 @@ import mimetypes
 import os
 import re
 import secrets
+import shutil
 import stat
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -78,6 +89,81 @@ CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".config", "keepr")
 CREDENTIALS_FILE = os.path.join(CONFIG_DIR, "credentials")
 PROPOSALS_DIR = os.path.join(CONFIG_DIR, "proposals")
 WEB_URL = "https://keepr.cloud"
+
+# This copy of the skill: its folder, its version, and how it reached the
+# person — which decides how it is updated (utils/agentClients.js in keepr-api).
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+CHANNELS = ("plugin", "skill", "claude-ai", "extension", "local")
+UPDATE_CHECK_FILE = os.path.join(CONFIG_DIR, "update-check.json")
+UPDATE_BACKUPS_DIR = os.path.join(CONFIG_DIR, "skill-backups")
+UPDATE_CHECK_EVERY = 24 * 3600
+UPDATE_TIMEOUT = 5
+# What `update` will write: the deployment's own allowlist (utils/docsUtils.js
+# SERVABLE), and its caps.
+UPDATE_EXTENSIONS = {".md", ".py", ".json", ".csv", ".sh", ".txt", ""}
+UPDATE_MAX_FILE = 256 * 1024
+UPDATE_MAX_TOTAL = 2 * 1024 * 1024
+# What may sit in the skill folder beside the bundle without stopping an update.
+UPDATE_TOLERATED = {"tests", "__pycache__", ".DS_Store"}
+
+
+def is_keepr_skill():
+    """Is the folder two levels above this script a keepr skill? Everything
+    that names this copy, checks for updates or rewrites files hangs on this:
+    a keepr.py copied into somebody's project (`myproject/scripts/keepr.py`
+    beside `myproject/VERSION`) must never mistake that project for itself."""
+    here = os.path.realpath(__file__)
+    if here != os.path.realpath(os.path.join(SKILL_DIR, "scripts", "keepr.py")):
+        return False
+    try:
+        with open(os.path.join(SKILL_DIR, "SKILL.md"), encoding="utf-8") as fh:
+            head = fh.read(4096)
+    except OSError:
+        return False
+    return bool(re.match(r"^---\s*\n(?:.*\n)*?name:\s*keepr\s*\n", head))
+
+
+def skill_version():
+    if not is_keepr_skill():
+        return None
+    try:
+        with open(os.path.join(SKILL_DIR, "VERSION"), encoding="utf-8") as fh:
+            v = fh.read().strip()
+        return v if re.match(r"^\d{1,4}\.\d{1,4}\.\d{1,4}$", v) else None
+    except OSError:
+        return None
+
+
+def client_channel():
+    """How this copy was installed. The launcher may say (KEEPR_CLIENT_CHANNEL);
+    otherwise the folder does: a plugin's skill sits two levels below the
+    plugin's own .claude-plugin/plugin.json (wherever CLAUDE_CONFIG_DIR puts
+    it), and Claude mounts an uploaded skill under /mnt/skills/."""
+    named = (os.environ.get("KEEPR_CLIENT_CHANNEL") or "").strip()
+    if named in CHANNELS:
+        return named
+    plugin_root = os.path.dirname(os.path.dirname(SKILL_DIR))
+    if os.path.isfile(os.path.join(plugin_root, ".claude-plugin", "plugin.json")):
+        return "plugin"
+    parts = SKILL_DIR.replace("\\", "/")
+    if "/.claude/plugins/" in parts:
+        return "plugin"
+    if parts.startswith("/mnt/skills/"):
+        return "claude-ai"
+    return "skill"
+
+
+def client_header():
+    v = skill_version()
+    return f"keepr-skill/{v} ({client_channel()})" if v else None
+
+
+def version_tuple(v):
+    try:
+        return tuple(int(x) for x in str(v).split("."))
+    except ValueError:
+        return (0,)
+
 
 # Retries are for the transport, never for a refusal: a 4xx is an answer and
 # repeating it just burns the user's rate budget.
@@ -164,13 +250,18 @@ def die(message, code=1):
     sys.exit(code)
 
 
-def request(method, path, body=None, headers=None, raw=None, key=None, url=None, with_headers=False):
+def request(method, path, body=None, headers=None, raw=None, key=None, url=None, with_headers=False,
+            anonymous=False, timeout=None):
     """One API call. Returns (status, parsed-body) — or (status, body, headers)
     with `with_headers`, for the one endpoint that answers in a header. Never
     raises on an HTTP error: the caller decides whether a 404 is fatal or just
     an answer. `key`/`url` override the configured ones for `login`, which
     verifies a key before anything has been stored."""
-    hdrs = {"Authorization": f"Bearer {key or api_key()}", "Accept": "application/json"}
+    hdrs = {"Accept": "application/json"}
+    if not anonymous:
+        hdrs["Authorization"] = f"Bearer {key or api_key()}"
+    if client_header():
+        hdrs["X-Keepr-Client"] = client_header()
     data = None
     if body is not None:
         data = json.dumps(body).encode("utf-8")
@@ -187,7 +278,7 @@ def request(method, path, body=None, headers=None, raw=None, key=None, url=None,
     for attempt in range(RETRIES):
         req = urllib.request.Request(full, data=data, method=method, headers=hdrs)
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            with urllib.request.urlopen(req, timeout=timeout or TIMEOUT) as resp:
                 text = resp.read().decode("utf-8")
                 return answer(resp.status, json.loads(text) if text.strip() else None, resp.headers)
         except urllib.error.HTTPError as e:
@@ -219,6 +310,8 @@ STATUS_HINTS = {
          "is closed to keys (sharing, deleting a collection, managing keys)",
     404: "the collection is not visible to this key — wrong id, or outside the key's collection allowlist",
     413: "the payload is over the 5 MB ingest limit; send fewer rows per call",
+    426: "this copy of the skill is too old for keepr (client_too_old); run `keepr.py update`, "
+         "or follow the guide link in the message",
 }
 
 # The server names the missing scope on a 403 (`code: insufficient_scope`,
@@ -929,6 +1022,322 @@ def cmd_contract(a):
     if gone_types:
         print("\nThis skill documents element types the deployment no longer lists: " + ", ".join(gone_types))
     print("\nThe live contract above wins. Work from it for this run, and report the drift.")
+
+
+# ------------------------------------------------------------------ updates
+
+def code_origin_ok(url):
+    """Code is fetched over https only — or from this machine, for a self-hoster."""
+    parsed = urllib.parse.urlparse(url)
+    return parsed.scheme == "https" or parsed.hostname in ("127.0.0.1", "localhost", "::1")
+
+
+def fetch_public(path, timeout=UPDATE_TIMEOUT, code=False):
+    """One GET of a public /api/docs resource, or None — no retries, no exit.
+    The update check must never be why a command is slow or fails. `code`
+    also refuses an answer that arrived over plain http after a redirect."""
+    header = client_header()
+    req = urllib.request.Request(base_url() + path, headers={
+        "Accept": "application/json", **({"X-Keepr-Client": header} if header else {})})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if code and not code_origin_ok(resp.geturl()):
+                return None
+            doc = json.loads(resp.read().decode("utf-8"))
+            return doc if isinstance(doc, dict) else None
+    except Exception:  # noqa: BLE001 — offline, 404 on an older deployment, bad JSON: all mean "say nothing"
+        return None
+
+
+def _strings(value):
+    return [v for v in value if isinstance(v, str)] if isinstance(value, list) else []
+
+
+def channel_steps(clients):
+    """This channel's update steps from the clients doc, shape-checked: a newer
+    deployment may change the payload, and a check must never crash a command."""
+    channels = clients.get("channels") if isinstance(clients, dict) else None
+    raw = channels.get(client_channel()) if isinstance(channels, dict) else None
+    raw = raw if isinstance(raw, dict) else {}
+    out = {
+        "name": raw["name"] if isinstance(raw.get("name"), str) else "the keepr skill",
+        "how": raw.get("how") if raw.get("how") in ("automatic", "assistant", "manual") else "manual",
+        "commands": _strings(raw.get("commands")),
+        "steps": _strings(raw.get("steps")),
+    }
+    for field in ("tip", "guide"):
+        if isinstance(raw.get(field), str):
+            out[field] = raw[field]
+    return out
+
+
+def update_status(clients):
+    """(current, latest, channel steps) — or None when there is nothing to say."""
+    current = skill_version()
+    latest = clients.get("latest") if isinstance(clients, dict) else None
+    latest = latest.get("skill") if isinstance(latest, dict) else None
+    if not current or not isinstance(latest, str) or not re.match(r"^\d{1,4}\.\d{1,4}\.\d{1,4}$", latest):
+        return None
+    return current, latest, channel_steps(clients)
+
+
+def self_update_blocker():
+    """Why `keepr.py update` cannot rewrite this copy, or None when it can."""
+    if client_channel() != "skill":
+        return "this copy is not ours to rewrite"
+    if not is_keepr_skill():
+        return "this folder is not a keepr skill"
+    if not code_origin_ok(base_url()):
+        return "the skill is code, and code is only fetched over https"
+    probe = SKILL_DIR
+    while True:
+        if os.path.exists(os.path.join(probe, ".git")):
+            return f"it is inside a git checkout ({probe}); update it there"
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            break
+        probe = parent
+    if not os.access(SKILL_DIR, os.W_OK):
+        return f"{SKILL_DIR} is not writable here"
+    return None
+
+
+def update_notice(clients):
+    """The KEEPR UPDATE note, or None when this copy is current."""
+    status = update_status(clients)
+    if not status:
+        return None
+    current, latest, steps = status
+    if version_tuple(current) >= version_tuple(latest):
+        return None
+    summary = clients.get("summary") if isinstance(clients.get("summary"), str) else None
+    lines = [f"KEEPR UPDATE: {steps['name']} is out of date (keepr skill {current}; {latest} is out"
+             + (f": {summary})." if summary else ")."),
+             "Tell the person once, in one short sentence, after answering what they asked."]
+    can_run = steps["how"] == "assistant" and steps["commands"] \
+        and (client_channel() != "skill" or self_update_blocker() is None)
+    if can_run:
+        lines.append("You can update it yourself: run " + ", then ".join(f"`{c}`" for c in steps["commands"])
+                     + ". Ask first if your environment needs permission to run commands.")
+        if steps["steps"]:
+            lines.append("Then tell them: " + " ".join(steps["steps"]))
+    elif steps["steps"] and steps["how"] != "assistant":
+        lines.append("Give them these steps: " + " ".join(f"{i}. {t}" for i, t in enumerate(steps["steps"], 1)))
+    if steps.get("tip"):
+        lines.append(steps["tip"])
+    if steps.get("guide"):
+        lines.append(("How to update: " if not can_run and steps["how"] == "assistant" else "More: ") + steps["guide"])
+    return "\n".join(lines)
+
+
+def daily_update_check():
+    """Once a day, ask the deployment which release is current and say so on
+    stderr when this copy is behind. Remembered in ~/.config/keepr so every
+    other command in the day costs nothing. Never raises: whatever goes wrong
+    here, the command the person asked for is what matters."""
+    try:
+        if (os.environ.get("KEEPR_UPDATE_CHECK") or "").strip().lower() in ("off", "0", "false", "no"):
+            return
+        if not is_keepr_skill():
+            return
+        now = time.time()
+        try:
+            with open(UPDATE_CHECK_FILE, encoding="utf-8") as fh:
+                last = json.load(fh)
+            if now - float(last.get("checkedAt") or 0) < UPDATE_CHECK_EVERY and last.get("url") == base_url():
+                return
+        except Exception:  # noqa: BLE001 — a missing or mangled file just means "check now"
+            pass
+        clients = fetch_public("/api/docs/clients")
+        try:
+            os.makedirs(CONFIG_DIR, mode=0o700, exist_ok=True)
+            with open(UPDATE_CHECK_FILE, "w", encoding="utf-8") as fh:
+                json.dump({"checkedAt": now, "url": base_url()}, fh)
+        except OSError:
+            pass
+        notice = update_notice(clients)
+        if notice:
+            print("\n" + notice, file=sys.stderr)
+    except Exception:  # noqa: BLE001
+        return
+
+
+def safe_bundle_path(rel):
+    """A path from the deployment's bundle that may be written under the skill
+    folder — relative, inside it, and of a type the deployment itself serves."""
+    if not isinstance(rel, str) or not rel or len(rel) > 200:
+        return False
+    if rel.startswith(("/", "\\")) or "\\" in rel or ":" in rel:
+        return False
+    parts = rel.split("/")
+    if any(p in ("", ".", "..") or p.startswith(".") for p in parts):
+        return False
+    stem = parts[-1].split(".")[0].upper()
+    if stem in ("CON", "PRN", "AUX", "NUL") or re.match(r"^(COM|LPT)\d$", stem):
+        return False
+    return os.path.splitext(rel)[1] in UPDATE_EXTENSIONS
+
+
+def _skill_files(root):
+    """Every file under the skill folder, as bundle-style relative paths —
+    skipping what the bundle never carries (tests/, caches)."""
+    out = set()
+    for dirpath, dirnames, filenames in os.walk(root):
+        rel_dir = os.path.relpath(dirpath, root)
+        if rel_dir == ".":
+            dirnames[:] = [d for d in dirnames if d not in UPDATE_TOLERATED]
+        dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+        for name in filenames:
+            if name.endswith(".pyc") or name == ".DS_Store":
+                continue
+            rel = name if rel_dir == "." else f"{rel_dir.replace(os.sep, '/')}/{name}"
+            out.add(rel)
+    return out
+
+
+def _write_file(root, rel, text):
+    """Write one file atomically (temp file + os.replace), scripts executable."""
+    target = os.path.join(root, *rel.split("/"))
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(target), prefix=".keepr-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
+        if rel.endswith((".py", ".sh")):
+            os.chmod(tmp, 0o755)
+        os.replace(tmp, target)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def cmd_update(a):
+    clients = fetch_public("/api/docs/clients", timeout=30)
+    if not clients:
+        die(f"{base_url()} does not say which release is current (it may predate updates, or be unreachable).")
+    status = update_status(clients)
+    if not status:
+        die("This is not a keepr skill folder with a readable VERSION, so it cannot tell whether it is current.")
+    current, latest, steps = status
+    title = steps["name"][0].upper() + steps["name"][1:]
+    if version_tuple(current) >= version_tuple(latest):
+        print(f"{title} {current} is up to date.")
+        return
+
+    blocker = self_update_blocker()
+    if blocker:
+        # A plugin, an upload to Claude, a git checkout, a read-only folder:
+        # not ours to rewrite. Say how it IS updated instead.
+        print(f"{title} is out of date (keepr skill {current}; {latest} is out). "
+              + ("It is updated outside this script:" if client_channel() != "skill"
+                 else f"It cannot update itself: {blocker}."))
+        if client_channel() != "skill":
+            for c in steps["commands"]:
+                print(f"  run: {c}")
+        for i, t in enumerate(steps["steps"] if client_channel() != "skill" else [], 1):
+            print(f"  {i}. {t}")
+        if steps.get("tip"):
+            print(f"  {steps['tip']}")
+        if steps.get("guide"):
+            print(f"  How to update: {steps['guide']}")
+        return
+
+    with_tests = os.path.isdir(os.path.join(SKILL_DIR, "tests"))
+    bundle = fetch_public("/api/docs/skill" + ("?include=tests" if with_tests else ""), timeout=60, code=True)
+    files = (bundle or {}).get("files")
+    version = (bundle or {}).get("version")
+    if not isinstance(files, dict) or not isinstance(version, str):
+        die("The deployment did not return the skill bundle. Nothing was changed.")
+    if version_tuple(version) <= version_tuple(current):
+        print(f"{title} {current} is up to date (the deployment serves {version}).")
+        return
+    total = 0
+    folded = set()
+    for rel, text in files.items():
+        if not safe_bundle_path(rel) or not isinstance(text, str):
+            die(f"The bundle carries a path this script will not write ({rel!r}). Nothing was changed.")
+        if rel.lower() in folded:
+            die(f"The bundle carries two paths that differ only in case ({rel!r}). Nothing was changed.")
+        folded.add(rel.lower())
+        try:
+            size = len(text.encode("utf-8"))
+        except UnicodeEncodeError:
+            die("The bundle carries text that is not valid UTF-8. Nothing was changed.")
+        total += size
+        if size > UPDATE_MAX_FILE or total > UPDATE_MAX_TOTAL:
+            die("The bundle is larger than a skill can be. Nothing was changed.")
+    for required in ("SKILL.md", "VERSION", "scripts/keepr.py"):
+        if required not in files:
+            die(f"The bundle is missing {required}. Nothing was changed.")
+    if files["VERSION"].strip() != version:
+        die("The bundle's VERSION does not match what the deployment says it is serving. Nothing was changed.")
+
+    # Only ever touch the files that belong to the skill. Anything in the
+    # folder that neither this copy's nor the new bundle's top level names is
+    # somebody else's, and the update stops rather than guess.
+    old_files = _skill_files(SKILL_DIR)
+    ours_top = {rel.split("/")[0] for rel in files} | {"SKILL.md", "GETTING-STARTED.md", "VERSION", "scripts",
+                                                       "references", "examples"}
+    strangers = sorted({rel.split("/")[0] for rel in old_files} - ours_top)
+    if strangers:
+        die(f"{SKILL_DIR} holds things that are not part of the keepr skill ({', '.join(strangers[:5])}). "
+            "Nothing was changed; update it by hand: " + (steps.get("guide") or WEB_URL))
+
+    # A copy of the current version first, kept afterwards: the way back if
+    # the new one misbehaves, and what is restored if writing fails half way.
+    os.makedirs(UPDATE_BACKUPS_DIR, mode=0o700, exist_ok=True)
+    backup = tempfile.mkdtemp(dir=UPDATE_BACKUPS_DIR, prefix=f"keepr-{current}-")
+    for rel in old_files:
+        src = os.path.join(SKILL_DIR, *rel.split("/"))
+        dst = os.path.join(backup, *rel.split("/"))
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(src, dst, follow_symlinks=False)
+
+    # Files are replaced IN the folder, never the folder itself: a shell
+    # sitting in it keeps its working directory, and a symlinked or mounted
+    # skill folder stays what it is.
+    stale = old_files - set(files)
+    try:
+        for rel, text in files.items():
+            _write_file(SKILL_DIR, rel, text)
+        for rel in stale:
+            os.remove(os.path.join(SKILL_DIR, *rel.split("/")))
+    except OSError as e:
+        restored = True
+        try:
+            for rel in old_files:
+                src = os.path.join(backup, *rel.split("/"))
+                dst = os.path.join(SKILL_DIR, *rel.split("/"))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst, follow_symlinks=False)
+            for rel in set(files) - old_files:
+                try:
+                    os.remove(os.path.join(SKILL_DIR, *rel.split("/")))
+                except OSError:
+                    pass
+        except OSError:
+            restored = False
+        die(f"Could not write the update ({e}). "
+            + ("The previous version was put back." if restored
+               else f"The previous version could not be put back; a copy is at {backup}."))
+
+    # Keep the newest two backups.
+    try:
+        kept = sorted((os.path.join(UPDATE_BACKUPS_DIR, d) for d in os.listdir(UPDATE_BACKUPS_DIR)),
+                      key=os.path.getmtime, reverse=True)
+        for old in kept[2:]:
+            shutil.rmtree(old, ignore_errors=True)
+    except OSError:
+        pass
+    try:
+        os.remove(UPDATE_CHECK_FILE)
+    except OSError:
+        pass
+    print(f"Updated the keepr skill from {current} to {version}. The new version is used from the next command on. "
+          f"The previous version is kept at {backup}.")
 
 
 # ------------------------------------------------------------------ create-card
@@ -1711,8 +2120,18 @@ def main():
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_search)
 
+    p = sub.add_parser("update", help="update this skill to the latest release, or say how")
+    p.set_defaults(fn=cmd_update)
+
     args = ap.parse_args()
-    args.fn(args)
+    # After the command — its output comes first, and the note follows on
+    # stderr even when the command exits early (die() raises SystemExit).
+    # Never for the commands that are about the key or about updating.
+    try:
+        args.fn(args)
+    finally:
+        if args.cmd not in ("login", "logout", "update"):
+            daily_update_check()
 
 
 if __name__ == "__main__":

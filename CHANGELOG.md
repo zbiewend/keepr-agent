@@ -3,6 +3,25 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.0.4 — 2026-09-26
+
+Skill 2.0.4, keepr-mcp 0.2.4.
+
+- **It tells you when it is out of date.** Your assistant now hears from keepr
+  when a newer version is out, and tells you once, in a sentence — with the
+  steps for the way you connected. A skill installed from the skill link
+  updates itself (`keepr.py update`); for the plugin, Claude Code can run the
+  update for you, or you can turn on auto-update once (`/plugin` →
+  Marketplaces → keepr-agent → Enable auto-update). The extension and a skill
+  uploaded to Claude get short steps. Every way:
+  https://keepr.cloud/docs/guides/assistants/update-your-assistant
+- Your keepr **API keys** list now says which assistant last used each key,
+  and marks it **Out of date** when it is.
+- Every release now also carries `keepr.zip` and `keepr.mcpb`, so the
+  `releases/latest/download/…` links always get the newest.
+- If you use Claude or ChatGPT, the **keepr connector** is the simplest way in:
+  nothing to install, no key, and always current. See the README.
+
 ## 2.0.3 — 2026-09-25
 
 Skill 2.0.3, keepr-mcp 0.2.3.

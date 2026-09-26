@@ -74,7 +74,12 @@ nothing else about your account needs to change.
 
 ## Step 2 — Install the skill
 
-Three ways. All three give you the same skill, named `keepr`.
+**Using Claude or ChatGPT?** Connect with the keepr connector instead — there
+is nothing to install, no key to handle, and it is always up to date:
+https://keepr.cloud/account/connect. The skill is for coding agents, and for
+bringing in big files from your computer.
+
+Three ways to install it. All three give you the same skill, named `keepr`.
 
 ### From a sentence (no download)
 
@@ -348,7 +353,8 @@ that prints your account, the skill will work there.
 | **401** invalid API key | Revoked, expired, mistyped, or truncated on copy. Create a new one. |
 | **403** on a write | The key is read-only, or the collection is archived (archived collections are read-only for everyone). |
 | **403** *This key cannot change cards* | Create or edit the key with **Can change cards** turned on. |
-| **403** on sharing or deleting | By design — keys can't do those. Do it in the web app. |
+| **403** on deleting | The key needs **Can delete records**. Or delete it yourself in the web app. |
+| **403** on sharing | By design — keys can't share. Do it in the web app. |
 | **404** on a collection | It isn't in this key's allowlist, or the id is wrong. Check the **Collections** setting on the key. |
 | *N not readable by this key* | You asked for items the key can't see — another collection, a private record, a wrong id. Not "deleted". |
 | *No collection named X* | The name didn't match. Ask the assistant to list collections and use the exact name. |
@@ -362,16 +368,23 @@ that prints your account, the skill will work there.
 
 ## Staying current
 
-The skill you install is a copy; keepr keeps moving. So it checks.
+keepr keeps moving, and the skill you install is a copy. So once a day it asks
+keepr whether a newer version is out, and when one is, your assistant tells you.
 
-Every time it reads a collection it also reads the version of the contract that
-server publishes, and if it ever meets an error or a field type it doesn't
-recognise, it fetches the current one from
-`https://api.keepr.cloud/api/docs/contract` and works from that instead — then
-tells you the skill is behind. You don't have to do anything; a stale copy
-notices and corrects itself rather than guessing.
+- **Installed from the sentence**: your assistant updates it itself, by running
+  `python3 scripts/keepr.py update`.
+- **The Claude Code plugin**: your assistant can run the update for you, or turn
+  on automatic updates once — type `/plugin`, open **Marketplaces**, choose
+  **keepr-agent** and pick **Enable auto-update**.
+- **Uploaded to Claude**: your assistant gives you the steps — download the new
+  skill and upload it again.
 
-If you want to check by hand:
+Every way, step by step:
+https://keepr.cloud/docs/guides/assistants/update-your-assistant
+
+If it meets something newer than it knows before you update — a field type or
+an error it doesn't recognise — it reads keepr's current rules instead of
+guessing, and tells you it is behind. To check by hand:
 
 ```bash
 python3 scripts/keepr.py contract --check
