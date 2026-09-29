@@ -3,6 +3,21 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.1.2 — 2026-09-28
+
+Skill 2.1.2, keepr-mcp 0.3.2.
+
+- **Old records keep their own dates.** When the data you import says when
+  a record was made — a spreadsheet's "Created" column, an export's
+  timestamp — your assistant can send it with each row. keepr shows it on the
+  record ("Created in *system* on *date* · added to keepr *date*"), as a
+  **Created in source** column in the table, and in Excel and PDF exports,
+  instead of every imported record looking as though it was made today.
+  keepr's own created date is still the day of the import.
+- The date is set once, when a record is first imported. Re-sending a row
+  with a different date still updates the record, and says the date was not
+  changed.
+
 ## 2.1.1 — 2026-09-28
 
 Skill 2.1.1, keepr-mcp 0.3.1.

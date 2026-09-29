@@ -57,6 +57,14 @@ A rows file is JSON. Minimum viable:
   number, an ISBN, a slug you derive). With `source.system` it makes the import
   idempotent: re-running with `--mode upsert` updates what changed and reports
   the rest as `skipped`. Without it, re-running duplicates everything.
+- **`source.createdAt`** is when the record was made in the system it comes
+  from — `"2019-04-02"`, or a date-time with an offset. Only beside an
+  `externalId`, only from the data (a sheet's "Created" column, an export's
+  timestamp), never guessed or set to today. keepr shows it as provenance
+  ("Created in … on …"); its own created date stays the day of the import.
+  It is set once, when the item is created: an upsert that sends a different
+  one still writes the row, and the row's note says the date was not changed
+  (`keepr_ingest` calls the field `created_at`).
 - **`tags`** (list of strings) and **`visibility`** (`"shared"` | `"private"`)
   are optional.
 

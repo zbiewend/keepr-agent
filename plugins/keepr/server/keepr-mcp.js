@@ -13659,7 +13659,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "c5dc8a4136b3",
+  version: "f09b5193f92a",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13703,6 +13703,9 @@ var contract_snapshot_default = {
   imports: {
     importId: "OPTIONAL on the ingest envelope: 1-64 of [A-Za-z0-9._-]. Mint one per import and send the same one on every batch of it (dry runs included); keepr lists the batches as one import.",
     undo: "A person who manages the collection can undo an import from its Settings \u2192 Imports (web, session-only): the items it created are deleted and the ones it updated are restored, except any changed since. There is no API-key route for it."
+  },
+  source: {
+    createdAt: "OPTIONAL on a row's source, beside its externalId and system: when the record was created in that system. YYYY-MM-DD, or an ISO date-time with an offset; never in the future. Set when the item is created only: an upsert row that sends a different one still succeeds, and carries notes[] saying the date was not changed. It is shown as provenance; keepr's own createdAt is never set by a client."
   },
   writeContract: {
     maxBatch: 200,
@@ -22389,6 +22392,12 @@ function formatIngest(body, opts) {
   if (opts.batches?.stoppedEarly) {
     lines.push("", `STOPPED after batch ${opts.batches.sent} of ${opts.batches.total}. A failed row may be the $ref parent of rows in a later batch, so the remaining batches were not sent.`);
   }
+  const noted = (body.rows ?? []).filter((r) => r.notes?.length);
+  if (noted.length) {
+    lines.push("", "NOTES \u2014 these rows were written, but:");
+    for (const row of noted)
+      lines.push(`  ${row.externalId ?? `row index ${row.index}`}: ${(row.notes ?? []).join("; ")}`);
+  }
   if (opts.importId) {
     lines.push("", opts.dryRun ? `IMPORT ${opts.importId}: pass import_id "${opts.importId}" when you commit these rows, and on every later call of this same import, so keepr lists them as one.` : `IMPORT ${opts.importId}${wrote ? ` \u2014 if this import was a mistake, someone who manages "${opts.collectionName}" can undo it from the collection's Settings \u2192 Imports.` : ""} Pass import_id "${opts.importId}" on any further rows of this same import.`);
   }
@@ -22435,7 +22444,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.3.1";
+var SERVER_VERSION = "0.3.2";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -23386,7 +23395,7 @@ var ingestTool = {
   inputSchema: {
     collection: external_exports.string().describe("Collection id or name."),
     dry_run: external_exports.boolean().describe("REQUIRED, no default. true validates every row and writes nothing. Run true first, always."),
-    rows: external_exports.array(external_exports.custom()).min(1).describe("The records to write. Each is {card, elements, external_id?, tags?, visibility?}."),
+    rows: external_exports.array(external_exports.custom()).min(1).describe("The records to write. Each is {card, elements, external_id?, created_at?, tags?, visibility?}. created_at is when the record was created in the system it comes from (YYYY-MM-DD, or a date-time with an offset) \u2014 only with an external_id, only from the source data, never guessed; it is kept as provenance, set once when the item is created."),
     mode: external_exports.enum(["create", "upsert"]).optional().describe("`create` (default) refuses a row whose external_id already exists, which is how a double-import is caught. `upsert` updates it instead, merging the elements you send over the stored ones."),
     source_system: external_exports.string().optional().describe('Namespaces your external ids so two imports never collide, e.g. "books-csv". Required if any row has an external_id.'),
     source_ref: external_exports.string().optional().describe("Where this data came from \u2014 a filename, a URL. Recorded on every row."),
@@ -23428,6 +23437,9 @@ var ingestTool = {
         if (typeof value === "string" && PLACEHOLDER.test(value.trim())) {
           problems.push(`row ${i}: element "${name}" is still the placeholder ${value.trim()}. Fill it in with the user's real value, or remove the key \u2014 an omitted element stays empty, a guessed one is a lie written into their records.`);
         }
+      }
+      if (row.created_at !== void 0 && !row.external_id) {
+        problems.push(`row ${i}: created_at needs an external_id \u2014 it is the date the record was created in the system its external_id comes from.`);
       }
       if (mode === "upsert" && !row.external_id) {
         problems.push(`row ${i}: mode is "upsert" but the row has no external_id. Upsert matches on it; without one there is nothing to match and the row would be created again on every run.`);
@@ -23527,7 +23539,11 @@ function toApiRow(row) {
     elements: row.elements,
     ...row.tags?.length ? { tags: row.tags } : {},
     ...row.visibility ? { visibility: row.visibility } : {},
-    ...row.external_id || row.ref ? { source: { ...row.external_id ? { externalId: row.external_id } : {}, ...row.ref ? { ref: row.ref } : {} } } : {}
+    ...row.external_id || row.ref ? { source: {
+      ...row.external_id ? { externalId: row.external_id } : {},
+      ...row.ref ? { ref: row.ref } : {},
+      ...row.external_id && row.created_at ? { createdAt: row.created_at } : {}
+    } } : {}
   };
 }
 function mintImportId() {
@@ -23716,7 +23732,7 @@ async function planParents(cards, target, ctx) {
   });
   return { ok: true, cards: planned };
 }
-var SYSTEM_COLUMNS = ["title", "primaryDate", "updatedAt", "createdAt", "tags", "owner"];
+var SYSTEM_COLUMNS = ["title", "primaryDate", "updatedAt", "createdAt", "sourceCreatedAt", "tags", "owner"];
 var localIdOf = (s) => String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64) || "card";
 function buildBlueprint(cards, filters = [], layouts = []) {
   const problems = [];

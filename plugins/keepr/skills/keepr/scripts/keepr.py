@@ -820,7 +820,7 @@ def cmd_ingest(a):
     batches = [rows[i:i + MAX_BATCH] for i in range(0, len(rows), MAX_BATCH)]
     totals = {"created": 0, "updated": 0, "skipped": 0, "failed": 0}
     results = {"collection": collection, "dryRun": a.dry_run, "mode": a.mode, "importId": import_id,
-               "runs": [], "items": {}, "failures": []}
+               "runs": [], "items": {}, "failures": [], "notes": []}
 
     for n, batch in enumerate(batches, 1):
         body = {"mode": a.mode, "dryRun": a.dry_run, "strict": not a.lenient, "items": batch}
@@ -846,6 +846,9 @@ def cmd_ingest(a):
                                             "externalId": external, "errors": row.get("errors", [])})
             elif row.get("id"):
                 results["items"][external or f"{n}:{row.get('index')}"] = row["id"]
+            if row.get("notes"):
+                results["notes"].append({"batch": n, "index": row.get("index"),
+                                         "externalId": external, "notes": row["notes"]})
         print(f"batch {n}/{len(batches)}: "
               + " · ".join(f"{k} {summary.get(k, 0)}" for k in totals)
               + f" · runId {res.get('runId')}")
@@ -874,6 +877,13 @@ def cmd_ingest(a):
         print(f"  FAILED {label}: {codes}")
     if len(results["failures"]) > 25:
         print(f"  … {len(results['failures']) - 25} more in {out}")
+    # Rows that landed without doing all they asked — e.g. an upsert's
+    # source.createdAt, which is fixed when the item is created.
+    for noted in results["notes"][:25]:
+        label = noted["externalId"] or f"batch {noted['batch']} row {noted['index']}"
+        print(f"  NOTE {label}: {'; '.join(noted['notes'])}")
+    if len(results["notes"]) > 25:
+        print(f"  … {len(results['notes']) - 25} more notes in {out}")
 
     # A code this bundle does not document means the deployment has moved on.
     # Say so once, loudly, rather than letting the agent guess at the meaning.
@@ -1527,7 +1537,7 @@ def check_card_references(todo, card_ids):
         die("nothing was created:\n  " + "\n  ".join(problems))
 
 
-SYSTEM_COLUMNS = ("title", "primaryDate", "updatedAt", "createdAt", "tags", "owner")
+SYSTEM_COLUMNS = ("title", "primaryDate", "updatedAt", "createdAt", "sourceCreatedAt", "tags", "owner")
 
 
 def build_blueprint(todo, card_ids, filters, layouts):

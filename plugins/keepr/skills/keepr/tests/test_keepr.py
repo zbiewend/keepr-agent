@@ -290,6 +290,9 @@ class Stub(BaseHTTPRequestHandler):
                 rows.append({"index": i, "status": "would-create" if dry else "created",
                              "id": f"aaaaaaaaaaaaaaaaaaaa{i:04d}", "externalId": external,
                              "displayValue": (item.get("elements") or {}).get("title", "")})
+                # keepr's one row note today: an upsert's source date is fixed at create.
+                if body.get("mode") == "upsert" and (item.get("source") or {}).get("createdAt"):
+                    rows[-1]["notes"] = ["source is fixed when the item is created; its created date was not changed"]
             return self._send(200, {"runId": "run-1", "summary": summary, "rows": rows})
         return self._send(404, {"message": "not found"})
 
@@ -658,6 +661,17 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertEqual(len(posts), 2)
         self.assertNotIn("importId", posts[1])
 
+    def test_a_row_note_is_printed_and_saved(self):
+        rows = self.write_rows([{"card": "book", "elements": {"title": "Dune"},
+                                 "source": {"externalId": "d1", "createdAt": "1965-08-01"}}])
+        result = run("ingest", "--rows", rows, "--mode", "upsert")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("NOTE d1: source is fixed when the item is created", result.stdout)
+        posted = [c for c in CALLS if c[0] == "POST"][0][2]
+        self.assertEqual(posted["items"][0]["source"]["createdAt"], "1965-08-01", "sent as written")
+        with open(rows.replace(".json", ".results.json")) as fh:
+            self.assertEqual(json.load(fh)["notes"][0]["externalId"], "d1")
+
     def test_upsert_demands_an_external_id_on_every_row(self):
         rows = self.write_rows([{"card": "book", "elements": {"title": "Dune"}}])
         result = run("ingest", "--rows", rows, "--mode", "upsert")
@@ -784,7 +798,7 @@ class KeeprScriptTest(unittest.TestCase):
                           {"name": "depends-on", "label": "Depends on", "dataType": "card-lookup", "lookupCard": "task"},
                           {"name": "epic", "label": "Epic", "dataType": "card-lookup", "lookupCard": "epic"}]},
             {"name": "Epic", "key": "epic", "elements": [{"name": "name", "label": "Name", "dataType": "text-small"}]},
-        ], "filters": [{"name": "Open", "query": "status = open"}], "layouts": [{"card": "task", "columns": ["title", "updatedAt"]}]})
+        ], "filters": [{"name": "Open", "query": "status = open"}], "layouts": [{"card": "task", "columns": ["title", "updatedAt", "sourceCreatedAt"]}]})
         result = run("create-card", "--collection", COLLECTION, "--spec", spec)
         self.assertEqual(result.returncode, 0, result.stderr)
         sent = [c[2] for c in CALLS if c[0] == "POST" and c[1].endswith("/blueprints/preview")][0]["blueprint"]
@@ -792,7 +806,7 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertEqual(task["parentRef"], {"key": "book"})
         self.assertEqual(task["elements"][1]["options"]["lookupCardId"], {"ref": "task"}, "a self-lookup")
         self.assertEqual(task["elements"][2]["options"]["lookupCardId"], {"ref": "epic"}, "a card later in the spec")
-        self.assertEqual(sent["collection"]["cardLayouts"][0]["body"]["columns"], [{"element": "title"}, {"system": "updatedAt"}],
+        self.assertEqual(sent["collection"]["cardLayouts"][0]["body"]["columns"], [{"element": "title"}, {"system": "updatedAt"}, {"system": "sourceCreatedAt"}],
                          "an element the card has wins over the system column of the same name")
         self.assertIn("Creates 2 cards", result.stdout)
         self.assertIn("would create card 'task'", result.stdout)
