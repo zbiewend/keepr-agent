@@ -3,6 +3,30 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.0.5 — 2026-09-28
+
+Skill 2.0.5, keepr-mcp 0.2.5.
+
+- **A card that inherits from another is created with its parent, or not at
+  all.** Ask for "a Bug card that is a Work item plus a severity" and your
+  assistant now finds the parent — in the same request, in the collection, or
+  among keepr's global cards — creates it first, and links the child to it. A
+  parent that names nothing is refused before anything is created. Before
+  this, the connector could say "inheriting from Work item" and create the
+  card without it.
+- **Created cards report their real keys and ids.** keepr sometimes adjusts a
+  key you ask for (`book` becomes `book-2` when `book` is taken); the result now
+  says so, instead of showing no key at all.
+- **Your assistant sees when an element becomes required.** "Acceptance
+  criteria is required when status is ready" now reads as exactly that, rather
+  than as optional. Numbered elements say how they are shown (`KPR-0042`) and
+  that they are matched by the number.
+- **Asking for items of a card by its key works.** A card key or name is
+  looked up first; one that does not exist is named as such, instead of an
+  answer of 0 items.
+- With the skill, a spec whose parent or lookup names nothing now stops before
+  its first card is created, not halfway through.
+
 ## 2.0.4 — 2026-09-26
 
 Skill 2.0.4, keepr-mcp 0.2.4.

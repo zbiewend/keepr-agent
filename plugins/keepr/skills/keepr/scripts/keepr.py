@@ -493,21 +493,65 @@ def cmd_collections(a):
 
 # ------------------------------------------------------------------ schema
 
+def _clause_value(v):
+    if isinstance(v, list):
+        return "(" + ", ".join(_clause_value(x) for x in v) + ")"
+    if isinstance(v, dict) and "amount" in v:
+        return f"{v.get('amount')} {v.get('currency', '')}".strip()
+    return v if isinstance(v, str) else json.dumps(v)
+
+
+def describe_required_when(clauses):
+    """`requiredWhen` as the condition it is — every clause must hold (required.js)."""
+    ops = {"eq": "=", "ne": "!=", "gt": ">", "lt": "<"}
+    out = []
+    for c in clauses:
+        el, op, v = c.get("element", "?"), c.get("op"), c.get("value")
+        if op in ops:
+            out.append(f"{el} {ops[op]} {_clause_value(v)}")
+        elif op in ("in", "not-in"):
+            vals = _clause_value(v if isinstance(v, list) else [v])
+            out.append(f"{el} {'in' if op == 'in' else 'not in'} {vals}")
+        elif op == "empty":
+            out.append(f"{el} is empty")
+        elif op == "not-empty":
+            out.append(f"{el} is not empty")
+        else:
+            out.append(f"{el} {op} {_clause_value(v)}")
+    return " and ".join(out)
+
+
+def shown_as(el, n=42):
+    """How a number element spells n: its prefix, then zero-padded digits (elementFormat/number.js)."""
+    width = el.get("leadingZeros")
+    digits = str(n).zfill(width) if isinstance(width, int) and width > 0 else str(n)
+    return f"{el.get('prefix') or ''}{digits}"
+
+
 def describe_element(el):
     """One line per element: what the write path will accept for it."""
     bits = [el.get("dataType", "?")]
     if el.get("required"):
         bits.append("required")
-    if el.get("requiredWhen"):
-        bits.append("conditionally required")
+    elif el.get("requiredWhen"):
+        # The condition, never just "conditionally": a row the condition holds
+        # for is refused without it, and a writer has to know which rows those are.
+        bits.append("required when " + describe_required_when(el["requiredWhen"]))
     if el.get("isTitle"):
         bits.append("title")
-    if el.get("driven"):
+    if el.get("sequence"):
+        bits.append(f"numbered by keepr — do not send; shown as {shown_as(el)}, matched by the number (42)")
+    elif el.get("driven"):
         bits.append("driven — do not send")
+    elif el.get("prefix") or el.get("leadingZeros"):
+        bits.append(f"shown as {shown_as(el)} for 42 — send the number")
     if el.get("allowMultiple"):
         bits.append("list")
     if el.get("choices"):
-        bits.append("one of: " + ", ".join(c.get("value", "") for c in el["choices"]))
+        def choice(c):
+            value, label = c.get("value", ""), c.get("label")
+            return f'{value} ("{label}")' if label and label.strip().lower() != str(value).strip().lower() else value
+        bits.append("one of: " + ", ".join(choice(c) for c in el["choices"]))
     if el.get("dataType") == "card-lookup":
         bits.append(f"links to card '{el.get('lookupCardKey') or el.get('lookupCardId')}'")
     if el.get("dataType") == "measurement":
@@ -520,6 +564,12 @@ def describe_element(el):
     for bound in ("min", "max"):
         if isinstance(el.get(bound), (int, float)):
             bits.append(f"{bound} {el[bound]}")
+    if isinstance(el.get("decimals"), int):
+        bits.append(f"{el['decimals']} decimals")
+    if el.get("nonNegative"):
+        bits.append("not negative")
+    if el.get("precision"):
+        bits.append(f"precision {el['precision']}")
     if el.get("help"):
         bits.append(f"help: {el['help']}")
     return f"    {el.get('name', '?'):<26} {' · '.join(bits)}"
@@ -542,7 +592,9 @@ def cmd_schema(a):
     for card in cards:
         if a.card and card.get("key") != a.card and card.get("id") != a.card:
             continue
-        parent = f" (child of {card.get('parentCardId')})" if card.get("parentCardId") else ""
+        parent_card = next((c for c in cards if c.get("id") == card.get("parentCardId")), None)
+        parent = (f" (child of '{parent_card.get('key')}')" if parent_card
+                  else f" (child of {card.get('parentCardId')})") if card.get("parentCardId") else ""
         print(f"\n  card '{card.get('key')}' — {card.get('name')}  [id {card.get('id')}]{parent}")
         for el in card.get("elements", []):
             print(describe_element(el))
@@ -1386,6 +1438,50 @@ def normalize_element(el, card_ids):
             "dataType": data_type, "options": options}
 
 
+def global_card_id(key):
+    """The id of the global card with this key, or None. A global card need not
+    be in the collection yet to be extended."""
+    q = f'scope = global and key = "{str(key).replace(chr(34), "")}"'
+    found = get("/api/card-definitions?" + urllib.parse.urlencode({"q": q}), f"looking for a global card '{key}'") or []
+    match = next((c for c in found if c.get("key") == key), None)
+    return str(match.get("_id")) if match else None
+
+
+def check_card_references(todo, card_ids):
+    """Every parentCard and lookupCard, checked BEFORE the first card is created.
+
+    A reference that names nothing used to be found mid-loop — after the cards
+    before it were already created — or, for a parent, sent as a raw key the
+    server refuses. Either way the user was left with half a spec. A parent may
+    be a card already in the collection, one EARLIER in this spec, or a global
+    card; a lookup target, one of the first two. Global parents are resolved
+    here and remembered in card_ids.
+    """
+    problems = []
+    earlier = set()
+    for i, card in enumerate(todo):
+        key = card.get("key") or slug(card.get("name", ""))
+        parent = card.get("parentCard")
+        if parent and parent not in card_ids and parent not in earlier:
+            if any((c.get("key") or slug(c.get("name", ""))) == parent for c in todo[i + 1:]):
+                problems.append(f"card '{key}': its parent '{parent}' comes later in the spec. Put the parent first.")
+            else:
+                gid = global_card_id(parent)
+                if gid:
+                    card_ids[parent] = gid
+                else:
+                    problems.append(f"card '{key}': parentCard '{parent}' is not in the collection, earlier in this spec, "
+                                    "or a global card. Cards here: " + (", ".join(k for k in card_ids if k) or "(none)"))
+        for el in card.get("elements", []):
+            target = el.get("lookupCard")
+            if target and target not in card_ids and target not in earlier:
+                problems.append(f"card '{key}', element '{el.get('name')}': looks up card '{target}', which is neither "
+                                "already in the collection nor earlier in this spec")
+        earlier.add(key)
+    if problems:
+        die("nothing was created:\n  " + "\n  ".join(problems))
+
+
 def cmd_create_card(a):
     collection = resolve_collection(a.collection)
     schema = load_schema(collection)
@@ -1405,6 +1501,7 @@ def cmd_create_card(a):
     if not todo:
         print("nothing to create.")
         return
+    check_card_references(todo, card_ids)
 
     for card in todo:
         payload = {

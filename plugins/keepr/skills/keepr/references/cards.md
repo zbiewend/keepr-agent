@@ -53,6 +53,15 @@ A spec is one card or a list of them:
 Only what the user described goes in. Do not add "useful" elements they did
 not ask for; ask.
 
+A card can **inherit** another card's elements — "a Bug is a Work item plus a
+severity". Name the parent by key: `"parentCard": "work-item"` in a
+`keepr.py` spec, `parentCardKey` on `keepr_propose_card`. It may be a card
+earlier in the same spec or a card the collection already has; the connector
+also finds a global card. A parent that names nothing is refused before
+anything is created — never created without its parent — and the apply result
+says which parent each card was stored with. An item cannot move to another
+card later, so settle the parents before any rows are written.
+
 ## Changing a card
 
 ### The hazard, stated once

@@ -58,6 +58,7 @@ ATTACHED = {}   # itemId -> [{_id, filename}], so re-uploads can be detected
 KEYS = {"kpr_testkey": ["read", "write"], "kpr_cardskey": ["read", "write", "cards"]}
 
 BOOK_ID = "75a1b2c3d4e5f6a7b8c9d0e1"
+PERSON_DEF = {"_id": "95a1b2c3d4e5f6a7b8c9d0e1", "key": "person", "name": "Person", "scope": "global"}
 SHELF_ID = "75a1b2c3d4e5f6a7b8c9d0e2"
 
 ITEMS = [
@@ -205,6 +206,10 @@ class Stub(BaseHTTPRequestHandler):
             })
         if parsed.path == f"/api/card-definitions/{BOOK_ID}":
             return self._send(200, BOOK_DEF)
+        if parsed.path == "/api/card-definitions":
+            # The global-card lookup a parent falls back to.
+            q = (query.get("q") or [""])[0] if isinstance(query.get("q"), list) else (query.get("q") or "")
+            return self._send(200, [PERSON_DEF] if 'key = "person"' in q else [])
         if self.path == "/api/collections":
             return self._send(200, [
                 {"_id": COLLECTION, "name": "My Books", "status": "active", "myAccess": {"role": "owner"}},
@@ -242,7 +247,9 @@ class Stub(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(length) or b"{}")
         CALLS.append(("POST", self.path, body))
         if self.path == "/api/card-definitions":
-            return self._send(201, {"_id": "85a1b2c3d4e5f6a7b8c9d0e9", "key": body.get("key")})
+            # The real envelope: 201 { status, payload: <the stored card> }.
+            return self._send(201, {"status": {"acknowledged": True},
+                                    "payload": {"_id": "85a1b2c3d4e5f6a7b8c9d0e9", "key": body.get("key")}})
         if self.path == f"/api/card-definitions/{BOOK_ID}/change-preview":
             if "cards" not in KEYS.get(self._key() or "", []):
                 return self._send(403, {"statusCode": 403, "error": "Forbidden", "message": "insufficient_scope",
@@ -482,6 +489,29 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertIn("driven — do not send", result.stdout)
         self.assertIn("required", result.stdout)
 
+    def test_schema_states_the_condition_of_a_conditional_requirement(self):
+        keepr = load_module()
+        line = keepr.describe_element({
+            "name": "acceptance", "dataType": "text-large", "required": False,
+            "requiredWhen": [{"element": "status", "op": "in", "value": ["ready", "in-progress"]},
+                             {"element": "type", "op": "eq", "value": "story"}],
+        })
+        self.assertIn("required when status in (ready, in-progress) and type = story", line)
+        self.assertNotIn("conditionally", line)
+
+    def test_schema_marks_a_sequence_do_not_send_and_shows_its_spelling(self):
+        keepr = load_module()
+        line = keepr.describe_element({"name": "key", "dataType": "integer", "sequence": True,
+                                       "serverAssigned": True, "prefix": "KPR-", "leadingZeros": 4})
+        self.assertIn("numbered by keepr — do not send", line)
+        self.assertIn("shown as KPR-0042", line)
+
+    def test_schema_shows_a_choice_label_only_when_it_says_more(self):
+        keepr = load_module()
+        line = keepr.describe_element({"name": "status", "dataType": "choice", "choices": [
+            {"value": "ready", "label": "Ready"}, {"value": "in-progress", "label": "In progress"}]})
+        self.assertIn('one of: ready, in-progress ("In progress")', line)
+
     # -------------------------------------------------- template
 
     def test_template_omits_driven_elements_and_marks_every_value(self):
@@ -635,6 +665,54 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertEqual(len(posts), 2)
         self.assertEqual(posts[1]["elements"][0]["options"]["lookupCardId"], "85a1b2c3d4e5f6a7b8c9d0e9")
         self.assertEqual(posts[0]["elements"][0]["label"], {"singular": "Name", "plural": "Names"})
+
+    def write_spec(self, cards):
+        spec = self.path("cards.json")
+        with open(spec, "w") as fh:
+            json.dump(cards, fh)
+        return spec
+
+    def test_a_parent_that_names_nothing_is_refused_before_anything_is_created(self):
+        spec = self.write_spec([
+            {"name": "Epic", "key": "epic", "elements": [{"name": "title", "label": "Title", "dataType": "text-small"}]},
+            {"name": "Story", "key": "story", "parentCard": "work-itm",
+             "elements": [{"name": "points", "label": "Points", "dataType": "integer"}]},
+        ])
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("nothing was created", result.stderr)
+        self.assertIn("parentCard 'work-itm' is not in the collection, earlier in this spec, or a global card", result.stderr)
+        self.assertFalse([c for c in CALLS if c[0] == "POST"], "not even the first, valid card")
+
+    def test_a_parent_later_in_the_spec_is_refused_with_the_fix(self):
+        spec = self.write_spec([
+            {"name": "Story", "key": "story", "parentCard": "work-item",
+             "elements": [{"name": "points", "label": "Points", "dataType": "integer"}]},
+            {"name": "Work item", "key": "work-item", "elements": [{"name": "title", "label": "Title", "dataType": "text-small"}]},
+        ])
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("comes later in the spec. Put the parent first", result.stderr)
+        self.assertFalse([c for c in CALLS if c[0] == "POST"])
+
+    def test_a_global_parent_is_found_by_key_and_sent_by_id(self):
+        spec = self.write_spec({"name": "Author", "key": "author", "parentCard": "person",
+                                "elements": [{"name": "pen-name", "label": "Pen name", "dataType": "text-small"}]})
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        posts = [c[2] for c in CALLS if c[0] == "POST"]
+        self.assertEqual(posts[0]["parentCardId"], PERSON_DEF["_id"])
+
+    def test_a_bad_lookup_in_a_later_card_stops_the_whole_spec(self):
+        spec = self.write_spec([
+            {"name": "Author", "key": "author", "elements": [{"name": "name", "label": "Name", "dataType": "text-small"}]},
+            {"name": "Note", "key": "note",
+             "elements": [{"name": "about", "label": "About", "dataType": "card-lookup", "lookupCard": "nowhere"}]},
+        ])
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("looks up card 'nowhere'", result.stderr)
+        self.assertFalse([c for c in CALLS if c[0] == "POST"], "the first card is not created either")
 
     def test_existing_cards_are_left_alone(self):
         spec = self.path("card.json")

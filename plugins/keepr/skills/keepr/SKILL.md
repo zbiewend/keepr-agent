@@ -138,7 +138,7 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This is keepr skill **2.0.4**. keepr moves faster than any copy of it, so:
+This is keepr skill **2.0.5**. keepr moves faster than any copy of it, so:
 
 - Every command names this copy to keepr and, once a day, asks whether a newer
   release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
@@ -149,7 +149,7 @@ This is keepr skill **2.0.4**. keepr moves faster than any copy of it, so:
   then tell the person in one sentence. When it gives steps instead, pass them
   on in one short sentence. Once per conversation, never in place of an answer.
 - Working through the MCP tools, `keepr_collections` reports the latest keepr
-  skill. When it is newer than **2.0.4**, tell the person once that their keepr
+  skill. When it is newer than **2.0.5**, tell the person once that their keepr
   skill is out of date, with this link:
   https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this
