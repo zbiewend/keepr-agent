@@ -770,6 +770,25 @@ def unfilled(rows):
     return bad
 
 
+def choose_import_id(a, results_path):
+    """One import, one id (keepr lists its batches as one and a person can undo
+    it from Settings → Imports). --import-id wins; otherwise an import that is
+    not finished — the last run of these rows was a dry run, or a commit with
+    failures to fix and re-send — keeps its id; anything else is a new import."""
+    if a.import_id:
+        if not re.match(r"^[A-Za-z0-9._-]{1,64}$", a.import_id):
+            die("--import-id is 1-64 letters, digits, dots, dashes or underscores")
+        return a.import_id
+    try:
+        with open(results_path, encoding="utf-8") as fh:
+            last = json.load(fh)
+        if last.get("importId") and (last.get("dryRun") or last.get("failures")):
+            return last["importId"]
+    except (OSError, ValueError, AttributeError):
+        pass
+    return f"imp-{time.strftime('%Y%m%d')}-{secrets.token_hex(3)}"
+
+
 def cmd_ingest(a):
     file_collection, source, rows = load_rows(a.rows)
     collection = resolve_collection(a.collection or file_collection)
@@ -796,16 +815,25 @@ def cmd_ingest(a):
         die("Rows carry an externalId but no source.system is set. Pass --system <name> "
             "(it namespaces your external ids so two imports never collide).")
 
+    out = re.sub(r"\.json$", "", a.rows) + ".results.json"
+    import_id = choose_import_id(a, out)
     batches = [rows[i:i + MAX_BATCH] for i in range(0, len(rows), MAX_BATCH)]
     totals = {"created": 0, "updated": 0, "skipped": 0, "failed": 0}
-    results = {"collection": collection, "dryRun": a.dry_run, "mode": a.mode,
+    results = {"collection": collection, "dryRun": a.dry_run, "mode": a.mode, "importId": import_id,
                "runs": [], "items": {}, "failures": []}
 
     for n, batch in enumerate(batches, 1):
         body = {"mode": a.mode, "dryRun": a.dry_run, "strict": not a.lenient, "items": batch}
         if source:
             body["source"] = source
+        if import_id:
+            body["importId"] = import_id
         status, res = request("POST", f"/api/collections/{collection}/ingest", body)
+        if status == 400 and import_id and "importId" in json.dumps(res):
+            # A keepr older than this skill: its envelope refuses the field.
+            import_id = results["importId"] = None
+            del body["importId"]
+            status, res = request("POST", f"/api/collections/{collection}/ingest", body)
         fail_on(status, res, f"ingest batch {n}")
         summary = res.get("summary", {})
         for key in totals:
@@ -828,12 +856,17 @@ def cmd_ingest(a):
                   "Fix the rows and re-run with --mode upsert.", file=sys.stderr)
             break
 
-    out = re.sub(r"\.json$", "", a.rows) + ".results.json"
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(results, fh, indent=2)
 
     print(("DRY RUN — nothing was written. " if a.dry_run else "")
           + "totals: " + " · ".join(f"{k} {v}" for k, v in totals.items()) + f" → {out}")
+    if import_id:
+        if a.dry_run:
+            print(f"import {import_id} — the commit of these rows reuses it.")
+        elif totals["created"] or totals["updated"]:
+            print(f"import {import_id} — if it was a mistake, someone who manages the collection can undo it "
+                  "from its Settings → Imports in the web app.")
     for failure in results["failures"][:25]:
         codes = "; ".join(f"{e.get('element') or '-'}: {e.get('code')} — {e.get('message')}"
                           for e in failure["errors"])
@@ -866,7 +899,9 @@ def cmd_runs(a):
     for run in runs:
         summary = run.get("summary", {})
         print(f"{run.get('createdAt', '')}  {str(run.get('_id'))}  mode {run.get('mode')}"
-              f"{' DRY' if run.get('dryRun') else ''}  "
+              f"{' DRY' if run.get('dryRun') else ''}"
+              f"{'  import ' + run['importId'] if run.get('importId') else ''}"
+              f"{'  UNDONE' if run.get('undone') else ''}  "
               + " · ".join(f"{k} {v}" for k, v in summary.items()))
 
 
@@ -2278,6 +2313,7 @@ def main():
     p.add_argument("--ref", help="override source.ref")
     p.add_argument("--lenient", action="store_true",
                    help="drop unknown element names instead of failing the row")
+    p.add_argument("--import-id", help="name this import (default: kept from an unfinished run of these rows, else new)")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_ingest)
 

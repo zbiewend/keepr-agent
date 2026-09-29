@@ -132,6 +132,16 @@ ids by external id, and every failure. Report to the user:
 - the failures by their external id and error code, not just a count;
 - `keepr.py runs --collection X` shows the audit trail afterwards.
 
+**One import, one id.** Every batch of an import carries the same `importId`,
+so keepr lists them as one import and someone who manages the collection can
+**undo** it from the collection's **Settings → Imports** in the web app: the
+items it created are deleted and the ones it updated are put back, except any
+changed since. `keepr.py ingest` makes the id and keeps it from a dry run to its
+commit, and through a re-send of the rows a commit refused (`--import-id` names
+it yourself); `keepr_ingest` returns it — pass it back as `import_id` on every
+later call of the same import. There is no undo for a key: tell the user where
+it is, if an import went wrong.
+
 `skipped` is a good word: it means the item was already exactly right.
 
 ## Attachments — files onto the items you just made

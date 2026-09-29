@@ -54,6 +54,8 @@ CALLS = []      # every request the stub served, for assertions about what was s
 # Card blueprints (keepr 2.1). Off by default, so the create-card tests below
 # exercise the card-by-card path a deployment without them still uses.
 BLUEPRINTS = {"enabled": False, "preview": None, "apply": None}
+# An older keepr whose strict envelope refuses importId.
+INGEST = {"refuse_import_id": False}
 ATTACHED = {}   # itemId -> [{_id, filename}], so re-uploads can be detected
 
 # Two keys: the ordinary read+write one, and one that may also change cards.
@@ -264,6 +266,8 @@ class Stub(BaseHTTPRequestHandler):
                                         "code": "insufficient_scope", "requiredScope": "cards"})
             return self._send(200, change_preview(body))
         if self.path == f"/api/collections/{COLLECTION}/ingest":
+            if INGEST["refuse_import_id"] and "importId" in body:
+                return self._send(400, {"statusCode": 400, "error": "Bad Request", "message": '"importId" is not allowed'})
             rows, summary = [], {"created": 0, "updated": 0, "skipped": 0, "failed": 0}
             dry = bool(body.get("dryRun"))
             for i, item in enumerate(body.get("items", [])):
@@ -618,6 +622,41 @@ class KeeprScriptTest(unittest.TestCase):
         posts = [c for c in CALLS if c[0] == "POST"]
         self.assertEqual([len(p[2]["items"]) for p in posts], [200, 50])
         self.assertIn("created 250", result.stdout)
+
+    def test_one_import_id_rides_on_every_batch_and_the_commit_after_a_dry_run(self):
+        rows = self.write_rows([{"card": "book", "elements": {"title": f"Book {i}"},
+                                 "source": {"externalId": f"b{i}"}} for i in range(250)])
+        dry = run("ingest", "--rows", rows, "--dry-run")
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        ids = {c[2]["importId"] for c in CALLS if c[0] == "POST"}
+        self.assertEqual(len(ids), 1, "both batches carry the same id")
+        (import_id,) = ids
+        self.assertRegex(import_id, r"^imp-\d{8}-[0-9a-f]{6}$")
+        self.assertIn(f"import {import_id}", dry.stdout)
+        CALLS.clear()
+        commit = run("ingest", "--rows", rows)
+        self.assertEqual(commit.returncode, 0, commit.stderr)
+        self.assertEqual({c[2]["importId"] for c in CALLS if c[0] == "POST"}, {import_id}, "the commit reuses the dry run's id")
+        self.assertIn("Settings → Imports", commit.stdout)
+        CALLS.clear()
+        again = run("ingest", "--rows", rows, "--mode", "upsert")
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertNotIn(import_id, {c[2]["importId"] for c in CALLS if c[0] == "POST"}, "a finished import's rows re-sent are a new import")
+
+    def test_import_id_can_be_named_and_an_older_keepr_gets_the_rows_without_it(self):
+        rows = self.write_rows([{"card": "book", "elements": {"title": "Dune"}, "source": {"externalId": "d1"}}])
+        named = run("ingest", "--rows", rows, "--import-id", "shelf-1")
+        self.assertEqual(named.returncode, 0, named.stderr)
+        self.assertEqual([c[2]["importId"] for c in CALLS if c[0] == "POST"], ["shelf-1"])
+        self.assertEqual(run("ingest", "--rows", rows, "--import-id", "has spaces").returncode, 1)
+        CALLS.clear()
+        INGEST["refuse_import_id"] = True
+        self.addCleanup(lambda: INGEST.update(refuse_import_id=False))
+        old = run("ingest", "--rows", rows)
+        self.assertEqual(old.returncode, 0, old.stderr)
+        posts = [c[2] for c in CALLS if c[0] == "POST"]
+        self.assertEqual(len(posts), 2)
+        self.assertNotIn("importId", posts[1])
 
     def test_upsert_demands_an_external_id_on_every_row(self):
         rows = self.write_rows([{"card": "book", "elements": {"title": "Dune"}}])

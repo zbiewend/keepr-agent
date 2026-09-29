@@ -3,6 +3,21 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.1.1 — 2026-09-28
+
+Skill 2.1.1, keepr-mcp 0.3.1.
+
+- **An import can be taken back.** Every batch of one import now carries the
+  same import id, so keepr lists the batches as one import, and someone who
+  manages the collection can undo it from the collection's **Settings →
+  Imports** in the web app: the items it added are deleted and the ones it
+  changed are put back — except anything someone has worked on since, which
+  stays. Your assistant tells you the import's id when it writes, and where to
+  undo it. It cannot undo an import itself; deleting stays yours.
+- The skill keeps an import's id from its dry run to its commit, and through a
+  re-send of the rows a commit refused; `--import-id` names it yourself.
+- Against an older keepr, the rows are sent without the id.
+
 ## 2.1.0 — 2026-09-28
 
 Skill 2.1.0, keepr-mcp 0.3.0.
