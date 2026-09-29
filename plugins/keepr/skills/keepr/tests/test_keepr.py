@@ -55,7 +55,7 @@ CALLS = []      # every request the stub served, for assertions about what was s
 # exercise the card-by-card path a deployment without them still uses.
 BLUEPRINTS = {"enabled": False, "preview": None, "apply": None}
 # An older keepr whose strict envelope refuses importId.
-INGEST = {"refuse_import_id": False}
+INGEST = {"refuse_import_id": False, "refuse_would_create": False}
 ATTACHED = {}   # itemId -> [{_id, filename}], so re-uploads can be detected
 
 # Two keys: the ordinary read+write one, and one that may also change cards.
@@ -268,10 +268,23 @@ class Stub(BaseHTTPRequestHandler):
         if self.path == f"/api/collections/{COLLECTION}/ingest":
             if INGEST["refuse_import_id"] and "importId" in body:
                 return self._send(400, {"statusCode": 400, "error": "Bad Request", "message": '"importId" is not allowed'})
+            if INGEST["refuse_would_create"] and "wouldCreate" in body:
+                return self._send(400, {"statusCode": 400, "error": "Bad Request", "message": '"wouldCreate" is not allowed'})
             rows, summary = [], {"created": 0, "updated": 0, "skipped": 0, "failed": 0}
             dry = bool(body.get("dryRun"))
+            # What a $ref can find, as keepr settles it: this call's rows and
+            # the would-create rows of earlier calls it was told about.
+            known = {(item.get("source") or {}).get("externalId") for item in body.get("items", [])}
+            known |= {entry["externalId"] for entry in body.get("wouldCreate", [])}
             for i, item in enumerate(body.get("items", [])):
                 external = (item.get("source") or {}).get("externalId")
+                ref = ((item.get("elements") or {}).get("shelf") or {})
+                if isinstance(ref, dict) and ref.get("$ref") and ref["$ref"] not in known:
+                    summary["failed"] += 1
+                    rows.append({"index": i, "status": "failed", "externalId": external,
+                                 "errors": [{"element": "shelf", "code": "ref_unresolved",
+                                             "message": f'no item with externalId "{ref["$ref"]}"'}]})
+                    continue
                 # One deliberate failure mode, so the error path is covered: a
                 # rating that is not a number is what the real validator refuses.
                 if str((item.get("elements") or {}).get("rating", "")).strip() == "future":
@@ -660,6 +673,41 @@ class KeeprScriptTest(unittest.TestCase):
         posts = [c[2] for c in CALLS if c[0] == "POST"]
         self.assertEqual(len(posts), 2)
         self.assertNotIn("importId", posts[1])
+
+    def shelves_then_books(self):
+        # 200 shelves fill batch 1; the books in batch 2 name two of them.
+        return self.write_rows(
+            [{"card": "shelf", "elements": {"name": f"Shelf {i}"},
+              "source": {"externalId": f"s{i}", **({"createdAt": "2019-04-02"} if i == 7 else {})}} for i in range(200)]
+            + [{"card": "book", "elements": {"title": "Dune", "shelf": {"$ref": "s5"}}, "source": {"externalId": "d1"}},
+               {"card": "book", "elements": {"title": "Emma", "shelf": {"$ref": "s7"}}, "source": {"externalId": "e1"}},
+               {"card": "book", "elements": {"title": "Lost", "shelf": {"$ref": "nowhere"}}, "source": {"externalId": "l1"}}])
+
+    def test_a_dry_run_over_batches_carries_the_rows_a_later_batch_names(self):
+        rows = self.shelves_then_books()
+        result = run("ingest", "--rows", rows, "--dry-run")
+        self.assertEqual(result.returncode, 2, "the $ref to nowhere is still refused")
+        posts = [c[2] for c in CALLS if c[0] == "POST"]
+        self.assertNotIn("wouldCreate", posts[0])
+        self.assertEqual(posts[1]["wouldCreate"], [{"card": "shelf", "externalId": "s5"},
+                                                  {"card": "shelf", "externalId": "s7", "createdAt": "2019-04-02"}],
+                         "only the rows batch 2 names, never the whole import")
+        self.assertNotIn("FAILED d1", result.stdout)
+        self.assertIn("FAILED l1", result.stdout)
+        self.assertNotIn("CAVEAT", result.stdout)
+        CALLS.clear()
+        commit = run("ingest", "--rows", rows)
+        self.assertTrue(all("wouldCreate" not in c[2] for c in CALLS if c[0] == "POST"), "a commit's batches have written their rows")
+
+    def test_an_older_keepr_gets_the_dry_run_without_it_and_is_explained(self):
+        INGEST["refuse_would_create"] = True
+        self.addCleanup(lambda: INGEST.update(refuse_would_create=False))
+        result = run("ingest", "--rows", self.shelves_then_books(), "--dry-run")
+        posts = [c[2] for c in CALLS if c[0] == "POST"]
+        self.assertEqual(len(posts), 3, "batch 1, batch 2 refused, batch 2 again")
+        self.assertNotIn("wouldCreate", posts[2])
+        self.assertIn("FAILED d1", result.stdout)
+        self.assertIn("CAVEAT: this keepr cannot carry a dry run across batches", result.stdout)
 
     def test_a_row_note_is_printed_and_saved(self):
         rows = self.write_rows([{"card": "book", "elements": {"title": "Dune"},

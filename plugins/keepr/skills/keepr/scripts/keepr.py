@@ -789,6 +789,39 @@ def choose_import_id(a, results_path):
     return f"imp-{time.strftime('%Y%m%d')}-{secrets.token_hex(3)}"
 
 
+def refs_in(value, out):
+    """Every {"$ref": id} in a row's elements — arrays and nested values
+    included — into `out`, a dict used as an ordered set."""
+    if isinstance(value, list):
+        for v in value:
+            refs_in(v, out)
+    elif isinstance(value, dict):
+        ref = value.get("$ref")
+        if isinstance(ref, str):
+            out[ref.strip()] = None
+        else:
+            for v in value.values():
+                refs_in(v, out)
+    return out
+
+
+def carried_for(batch, would_create):
+    """The rows earlier batches of this dry run would create that this batch
+    refers to or repeats — never the whole import, which keepr caps and does
+    not need."""
+    if not would_create:
+        return []
+    wanted = {}
+    for row in batch:
+        refs_in(row.get("elements") or {}, wanted)
+        external = (row.get("source") or {}).get("externalId")
+        if external:
+            wanted[str(external).strip()] = None
+    # would_create: externalId -> {system: entry}, so a batch costs its own
+    # size, not the whole import's.
+    return [entry for external in wanted for entry in would_create.get(external, {}).values()]
+
+
 def cmd_ingest(a):
     file_collection, source, rows = load_rows(a.rows)
     collection = resolve_collection(a.collection or file_collection)
@@ -822,18 +855,37 @@ def cmd_ingest(a):
     results = {"collection": collection, "dryRun": a.dry_run, "mode": a.mode, "importId": import_id,
                "runs": [], "items": {}, "failures": [], "notes": []}
 
+    # A dry run writes nothing, so a later batch cannot see the rows an earlier
+    # one only validated: every $ref to one would come back ref_unresolved.
+    # keepr is told which (wouldCreate) — only the ones a batch refers to or
+    # repeats.
+    carry = a.dry_run and len(batches) > 1
+    would_create = {}
+
     for n, batch in enumerate(batches, 1):
         body = {"mode": a.mode, "dryRun": a.dry_run, "strict": not a.lenient, "items": batch}
         if source:
             body["source"] = source
         if import_id:
             body["importId"] = import_id
+        carried = carried_for(batch, would_create) if carry else []
+        if carried:
+            body["wouldCreate"] = carried
         status, res = request("POST", f"/api/collections/{collection}/ingest", body)
-        if status == 400 and import_id and "importId" in json.dumps(res):
-            # A keepr older than this skill: its envelope refuses the field.
-            import_id = results["importId"] = None
-            del body["importId"]
-            status, res = request("POST", f"/api/collections/{collection}/ingest", body)
+        if status == 400:
+            # A keepr older than this skill: its envelope refuses a field it does
+            # not know. Send the batch without the ones it named.
+            said = res.get("message", "") if isinstance(res, dict) else str(res)
+            drop_id = bool(import_id) and "importId" in json.dumps(res)
+            drop_carried = bool(carried) and '"wouldCreate" is not allowed' in said
+            if drop_id:
+                import_id = results["importId"] = None
+                del body["importId"]
+            if drop_carried:
+                carry = False
+                del body["wouldCreate"]
+            if drop_id or drop_carried:
+                status, res = request("POST", f"/api/collections/{collection}/ingest", body)
         fail_on(status, res, f"ingest batch {n}")
         summary = res.get("summary", {})
         for key in totals:
@@ -849,6 +901,17 @@ def cmd_ingest(a):
             if row.get("notes"):
                 results["notes"].append({"batch": n, "index": row.get("index"),
                                          "externalId": external, "notes": row["notes"]})
+            index = row.get("index")
+            if carry and row.get("status") == "would-create" and external and isinstance(index, int) and index < len(batch):
+                sent = batch[index]
+                system = (sent.get("source") or {}).get("system")
+                created_at = (sent.get("source") or {}).get("createdAt")
+                entry = {"card": sent.get("card"), "externalId": external}
+                if system:
+                    entry["system"] = system
+                if created_at:
+                    entry["createdAt"] = created_at
+                would_create.setdefault(external, {})[system or source.get("system")] = entry
         print(f"batch {n}/{len(batches)}: "
               + " · ".join(f"{k} {summary.get(k, 0)}" for k in totals)
               + f" · runId {res.get('runId')}")
@@ -877,6 +940,10 @@ def cmd_ingest(a):
         print(f"  FAILED {label}: {codes}")
     if len(results["failures"]) > 25:
         print(f"  … {len(results['failures']) - 25} more in {out}")
+    if (a.dry_run and len(batches) > 1 and not carry
+            and any(e.get("code") == "ref_unresolved" for f in results["failures"] for e in f["errors"])):
+        print("  CAVEAT: this keepr cannot carry a dry run across batches. A ref_unresolved to a row of an "
+              "EARLIER batch is expected here and resolves at commit; one to a row nowhere in the file is real.")
     # Rows that landed without doing all they asked — e.g. an upsert's
     # source.createdAt, which is fixed when the item is created.
     for noted in results["notes"][:25]:

@@ -237,6 +237,13 @@ plain 24-hex id works too, and an `allowMultiple` element takes an array mixing
 both forms. The target's card must be the element's `lookupCardKey` (or a
 descendant of it), and must be readable by this key.
 
+A dry run writes nothing, so an import split over several calls cannot find
+what an earlier call only validated. `keepr.py ingest --dry-run` tells each
+later call which rows the earlier ones would create (`wouldCreate`, dry runs
+only) — just the ones that call names or repeats — so a `$ref` across batches
+dry-runs as it will commit. Calling the API yourself, send the same:
+`"wouldCreate": [{ "card": "shelf", "externalId": "shelf-scifi" }]`.
+
 ### Upsert merges
 
 In `upsert` mode the element keys you send overwrite the stored ones and the

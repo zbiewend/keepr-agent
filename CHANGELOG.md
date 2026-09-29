@@ -3,6 +3,20 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.1.3 — 2026-09-29
+
+Skill 2.1.3, keepr-mcp 0.3.3.
+
+- **A big dry run tells the truth.** An import of more than 200 rows goes in
+  several batches, and a dry run writes nothing — so until now, a row that
+  pointed at a record from an earlier batch (a task naming its epic) came
+  back refused in the dry run, then imported fine. The dry run now tells each
+  batch which records the earlier ones will create, so it checks out the way
+  the import will.
+- A dry-run update that names a different card for a record the import would
+  create is now refused as the import would refuse it, instead of reading as
+  fine.
+
 ## 2.1.2 — 2026-09-28
 
 Skill 2.1.2, keepr-mcp 0.3.2.
