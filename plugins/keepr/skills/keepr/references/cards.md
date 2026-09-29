@@ -34,11 +34,32 @@ python3 scripts/keepr.py create-card --collection "My Books" --spec card.json --
 Propose first, show the user the elements and their types, and only `--apply`
 once they agree. `references/recipes.md` has worked card specs (a reading log,
 an expense tracker, a linked contacts + notes pair) to start from;
-`references/elements.md` says what each of the 19 data types accepts. The
-server slugifies and de-duplicates the key you ask for — read it back from
-the result rather than assuming.
+`references/elements.md` says what each of the 20 data types accepts.
 
-A spec is one card or a list of them:
+The whole spec goes to keepr as **one card blueprint** (keepr 2.1): keepr checks
+it without writing anything — the proposal step prints its summary, or the
+problems, one per line, each with where it is (`cards[1].key`) and why
+(`key_taken`, `ref_unresolved`, `invalid_options`, `invalid_template`…) — and
+`--apply` creates it **all or nothing**: parents first, then the lookups and
+rollups once every card exists. If anything is refused part-way, keepr removes
+what that apply had made and says so. So a card can look up **another card in
+the same spec, or itself** (`"lookupCard": "task"` on the Task card — "depends
+on"), and a rollup can read from one (`"sourceCard"` beside a `drivenFrom`),
+none of which needs an id. A lookup to a **global card** the collection does
+not have yet (`"lookupCard": "person"`) adds that card to the collection —
+the proposal says so, and the key needs write as well. Keys are stored as
+slugs (`Work_Item` becomes `work-item`); the proposal shows the key keepr will
+use.
+
+A spec is one card, a list of them, or `{ "cards": [...], "filters": [...],
+"layouts": [...] }` — filters saved for the whole collection
+(`{ "name": "Ready", "query": "card = task and status = ready" }`, the key needs
+write as well) and table layouts for cards in the spec
+(`{ "card": "task", "columns": ["kpr", "title", "status"] }`). A card may also
+carry `icon`, `color`, `displayTemplate` (`"{{kpr}} {{title}}"`),
+`elementSets` (set keys) and `options` (`primaryDate`…).
+
+One card, for example:
 
 ```json
 { "name": "Plant", "key": "plant",
@@ -55,12 +76,12 @@ not ask for; ask.
 
 A card can **inherit** another card's elements — "a Bug is a Work item plus a
 severity". Name the parent by key: `"parentCard": "work-item"` in a
-`keepr.py` spec, `parentCardKey` on `keepr_propose_card`. It may be a card
-earlier in the same spec or a card the collection already has; the connector
-also finds a global card. A parent that names nothing is refused before
-anything is created — never created without its parent — and the apply result
-says which parent each card was stored with. An item cannot move to another
-card later, so settle the parents before any rows are written.
+`keepr.py` spec, `parentCardKey` on `keepr_propose_card`. It may be a card in
+the same spec (anywhere in it — keepr creates parents first), a card the
+collection already has, or a global card. A parent that names nothing is
+refused before anything is created — never created without its parent. An
+item cannot move to another card later, so settle the parents before any rows
+are written.
 
 ## Changing a card
 

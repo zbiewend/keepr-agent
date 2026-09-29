@@ -3,6 +3,28 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.1.0 — 2026-09-28
+
+Skill 2.1.0, keepr-mcp 0.3.0.
+
+- **Several cards at once, all or nothing.** Ask for "a Task that belongs to
+  an Epic, depends on other tasks, and a count of tasks on each Epic" and your
+  assistant proposes the whole set as one: cards that look each other up, a
+  card that looks up its own kind, counts and totals rolled up from another
+  card, how each card's items are titled, the filters the collection starts
+  with and the columns a card's table shows. keepr checks all of it before
+  anything is made, and says what it would refuse, line by line. When you say
+  yes, it is made in one step; if any part is refused, nothing is kept, and
+  your assistant says so.
+- **The keys you see are the keys keepr stores.** A key like `Work_Item` is
+  shown as `work-item` in the proposal, which is how keepr keeps it.
+- **A lookup to one of keepr's global cards adds it to the collection.** A
+  Task whose owner is a Person brings the Person card into the collection; the
+  proposal says so before you agree, and the key needs **Read and write** as
+  well as **Can change cards**, as it does for filters.
+- With the skill, the same spec file goes to keepr as one set, and an older
+  keepr is still served card by card.
+
 ## 2.0.5 — 2026-09-28
 
 Skill 2.0.5, keepr-mcp 0.2.5.

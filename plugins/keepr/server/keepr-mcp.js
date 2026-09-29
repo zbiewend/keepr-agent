@@ -13659,7 +13659,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "f4d736aa0e0d",
+  version: "2b31802d87eb",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13695,6 +13695,8 @@ var contract_snapshot_default = {
     ingestRuns: "GET /api/collections/{id}/ingest-runs",
     createItem: "POST /api/items",
     createCard: "POST /api/card-definitions",
+    blueprintPreview: "POST /api/collections/{id}/blueprints/preview",
+    blueprintApply: "POST /api/collections/{id}/blueprints/apply",
     attach: "POST /api/items/{itemId}/attachments",
     listAttachments: "GET /api/items/{itemId}/attachments"
   },
@@ -14057,6 +14059,15 @@ var ContractCache = class {
    * key still changes cards — the client must not refuse what the server
    * would allow.
    */
+  /**
+   * Whether the deployment documents an endpoint by its contract name — e.g.
+   * `blueprintPreview`. The build-time snapshot says yes for everything this
+   * build knows, so an unreachable contract never downgrades a request.
+   */
+  hasEndpoint(name) {
+    const endpoints = this.body.endpoints;
+    return Boolean(endpoints && typeof endpoints === "object" && name in endpoints);
+  }
   knowsScope(name) {
     const scopes = this.body.auth?.scopes;
     return Boolean(scopes && typeof scopes === "object" && name in scopes);
@@ -14154,8 +14165,8 @@ var TTL_MS2 = 30 * 6e4;
 var MAX_OPEN = 20;
 var ProposalStore = class {
   open = /* @__PURE__ */ new Map();
-  create(collectionId, collectionName, cards) {
-    return this.add({ kind: "create", collectionId, collectionName, cards });
+  create(collectionId, collectionName, cards, blueprint = null) {
+    return this.add({ kind: "create", collectionId, collectionName, cards, blueprint });
   }
   change(spec) {
     return this.add({ kind: "change", ...spec });
@@ -22407,7 +22418,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.2.5";
+var SERVER_VERSION = "0.3.0";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -23671,6 +23682,87 @@ async function planParents(cards, target, ctx) {
   });
   return { ok: true, cards: planned };
 }
+var SYSTEM_COLUMNS = ["title", "primaryDate", "updatedAt", "createdAt", "tags", "owner"];
+var localIdOf = (s) => String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64) || "card";
+function buildBlueprint(cards, filters = [], layouts = []) {
+  const problems = [];
+  const used = /* @__PURE__ */ new Set();
+  const localIds = cards.map((c) => {
+    const base = localIdOf(c.key || c.name);
+    let id = base;
+    for (let n = 2; used.has(id); n += 1)
+      id = `${base}-${n}`;
+    used.add(id);
+    return id;
+  });
+  const indexOf = (name) => cards.findIndex((c) => norm2(c.key) === norm2(name) || norm2(c.name) === norm2(name));
+  const refFor = (name) => {
+    const idx = indexOf(name);
+    return idx >= 0 ? { ref: localIds[idx] } : { key: String(name).trim() };
+  };
+  const bpCards = cards.map((c, i) => ({
+    localId: localIds[i],
+    ...c.key ? { key: c.key } : {},
+    name: c.name,
+    ...c.description ? { description: c.description } : {},
+    ...c.icon ? { icon: c.icon } : {},
+    ...c.color ? { color: c.color } : {},
+    ...c.displayTemplate ? { displayTemplate: c.displayTemplate } : {},
+    ...c.parentCardKey ? { parentRef: refFor(c.parentCardKey) } : {},
+    ...Array.isArray(c.elementSets) && c.elementSets.length ? { elementSetRefs: c.elementSets.map((k) => ({ key: String(k) })) } : {},
+    ...c.options && typeof c.options === "object" ? { options: c.options } : {},
+    elements: (c.elements ?? []).map((el) => {
+      const options = { ...el.options ?? {} };
+      if (el.lookupCardKey)
+        options.lookupCardId = refFor(el.lookupCardKey);
+      if (el.sourceCardKey) {
+        if (!options.drivenFrom || typeof options.drivenFrom !== "object") {
+          problems.push(`card "${c.name}" element "${el.name}": sourceCardKey needs options.drivenFrom with sourceElementName, linkElementName and aggregate.`);
+        } else {
+          options.drivenFrom = { ...options.drivenFrom, sourceCardId: refFor(el.sourceCardKey) };
+        }
+      }
+      return {
+        name: el.name,
+        ...el.label ? { label: el.label } : {},
+        dataType: el.dataType,
+        ...Object.keys(options).length ? { options } : {}
+      };
+    })
+  }));
+  const collection = {};
+  if (filters.length) {
+    collection.savedFilters = filters.map((f) => ({
+      name: f.name,
+      ...f.query !== void 0 ? { query: f.query } : {},
+      ...f.sort_field ? { sort_field: f.sort_field } : {},
+      ...f.sort_direction ? { sort_direction: f.sort_direction } : {},
+      ...f.group_by ? { group_by: f.group_by } : {}
+    }));
+  }
+  if (layouts.length) {
+    collection.cardLayouts = layouts.map((l) => {
+      const idx = indexOf(l.card);
+      if (idx < 0)
+        problems.push(`layout for "${l.card}": a table layout here is for a card in this proposal.`);
+      const own = new Set((idx >= 0 ? cards[idx].elements ?? [] : []).map((el) => el.name));
+      const columns = (Array.isArray(l.columns) ? l.columns : []).map((col) => typeof col === "string" ? !own.has(col) && SYSTEM_COLUMNS.includes(col) ? { system: col } : { element: col } : col);
+      return { kind: "table", scope: "card", cardRef: { ref: idx >= 0 ? localIds[idx] : localIdOf(l.card) }, body: { columns, ...l.sort ? { sort: l.sort } : {} } };
+    });
+  }
+  if (problems.length)
+    return { ok: false, problems };
+  return { ok: true, blueprint: { cards: bpCards, ...Object.keys(collection).length ? { collection } : {} } };
+}
+function describeRef(ref, nameOfLocal, collectionName) {
+  if (!ref)
+    return "";
+  if (ref.ref)
+    return `"${nameOfLocal(ref.ref)}", proposed above`;
+  if (ref.globalKey)
+    return `${ref.globalKey}, a global card`;
+  return `${ref.key}, already in "${collectionName}"`;
+}
 function describeParent(parent, collectionName) {
   if (!parent)
     return "";
@@ -23767,6 +23859,12 @@ function buildChangePayload(current, change, knownTypes, inherited = /* @__PURE_
     payload.name = String(change.name);
   if (change.description !== void 0)
     payload.description = String(change.description);
+  if (change.icon !== void 0)
+    payload.icon = String(change.icon);
+  if (change.color !== void 0)
+    payload.color = String(change.color);
+  if (change.displayTemplate !== void 0)
+    payload.displayTemplate = String(change.displayTemplate);
   if (change.options && typeof change.options === "object")
     payload.options = { ...current.options ?? {}, ...change.options };
   return { ok: true, payload, touched, added, removed: [...removeSet] };
@@ -23821,8 +23919,10 @@ var proposeCardTool = {
   description: "Work out what a new card (record type) would look like, or what a change to an existing card would do, WITHOUT changing anything. Give `cards` to propose new cards, or `change` to propose edits to one existing card \u2014 exactly one of the two. A change is previewed by keepr itself: the result lists every element added, removed or retyped, with how many items hold a value under it, and starts with DESTRUCTIVE when data would be lost. Returns a summary to show the user and a token; applying is a separate call to keepr_apply_card. Needs a key with Can change cards. Check keepr_schema first.",
   inputSchema: {
     collection: external_exports.string().describe("Collection id or name."),
-    cards: external_exports.array(external_exports.custom()).min(1).optional().describe("NEW cards to propose: {name, key?, description?, parentCardKey?, elements:[{name, label?, dataType, options?}]}. `parentCardKey` makes the card inherit a parent's elements: the key or name of another card in this proposal, a card already in the collection, or a global card. One that names nothing is refused. Not with `change`."),
-    change: external_exports.custom().optional().describe("A change to ONE existing card: {card (key or id), name?, description?, options?, elements?: [{name, label?, dataType?, options?}], remove_elements?: [names]}. Elements you name are merged onto the stored ones; a name the card does not have is added (and needs a dataType); every element you do not mention is kept exactly as it is. An element is removed ONLY by naming it in remove_elements. Not with `cards`.")
+    cards: external_exports.array(external_exports.custom()).min(1).optional().describe('NEW cards to propose, checked by keepr and created all or nothing: {name, key?, description?, icon?, color?, displayTemplate?, parentCardKey?, elementSets?: [set keys], options?: {primaryDate\u2026}, elements:[{name, label?, dataType, options?, lookupCardKey?, sourceCardKey?}]}. `parentCardKey` makes the card inherit a parent\'s elements. `lookupCardKey` is the card a card-lookup element points at (a global card the collection does not have yet is added to it, which needs a key with write); `sourceCardKey` the card a rollup (options.drivenFrom) reads from. Each names a card by key or name: another card in THIS proposal (the card itself too \u2014 a lookup to its own kind), a card the collection has, or a global card. `displayTemplate` titles the items, e.g. "{{kpr}} {{title}}". Not with `change`.'),
+    filters: external_exports.array(external_exports.custom()).optional().describe('With `cards`: filters to save for the whole collection, e.g. {name: "Ready", query: "card = task and status = ready", sort_field: "priority", sort_direction: "asc"}. The query is KQL. Needs a key with write as well as Can change cards.'),
+    layouts: external_exports.array(external_exports.custom()).optional().describe('With `cards`: a table layout for a card in this proposal \u2014 which columns its list shows, in order: {card: "task", columns: ["kpr", "title", "status"]}. System columns: title, primaryDate, updatedAt, createdAt, tags, owner.'),
+    change: external_exports.custom().optional().describe("A change to ONE existing card: {card (key or id), name?, description?, icon?, color?, displayTemplate?, parentCardKey? (null removes the parent), elementSets? (the whole list, by key), options?, elements?: [{name, label?, dataType?, options?}], remove_elements?: [names]}. Elements you name are merged onto the stored ones; a name the card does not have is added (and needs a dataType); every element you do not mention is kept exactly as it is. An element is removed ONLY by naming it in remove_elements. Not with `cards`.")
   },
   handler: async (args, ctx) => {
     const hasCards = args.cards !== void 0 && args.cards !== null;
@@ -23836,10 +23936,129 @@ var proposeCardTool = {
     const target = resolved.row;
     if (ctx.hasScope("cards") === false)
       return fail(ctx.cardsRefusal());
-    return hasChange ? proposeChange(args.change, target, ctx) : proposeCreate(args.cards ?? [], target, ctx);
+    return hasChange ? proposeChange(args.change, target, ctx) : proposeCreate(args.cards ?? [], target, ctx, {
+      filters: args.filters,
+      layouts: args.layouts
+    });
   }
 };
-async function proposeCreate(cards, target, ctx) {
+async function proposeCreate(cards, target, ctx, extras = {}) {
+  const blueprints = !ctx.contract.isLive || ctx.contract.hasEndpoint("blueprintPreview");
+  const filters = Array.isArray(extras.filters) ? extras.filters : [];
+  const layouts = Array.isArray(extras.layouts) ? extras.layouts : [];
+  if (!blueprints) {
+    if (filters.length || layouts.length) {
+      return fail("This keepr deployment cannot create filters or layouts together with new cards. Propose the cards alone; the user can add filters and layouts in the web app. Nothing was sent to keepr.");
+    }
+    return proposeCreateOneByOne(cards, target, ctx);
+  }
+  const local = checkCreateLocally(cards, target, ctx);
+  if (local.length) {
+    return fail(`This card spec cannot be created \u2014 nothing was sent to keepr:
+
+${local.map((p) => `  ${p}`).join("\n")}`, { validation: { ok: false, problems: local } });
+  }
+  const built = buildBlueprint(cards, filters, layouts);
+  if (!built.ok) {
+    return fail(`This card spec cannot be created \u2014 nothing was sent to keepr:
+
+${built.problems.map((p) => `  ${p}`).join("\n")}`, { validation: { ok: false, problems: built.problems } });
+  }
+  const res = await ctx.http.request({
+    method: "POST",
+    path: `/api/collections/${target.id}/blueprints/preview`,
+    body: { blueprint: built.blueprint }
+  });
+  ctx.noteWriteAttempt(res, "cards");
+  if (!res.ok) {
+    if (res.status === 403 && ctx.hasScope("cards") === false)
+      return fail(ctx.cardsRefusal());
+    return failFromResponse(res, `checking the proposed cards against "${target.name}"`);
+  }
+  const body = res.body ?? {};
+  const problems = body.problems ?? [];
+  if (body.wouldApply === false || problems.length) {
+    return fail(`keepr would refuse these cards \u2014 nothing was created. Fix what each line names and propose again:
+
+${problems.map((p) => `  ${p.path ?? ""}: ${p.message ?? ""}${p.code ? ` (${p.code})` : ""}`).join("\n")}`, { validation: { ok: false, problems } });
+  }
+  const proposal = ctx.proposals.create(target.id, target.name, [], built.blueprint);
+  const steps = body.steps ?? [];
+  const nameOfLocal = (id) => steps.find((s) => s.kind === "card" && s.localId === id)?.name ?? id;
+  const lines = [
+    "PROPOSED \u2014 nothing has been created. Show this to the user and wait for a yes.",
+    "",
+    `Collection: "${target.name}"`,
+    ...(body.summary ?? []).map((s) => `keepr: ${s}`)
+  ];
+  for (const step of steps.filter((s) => s.kind === "card")) {
+    const spec = cards.find((c) => localIdOf(c.key || c.name) === step.localId || norm2(c.name) === norm2(step.name));
+    lines.push("", `CARD "${step.name}" (key ${step.key})${step.parent ? `, inheriting from ${describeRef(step.parent, nameOfLocal, target.name)}` : ""}`);
+    if (spec?.description)
+      lines.push(`  ${spec.description}`);
+    for (const el of spec?.elements ?? []) {
+      const form = ctx.contract.formOf(el.dataType);
+      const link = el.lookupCardKey ? ` \u2192 looks up ${el.lookupCardKey}` : "";
+      lines.push(`  ${el.name}  [${el.dataType}]${link}${form ? ` \u2014 send ${form.send}` : ""}`);
+    }
+  }
+  const memberSteps = steps.filter((s) => s.kind === "member");
+  if (memberSteps.length)
+    lines.push("", `ADDS TO THE COLLECTION: ${memberSteps.map((s) => `${s.name} (${s.key}), a global card`).join(", ")} \u2014 the new cards refer to ${memberSteps.length === 1 ? "it" : "them"}`);
+  const filterSteps = steps.filter((s) => s.kind === "filter");
+  if (filterSteps.length)
+    lines.push("", `FILTERS: ${filterSteps.map((s) => `"${s.name}"`).join(", ")}`);
+  const layoutSteps = steps.filter((s) => s.kind === "layout");
+  if (layoutSteps.length)
+    lines.push("", `LAYOUTS: ${layoutSteps.map((s) => `${s.layoutKind} for ${describeRef(s.card, nameOfLocal, target.name)}`).join(", ")}`);
+  lines.push("", "A card is SCHEMA: it changes the shape of the user's data, and this tool set cannot delete one.", "", `NEXT: if the user agrees, call keepr_apply_card with proposal_token "${proposal.token}" and confirm_collection_name "${target.name}". The token is good for 30 minutes and can be used once. The apply is all or nothing.`);
+  return ok(lines.join("\n"), {
+    kind: "create",
+    proposalToken: proposal.token,
+    collectionId: target.id,
+    collectionName: target.name,
+    cards: steps.filter((s) => s.kind === "card").map((s) => ({ name: s.name, key: s.key ?? null, parent: s.parent ?? null })),
+    filters: filterSteps.map((s) => s.name),
+    layouts: layoutSteps.map((s) => ({ kind: s.layoutKind, card: s.card })),
+    members: memberSteps.map((s) => ({ key: s.key ?? null, name: s.name ?? "" })),
+    summary: body.summary ?? [],
+    validation: { ok: true, problems: [] }
+  });
+}
+function checkCreateLocally(cards, target, ctx) {
+  const problems = [];
+  if (!Array.isArray(cards) || !cards.length)
+    return ["No cards given."];
+  const known = ctx.contract.knownTypeNames();
+  cards.forEach((card, i) => {
+    if (!card?.name)
+      problems.push(`card ${i}: no name.`);
+    if (!Array.isArray(card?.elements) || !card.elements.length) {
+      problems.push(`card ${i}: no elements. A card with no fields cannot hold anything.`);
+      return;
+    }
+    const seen = /* @__PURE__ */ new Set();
+    card.elements.forEach((el, j) => {
+      if (!el?.name)
+        problems.push(`card ${i} element ${j}: no name.`);
+      else if (seen.has(el.name))
+        problems.push(`card ${i}: two elements named "${el.name}".`);
+      else
+        seen.add(el.name);
+      if (!el?.dataType)
+        problems.push(`card ${i} element ${j} ("${el?.name ?? "?"}"): no dataType.`);
+      else if (!known.includes(el.dataType)) {
+        problems.push(`card ${i} element ${j} ("${el.name}"): "${el.dataType}" is not a keepr data type. This deployment accepts: ${known.join(", ")}.`);
+      }
+    });
+  });
+  if (!target.cardRole)
+    problems.push(`Creating a card in "${target.name}" needs manage or owner access; this key has "${target.access}".`);
+  if (target.archived)
+    problems.push(`"${target.name}" is archived and cannot be changed.`);
+  return problems;
+}
+async function proposeCreateOneByOne(cards, target, ctx) {
   if (!Array.isArray(cards) || !cards.length)
     return fail("No cards given.");
   const problems = [];
@@ -23922,9 +24141,9 @@ async function proposeChange(change, target, ctx) {
     return fail(`"${target.name}" is archived and cannot be changed.`);
   if (!target.cardRole)
     return fail(`Changing a card in "${target.name}" needs manage or owner access; this key has "${target.access}".`);
-  const wantsSomething = change.name !== void 0 || change.description !== void 0 || change.options !== void 0 || Array.isArray(change.elements) && change.elements.length || Array.isArray(change.remove_elements) && change.remove_elements.length;
+  const wantsSomething = change.name !== void 0 || change.description !== void 0 || change.options !== void 0 || change.icon !== void 0 || change.color !== void 0 || change.displayTemplate !== void 0 || change.parentCardKey !== void 0 || change.elementSets !== void 0 || Array.isArray(change.elements) && change.elements.length || Array.isArray(change.remove_elements) && change.remove_elements.length;
   if (!wantsSomething)
-    return fail("The change is empty: give a new name, description or options, elements to add or edit, or remove_elements. Nothing was sent to keepr.");
+    return fail("The change is empty: give a new name, description, icon, color, title, parent, element sets or options, elements to add or edit, or remove_elements. Nothing was sent to keepr.");
   const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
   if (!schema.ok)
     return failFromResponse(schema, `reading the schema of "${target.name}"`);
@@ -23947,6 +24166,39 @@ async function proposeChange(change, target, ctx) {
     return fail(`This change cannot be made \u2014 nothing was sent to keepr:
 
 ${built.problems.map((p) => `  ${p}`).join("\n")}`, { validation: { ok: false, problems: built.problems } });
+  }
+  if (change.parentCardKey !== void 0) {
+    if (change.parentCardKey === null || String(change.parentCardKey).trim() === "")
+      built.payload.parentCardId = null;
+    else {
+      const ref2 = String(change.parentCardKey).trim();
+      const here = cards.find((c) => norm2(c.key) === norm2(ref2)) ?? cards.find((c) => norm2(c.name) === norm2(ref2));
+      let parentId = here?.id ?? null;
+      if (!parentId) {
+        const quoted = ref2.replace(/["\\]/g, "");
+        const globals = await ctx.http.request({ path: "/api/card-definitions", query: { q: `scope = global and (key = "${quoted}" or name = "${quoted}")` } });
+        if (!globals.ok)
+          return failFromResponse(globals, `looking for a global card "${ref2}"`);
+        const g = (Array.isArray(globals.body) ? globals.body : []).find((c) => norm2(c.key) === norm2(ref2) || norm2(c.name) === norm2(ref2));
+        parentId = g ? String(g._id) : null;
+      }
+      if (!parentId)
+        return fail(`parentCardKey "${ref2}" names no card in "${target.name}" and no global card. Cards here: ${cards.map((c) => c.key ?? c.id).join(", ") || "(none)"}. Nothing was sent to keepr.`);
+      if (parentId === card.id)
+        return fail("A card cannot be its own parent. Nothing was sent to keepr.");
+      built.payload.parentCardId = parentId;
+    }
+  }
+  if (change.elementSets !== void 0) {
+    const wanted = (Array.isArray(change.elementSets) ? change.elementSets : []).map((k) => String(k).trim());
+    const sets = await ctx.http.request({ path: "/api/element-sets", query: { collectionId: target.id } });
+    if (!sets.ok)
+      return failFromResponse(sets, `reading the element sets "${target.name}" can attach`);
+    const byKey = new Map((Array.isArray(sets.body) ? sets.body : []).map((s) => [norm2(s.key), String(s._id)]));
+    const missing = wanted.filter((k) => !byKey.has(norm2(k)));
+    if (missing.length)
+      return fail(`No element set ${missing.map((k) => `"${k}"`).join(", ")} in "${target.name}" or among the global sets. Nothing was sent to keepr.`);
+    built.payload.elementSets = wanted.map((k) => byKey.get(norm2(k)));
   }
   const preview = await ctx.http.request({
     method: "POST",
@@ -24043,6 +24295,8 @@ var applyCardTool = {
     }
     if (proposal.kind === "change")
       return applyChange(proposal, args, ctx);
+    if (proposal.blueprint)
+      return applyBlueprint(proposal, ctx);
     const created = [];
     for (const card of proposal.cards) {
       let parent = null;
@@ -24120,6 +24374,55 @@ ${created.length} card${created.length === 1 ? "" : "s"} WAS already created bef
     });
   }
 };
+async function applyBlueprint(proposal, ctx) {
+  const res = await ctx.http.request({
+    method: "POST",
+    path: `/api/collections/${proposal.collectionId}/blueprints/apply`,
+    body: { blueprint: proposal.blueprint }
+  });
+  ctx.noteWriteAttempt(res, "cards");
+  if (!res.ok) {
+    if (res.status === 403 && ctx.hasScope("cards") === false)
+      return fail(ctx.cardsRefusal());
+    const failed = failFromResponse(res, `creating the proposed cards in "${proposal.collectionName}"`);
+    const raw = res.body ?? {};
+    const extra = [];
+    if (raw.problems?.length)
+      extra.push("", ...raw.problems.map((p) => `  ${p.path ?? ""}: ${p.message ?? ""}${p.code ? ` (${p.code})` : ""}`));
+    if (raw.blueprint) {
+      extra.push("", raw.blueprint.compensated ? "Nothing was kept: keepr removed everything this apply had created. Fix what the message names and propose again." : `WARNING: keepr could not remove everything this apply created: ${(raw.blueprint.remaining ?? []).map((r) => `${r.kind} ${r.name ?? r.id}`).join(", ")}. Tell the user; they can check the collection in the web app.`);
+    }
+    const first = failed.content[0];
+    if (first && first.type === "text")
+      first.text += extra.join("\n");
+    failed.structuredContent = { ...failed.structuredContent ?? {}, ...raw.blueprint ? { blueprint: raw.blueprint } : {}, ...raw.problems ? { problems: raw.problems } : {} };
+    return failed;
+  }
+  const out = res.body ?? {};
+  const cards = out.cards ?? [];
+  const lines = [`CREATED ${cards.length} card${cards.length === 1 ? "" : "s"} in "${proposal.collectionName}".`, ""];
+  for (const c of cards)
+    lines.push(`  ${c.name}  key: ${c.key}  ${c.id}`);
+  if (out.elementSets?.length)
+    lines.push("", `ELEMENT SETS: ${out.elementSets.map((s) => `${s.name} (${s.key})`).join(", ")}`);
+  if (out.filters?.length)
+    lines.push("", `FILTERS: ${out.filters.map((f) => `"${f.name}"`).join(", ")}`);
+  if (out.layouts?.length)
+    lines.push("", `LAYOUTS: ${out.layouts.map((l) => `${l.kind} for ${cards.find((c) => c.id === l.cardId)?.name ?? l.cardId}`).join(", ")}`);
+  if (out.members?.length)
+    lines.push("", `ADDED TO THE COLLECTION: ${out.members.map((m) => `${m.name} (${m.key}), a global card`).join(", ")}`);
+  lines.push("", "Use the keys above when writing rows.");
+  lines.push("", "NEXT: call keepr_schema to see the cards as stored, then keepr_ingest with dry_run: true.");
+  return ok(lines.join("\n"), {
+    kind: "create",
+    created: cards.map((c) => ({ key: c.key ?? null, id: c.id ?? "", name: c.name ?? "", localId: c.localId ?? null })),
+    elementSets: out.elementSets ?? [],
+    filters: out.filters ?? [],
+    layouts: out.layouts ?? [],
+    members: out.members ?? [],
+    collectionId: proposal.collectionId
+  });
+}
 async function applyChange(proposal, args, ctx) {
   if (proposal.destructive) {
     const given = args.confirm_card_name;

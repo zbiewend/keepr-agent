@@ -1410,9 +1410,13 @@ KNOWN_TYPES = {
 }
 
 
-def normalize_element(el, card_ids):
+def normalize_element(el, card_ids, ref_for=None):
     """A spec element -> the card-definition wire shape. `label` may be a string;
-    `lookupCard` may name another card in the same spec by key."""
+    `lookupCard` may name another card in the same spec by key.
+
+    With `ref_for` (a card blueprint), `lookupCard` and `sourceCard` become
+    blueprint references — { "ref": … } for a card in the spec, { "key": … }
+    otherwise, which keepr resolves — and nothing needs an id."""
     if not el.get("name") and not el.get("label"):
         die("every element needs a name (or a label to derive one from)")
     data_type = el.get("dataType")
@@ -1426,12 +1430,18 @@ def normalize_element(el, card_ids):
     for key in ELEMENT_OPTION_KEYS:
         if key in el:
             options[key] = el[key]
-    if el.get("lookupCard"):
+    if el.get("lookupCard") and ref_for:
+        options["lookupCardId"] = ref_for(el["lookupCard"])
+    elif el.get("lookupCard"):
         target = card_ids.get(el["lookupCard"])
         if not target:
             die(f"element '{el.get('name')}' looks up card '{el['lookupCard']}', which is neither "
                 "already in the collection nor earlier in this spec")
         options["lookupCardId"] = target
+    if el.get("sourceCard") and ref_for:
+        if not isinstance(options.get("drivenFrom"), dict):
+            die(f"element '{el.get('name')}': sourceCard needs drivenFrom (sourceElementName, linkElementName, aggregate)")
+        options["drivenFrom"] = dict(options["drivenFrom"], sourceCardId=ref_for(el["sourceCard"]))
     if data_type == "card-lookup" and not options.get("lookupCardId"):
         die(f"element '{el.get('name')}': a card-lookup needs lookupCard (a key) or lookupCardId")
     return {"name": el.get("name") or slug(label["singular"]), "label": label,
@@ -1482,6 +1492,66 @@ def check_card_references(todo, card_ids):
         die("nothing was created:\n  " + "\n  ".join(problems))
 
 
+SYSTEM_COLUMNS = ("title", "primaryDate", "updatedAt", "createdAt", "tags", "owner")
+
+
+def build_blueprint(todo, card_ids, filters, layouts):
+    """A card blueprint for the cards of a spec (keepr 2.1, docs/SCHEMA.md
+    "Card blueprints"): a card named by key that is IN the spec is { "ref" } —
+    the card itself too, for a lookup to its own kind — and any other is
+    { "key" }, which keepr resolves against the collection's cards, then the
+    global ones. keepr creates the parents first and patches lookups and
+    rollups in once every card exists, all or nothing."""
+    local = {}
+    for card in todo:
+        key = card.get("key") or slug(card.get("name", ""))
+        local[key] = key
+        if card.get("name"):
+            local.setdefault(slug(card["name"]), key)
+
+    def ref_for(name):
+        return {"ref": local[name]} if name in local else {"key": name}
+
+    cards = []
+    for card in todo:
+        key = card.get("key") or slug(card.get("name", ""))
+        entry = {
+            "localId": key, "key": key,
+            "name": card.get("name") or key,
+            "elements": [normalize_element(el, card_ids, ref_for) for el in card.get("elements", [])],
+        }
+        for field in ("description", "icon", "color", "displayTemplate", "options"):
+            if card.get(field):
+                entry[field] = card[field]
+        if card.get("parentCard"):
+            entry["parentRef"] = ref_for(card["parentCard"])
+        if card.get("elementSets"):
+            entry["elementSetRefs"] = [{"key": k} for k in card["elementSets"]]
+        cards.append(entry)
+    collection = {}
+    if filters:
+        collection["savedFilters"] = filters
+    if layouts:
+        out = []
+        for layout in layouts:
+            card_key = layout.get("card")
+            if card_key not in local:
+                die(f"layout for '{card_key}': a table layout in a spec is for a card in the spec")
+            spec_card = next((c for c in todo if (c.get("key") or slug(c.get("name", ""))) == local[card_key]), {})
+            own = {el.get("name") for el in spec_card.get("elements", [])}
+            columns = [({"system": c} if (c in SYSTEM_COLUMNS and c not in own) else {"element": c}) if isinstance(c, str) else c
+                       for c in layout.get("columns", [])]
+            out.append({"kind": "table", "scope": "card", "cardRef": {"ref": local[card_key]},
+                        "body": {"columns": columns, **({"sort": layout["sort"]} if layout.get("sort") else {})}})
+        collection["cardLayouts"] = out
+    return {"cards": cards, **({"collection": collection} if collection else {})}
+
+
+def print_blueprint_problems(res):
+    for p in (res.get("problems") or []):
+        print(f"  {p.get('path', '')}: {p.get('message', '')} ({p.get('code', '')})", file=sys.stderr)
+
+
 def cmd_create_card(a):
     collection = resolve_collection(a.collection)
     schema = load_schema(collection)
@@ -1501,6 +1571,67 @@ def cmd_create_card(a):
     if not todo:
         print("nothing to create.")
         return
+    filters = spec.get("filters", []) if isinstance(spec, dict) else []
+    layouts = spec.get("layouts", []) if isinstance(spec, dict) else []
+
+    # keepr 2.1: one blueprint, checked by keepr, applied all or nothing.
+    blueprint = build_blueprint(todo, card_ids, filters, layouts)
+    verb = "apply" if a.apply else "preview"
+    status, res = request("POST", f"/api/collections/{collection}/blueprints/{verb}", {"blueprint": blueprint})
+    res = res if isinstance(res, dict) else {}
+    if status == 404 and str(res.get("message", "")).lower() == "not found" and not res.get("code"):
+        # A deployment without blueprints: the 2.0 path, card by card.
+        if filters or layouts:
+            die("this keepr deployment cannot create filters or layouts with new cards — drop them from the spec")
+        return create_cards_one_by_one(a, collection, todo, card_ids)
+    if status >= 400:
+        print(f"keepr refused the cards ({status}{' ' + res['code'] if res.get('code') else ''}): {res.get('message', '')}", file=sys.stderr)
+        print_blueprint_problems(res)
+        bp = res.get("blueprint") or {}
+        if bp.get("compensated") is True:
+            print("Nothing was kept: keepr removed everything this apply had created.", file=sys.stderr)
+        elif bp.get("compensated") is False:
+            left = ", ".join(f"{r.get('kind')} {r.get('name') or r.get('id')}" for r in bp.get("remaining", []))
+            print(f"WARNING: keepr could not remove everything this apply created: {left}. Check the collection in the web app.", file=sys.stderr)
+        sys.exit(1)
+    if not a.apply:
+        for line in res.get("summary") or []:
+            print(line)
+        if not res.get("wouldApply", False):
+            print("\nkeepr would refuse these cards. Nothing was created. Fix each line and propose again:", file=sys.stderr)
+            print_blueprint_problems(res)
+            sys.exit(1)
+        for step in res.get("steps") or []:
+            if step.get("kind") == "card":
+                parent = step.get("parent") or {}
+                inherit = f", inheriting from {parent.get('ref') or parent.get('key') or parent.get('globalKey')}" if parent else ""
+                print(f"\n--- would create card '{step.get('key')}' ({step.get('name')}){inherit}")
+                spec_card = next((c for c in todo if (c.get("key") or slug(c.get("name", ""))) == step.get("localId")), {})
+                for el in spec_card.get("elements", []):
+                    link = f" -> looks up {el['lookupCard']}" if el.get("lookupCard") else ""
+                    print(f"    {el.get('name') or slug(str(el.get('label', '')))}  [{el.get('dataType')}]{link}")
+            elif step.get("kind") == "member":
+                print(f"--- would add the global card '{step.get('key')}' ({step.get('name')}) to the collection")
+            elif step.get("kind") == "filter":
+                print(f"--- would save the filter '{step.get('name')}'")
+            elif step.get("kind") == "layout":
+                print(f"--- would set a {step.get('layoutKind')} layout")
+        print("\nNothing was created. Show this to the user, and re-run with --apply once they agree —\n"
+              "a card is schema, and creating one needs `manage` on the collection. The apply is all or nothing.")
+        return
+    for c in res.get("cards") or []:
+        print(f"created card '{c.get('key')}' → {c.get('id')}")
+    for f in res.get("filters") or []:
+        print(f"saved the filter '{f.get('name')}'")
+    for layout in res.get("layouts") or []:
+        print(f"set a {layout.get('kind')} layout")
+    for member in res.get("members") or []:
+        print(f"added the global card '{member.get('key')}' to the collection")
+
+
+def create_cards_one_by_one(a, collection, todo, card_ids):
+    """keepr 2.0's path, for a deployment without card blueprints: every
+    reference is checked first, then each card is POSTed in spec order."""
     check_card_references(todo, card_ids)
 
     for card in todo:

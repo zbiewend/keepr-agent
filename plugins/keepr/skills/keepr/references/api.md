@@ -285,8 +285,20 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
 ```
 
 Every element needs a `name`, a `label` (`{singular, plural}`) and a `dataType`
-from the 19 known ones. The server slugifies and de-duplicates the `key` you
+from the 20 known ones. The server slugifies and de-duplicates the `key` you
 ask for, so read the key back from the response rather than assuming.
+
+**Several cards at once — a card blueprint** (keepr 2.1; docs/SCHEMA.md "Card
+blueprints"). `POST /api/collections/{id}/blueprints/preview` with
+`{ "blueprint": { "cards": [...], "collection": { "savedFilters": [...],
+"cardLayouts": [...] } } }` checks it and writes nothing (200 `{ wouldApply,
+problems[{path, code, message}], steps, summary }`); `…/blueprints/apply` with the
+same body creates it all or nothing (201 with each card's `localId`, `id`,
+`key`). Cards are named by reference, never by id: `{ "ref": "<localId>" }` for
+one in the blueprint (itself too), `{ "key": "work-item" }` for one the
+collection has, `{ "globalKey": "person" }` for a global card — as `parentRef`,
+an element's `options.lookupCardId`, a rollup's `options.drivenFrom.sourceCardId`,
+a layout's `cardRef`. `keepr.py create-card` builds it for you.
 
 ## 6a. Change a card — preview first, then PATCH
 

@@ -51,6 +51,9 @@ SCHEMA = {
 }
 
 CALLS = []      # every request the stub served, for assertions about what was sent
+# Card blueprints (keepr 2.1). Off by default, so the create-card tests below
+# exercise the card-by-card path a deployment without them still uses.
+BLUEPRINTS = {"enabled": False, "preview": None, "apply": None}
 ATTACHED = {}   # itemId -> [{_id, filename}], so re-uploads can be detected
 
 # Two keys: the ordinary read+write one, and one that may also change cards.
@@ -246,6 +249,11 @@ class Stub(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(length) or b"{}")
         CALLS.append(("POST", self.path, body))
+        if BLUEPRINTS["enabled"] and self.path == f"/api/collections/{COLLECTION}/blueprints/preview":
+            return self._send(200, BLUEPRINTS["preview"](body["blueprint"]))
+        if BLUEPRINTS["enabled"] and self.path == f"/api/collections/{COLLECTION}/blueprints/apply":
+            status, doc = BLUEPRINTS["apply"](body["blueprint"])
+            return self._send(status, doc)
         if self.path == "/api/card-definitions":
             # The real envelope: 201 { status, payload: <the stored card> }.
             return self._send(201, {"status": {"acknowledged": True},
@@ -648,7 +656,7 @@ class KeeprScriptTest(unittest.TestCase):
         result = run("create-card", "--collection", COLLECTION, "--spec", spec)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("would create card 'note'", result.stdout)
-        self.assertFalse([c for c in CALLS if c[0] == "POST"])
+        self.assertFalse([c for c in CALLS if c[0] == "POST" and c[1] == "/api/card-definitions"])
 
     def test_create_card_applies_and_resolves_lookups_within_the_spec(self):
         spec = self.path("cards.json")
@@ -661,7 +669,7 @@ class KeeprScriptTest(unittest.TestCase):
             ], fh)
         result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
         self.assertEqual(result.returncode, 0, result.stderr)
-        posts = [c[2] for c in CALLS if c[0] == "POST"]
+        posts = [c[2] for c in CALLS if c[0] == "POST" and c[1] == "/api/card-definitions"]
         self.assertEqual(len(posts), 2)
         self.assertEqual(posts[1]["elements"][0]["options"]["lookupCardId"], "85a1b2c3d4e5f6a7b8c9d0e9")
         self.assertEqual(posts[0]["elements"][0]["label"], {"singular": "Name", "plural": "Names"})
@@ -682,7 +690,7 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("nothing was created", result.stderr)
         self.assertIn("parentCard 'work-itm' is not in the collection, earlier in this spec, or a global card", result.stderr)
-        self.assertFalse([c for c in CALLS if c[0] == "POST"], "not even the first, valid card")
+        self.assertFalse([c for c in CALLS if c[0] == "POST" and c[1] == "/api/card-definitions"], "not even the first, valid card")
 
     def test_a_parent_later_in_the_spec_is_refused_with_the_fix(self):
         spec = self.write_spec([
@@ -693,14 +701,14 @@ class KeeprScriptTest(unittest.TestCase):
         result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
         self.assertEqual(result.returncode, 1)
         self.assertIn("comes later in the spec. Put the parent first", result.stderr)
-        self.assertFalse([c for c in CALLS if c[0] == "POST"])
+        self.assertFalse([c for c in CALLS if c[0] == "POST" and c[1] == "/api/card-definitions"])
 
     def test_a_global_parent_is_found_by_key_and_sent_by_id(self):
         spec = self.write_spec({"name": "Author", "key": "author", "parentCard": "person",
                                 "elements": [{"name": "pen-name", "label": "Pen name", "dataType": "text-small"}]})
         result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
         self.assertEqual(result.returncode, 0, result.stderr)
-        posts = [c[2] for c in CALLS if c[0] == "POST"]
+        posts = [c[2] for c in CALLS if c[0] == "POST" and c[1] == "/api/card-definitions"]
         self.assertEqual(posts[0]["parentCardId"], PERSON_DEF["_id"])
 
     def test_a_bad_lookup_in_a_later_card_stops_the_whole_spec(self):
@@ -712,7 +720,86 @@ class KeeprScriptTest(unittest.TestCase):
         result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
         self.assertEqual(result.returncode, 1)
         self.assertIn("looks up card 'nowhere'", result.stderr)
-        self.assertFalse([c for c in CALLS if c[0] == "POST"], "the first card is not created either")
+        self.assertFalse([c for c in CALLS if c[0] == "POST" and c[1] == "/api/card-definitions"], "the first card is not created either")
+
+    # -------------------------------------------------- card blueprints (2.1)
+
+    def blueprint_stub(self, problems=(), apply=None):
+        def preview(bp):
+            return {"wouldApply": not problems, "problems": list(problems),
+                    "steps": [{"kind": "card", "localId": c["localId"], "key": c["key"], "name": c["name"],
+                               **({"parent": c["parentRef"]} if c.get("parentRef") else {})} for c in bp["cards"]],
+                    "summary": [f"Creates {len(bp['cards'])} cards in \"My Books\"."]}
+        BLUEPRINTS.update(enabled=True, preview=preview,
+                          apply=apply or (lambda bp: (201, {"collectionId": COLLECTION, "cards": [
+                              {"localId": c["localId"], "id": "8" * 24, "key": c["key"], "name": c["name"]} for c in bp["cards"]],
+                              "filters": [{"id": "1" * 24, "name": f["name"]} for f in bp.get("collection", {}).get("savedFilters", [])],
+                              "layouts": [], "quickAdds": [], "elementSets": []})))
+        self.addCleanup(lambda: BLUEPRINTS.update(enabled=False))
+
+    def test_a_spec_becomes_one_blueprint_with_references_not_ids(self):
+        self.blueprint_stub()
+        spec = self.write_spec({"cards": [
+            {"name": "Task", "key": "task", "parentCard": "book", "displayTemplate": "{{title}}",
+             "elements": [{"name": "title", "label": "Title", "dataType": "text-small"},
+                          {"name": "depends-on", "label": "Depends on", "dataType": "card-lookup", "lookupCard": "task"},
+                          {"name": "epic", "label": "Epic", "dataType": "card-lookup", "lookupCard": "epic"}]},
+            {"name": "Epic", "key": "epic", "elements": [{"name": "name", "label": "Name", "dataType": "text-small"}]},
+        ], "filters": [{"name": "Open", "query": "status = open"}], "layouts": [{"card": "task", "columns": ["title", "updatedAt"]}]})
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        sent = [c[2] for c in CALLS if c[0] == "POST" and c[1].endswith("/blueprints/preview")][0]["blueprint"]
+        task = sent["cards"][0]
+        self.assertEqual(task["parentRef"], {"key": "book"})
+        self.assertEqual(task["elements"][1]["options"]["lookupCardId"], {"ref": "task"}, "a self-lookup")
+        self.assertEqual(task["elements"][2]["options"]["lookupCardId"], {"ref": "epic"}, "a card later in the spec")
+        self.assertEqual(sent["collection"]["cardLayouts"][0]["body"]["columns"], [{"element": "title"}, {"system": "updatedAt"}],
+                         "an element the card has wins over the system column of the same name")
+        self.assertIn("Creates 2 cards", result.stdout)
+        self.assertIn("would create card 'task'", result.stdout)
+        self.assertFalse([c for c in CALLS if c[1] == "/api/card-definitions"], "no card-by-card write")
+
+    def test_blueprint_problems_are_listed_and_nothing_is_created(self):
+        self.blueprint_stub(problems=[{"path": "cards[0].key", "code": "key_taken", "message": "A card with the key \"book\" already exists."}])
+        spec = self.write_spec({"name": "Book 2", "key": "book2", "elements": [{"name": "t", "label": "T", "dataType": "text-small"}]})
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("cards[0].key: A card with the key \"book\" already exists. (key_taken)", result.stderr)
+
+    def test_apply_is_one_call_and_reports_what_keepr_stored(self):
+        self.blueprint_stub()
+        spec = self.write_spec({"name": "Epic", "key": "epic", "elements": [{"name": "name", "label": "Name", "dataType": "text-small"}]})
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("created card 'epic' → " + "8" * 24, result.stdout)
+        self.assertEqual(len([c for c in CALLS if c[1].endswith("/blueprints/apply")]), 1)
+
+    def test_a_global_card_the_blueprint_joins_is_named_before_and_after(self):
+        def preview(bp):
+            return {"wouldApply": True, "problems": [],
+                    "steps": [{"kind": "member", "key": "person", "name": "Person"},
+                              {"kind": "card", "localId": "epic", "key": "epic", "name": "Epic"}],
+                    "summary": ["Creates 1 card in \"My Books\".", "Adds the global card \"Person\" to the collection, because the blueprint refers to it."]}
+        BLUEPRINTS.update(enabled=True, preview=preview, apply=lambda bp: (201, {
+            "collectionId": COLLECTION, "cards": [{"localId": "epic", "id": "8" * 24, "key": "epic", "name": "Epic"}],
+            "filters": [], "layouts": [], "quickAdds": [], "elementSets": [],
+            "members": [{"id": "9" * 24, "key": "person", "name": "Person"}]}))
+        self.addCleanup(lambda: BLUEPRINTS.update(enabled=False))
+        spec = self.write_spec({"name": "Epic", "key": "epic", "elements": [{"name": "name", "label": "Name", "dataType": "text-small"}]})
+        shown = run("create-card", "--collection", COLLECTION, "--spec", spec)
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertIn("would add the global card 'person' (Person) to the collection", shown.stdout)
+        applied = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertIn("added the global card 'person' to the collection", applied.stdout)
+
+    def test_a_refused_apply_says_whether_anything_was_left(self):
+        self.blueprint_stub(apply=lambda bp: (400, {"statusCode": 400, "message": "bad filter", "code": "invalid_query",
+                                                    "blueprint": {"compensated": True, "remaining": []}}))
+        spec = self.write_spec({"name": "Epic", "key": "epic", "elements": [{"name": "name", "label": "Name", "dataType": "text-small"}]})
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Nothing was kept", result.stderr)
 
     def test_existing_cards_are_left_alone(self):
         spec = self.path("card.json")
