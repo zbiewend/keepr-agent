@@ -13659,7 +13659,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "45913767e45a",
+  version: "17a3316fc037",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13892,6 +13892,10 @@ var contract_snapshot_default = {
         means: "another item of this collection already links that account"
       },
       {
+        code: "account_link_needs_access",
+        means: "the row sets or changes the account link on a card a group built from records reads, or changes a field such a group's rule reads on a linked record so that its person could join, and the caller lacks, across the collection, the access that group gives \u2014 a manager makes the change"
+      },
+      {
         code: "card_in_sub_collection",
         means: "hint.code on a card_not_allowed row: the card belongs to a sub-collection (hint.collection_id, hint.name) \u2014 ingest the row there"
       },
@@ -13942,6 +13946,10 @@ var contract_snapshot_default = {
       {
         code: "ref_wrong_card",
         means: "the reference resolves to an item whose card the element does not accept"
+      },
+      {
+        code: "session_required",
+        means: "the row sets or changes the account link on a card a group built from records reads, or changes a field such a group's rule reads on a linked record so that its person could join; only a signed-in person may \u2014 an API key or assistant cannot (re-sending the stored values is fine)"
       },
       {
         code: "source_invalid",
@@ -22458,7 +22466,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.3.3";
+var SERVER_VERSION = "0.3.4";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");

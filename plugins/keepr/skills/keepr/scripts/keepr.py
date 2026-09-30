@@ -181,7 +181,8 @@ KNOWN_ERROR_CODES = {
     "card_unknown", "card_not_allowed", "forbidden_card", "forbidden_item",
     "source_invalid", "externalId_required", "duplicate", "card_mismatch",
     "ref_unresolved", "ref_wrong_card", "lookup_not_found",
-    "private_not_allowed", "account_already_linked", "internal",
+    "private_not_allowed", "account_already_linked", "account_link_needs_access",
+    "session_required", "internal",
     # Not a row status: the hint.code beside a card_not_allowed whose card
     # belongs to a sub-collection (the message names it and its ingest path).
     "card_in_sub_collection",

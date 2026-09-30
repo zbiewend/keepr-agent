@@ -453,6 +453,8 @@ names the failing rule. Row errors arrive inside a 200.
 | `lookup_not_found` | a plain id isn't a readable item of this collection | wrong id, or not readable by this key |
 | `private_not_allowed` | private items aren't allowed on that card | drop `visibility` |
 | `account_already_linked` | another item already links that account | the identity is taken |
+| `account_link_needs_access` | the row sets the account link on a card a group built from records reads — or changes a field such a group's rule reads on a linked record so its person could join — and the key's person lacks, across the collection, the access that group gives | a manager makes that change in keepr |
+| `session_required` | the same change, made by a key: only a signed-in person may link an account on such a card, or change what puts its person in the group (re-sending the stored values is fine) | leave that value out, and tell the person to set it in keepr |
 | `internal` | server-side failure; the row was not written | retry that row |
 
 ### HTTP statuses

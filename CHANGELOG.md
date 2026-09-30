@@ -3,6 +3,21 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.1.4 — 2026-09-30
+
+Skill 2.1.4, keepr-mcp 0.3.4.
+
+- **Groups built from records are protected.** In a collection where a group's
+  members come from records (everyone linked to a Staff record, say), linking
+  an account on such a record — or changing a field the group's rule reads,
+  in a way that could put the linked person in the group — is now left to a
+  signed-in person in keepr. Your assistant gets `session_required` for that
+  row, leaves the value out, and tells you to set it in keepr. Re-sending a
+  record exactly as it is stored still works.
+- A row refused because the person behind the key lacks the access such a
+  group gives is now named as `account_link_needs_access`: a manager makes
+  that change.
+
 ## 2.1.3 — 2026-09-29
 
 Skill 2.1.3, keepr-mcp 0.3.3.
