@@ -183,6 +183,15 @@ KNOWN_ERROR_CODES = {
     "ref_unresolved", "ref_wrong_card", "lookup_not_found",
     "private_not_allowed", "account_already_linked", "account_link_needs_access",
     "session_required", "internal",
+    # Another item already holds the row's value of a unique element.
+    "duplicate_value",
+    # The data types second pass: a link off the URL rule, a value past its
+    # element's length limit, a short text that does not fit its pattern.
+    "invalid_url", "too_long", "pattern",
+    # A strict lookup's filter does not offer the record the row names.
+    "lookup_filtered_out",
+    # A string a color element cannot read as a color (PR 9).
+    "invalid_color",
     # Not a row status: the hint.code beside a card_not_allowed whose card
     # belongs to a sub-collection (the message names it and its ingest path).
     "card_in_sub_collection",
@@ -191,6 +200,7 @@ KNOWN_ELEMENT_TYPES = {
     "text-small", "text-large", "rich-text", "choice", "number", "decimal",
     "integer", "boolean", "date", "date-time", "time", "url", "phone", "email",
     "location", "rating", "card-lookup", "measurement", "user", "currency",
+    "color",
 }
 STALE_HINT = ("This keepr deployment uses %s this skill does not know: %s.\n"
               "  Run `keepr.py contract` — it returns the live contract from the server, "
@@ -522,6 +532,17 @@ def describe_required_when(clauses):
     return " and ".join(out)
 
 
+def is_multi_choice(el):
+    """A choice element set to "Allow multiple": its value is a list of choice values."""
+    return el.get("dataType") == "choice" and bool(el.get("allowMultiple"))
+
+
+def split_choices(value):
+    """One CSV cell as the list a multi-choice element takes: split on ";", each
+    piece trimmed, empties dropped — the same reading ingest gives the string."""
+    return [piece.strip() for piece in str(value).split(";") if piece.strip()]
+
+
 def shown_as(el, n=42):
     """How a number element spells n: its prefix, then zero-padded digits (elementFormat/number.js)."""
     width = el.get("leadingZeros")
@@ -546,15 +567,29 @@ def describe_element(el):
         bits.append("driven — do not send")
     elif el.get("prefix") or el.get("leadingZeros"):
         bits.append(f"shown as {shown_as(el)} for 42 — send the number")
+    # A percent element stores the number a person reads (ruling D9): 12.5
+    # means 12.5 %, so a fraction would land 100 times too small.
+    if el.get("percent") is True:
+        bits.append("a percent — send the number shown (12.5 for 12.5 %), never a fraction")
+    if el.get("thousands") is True:
+        bits.append("shown grouped (1,234,567) — send the plain number")
     if el.get("allowMultiple"):
         bits.append("list")
     if el.get("choices"):
         def choice(c):
             value, label = c.get("value", ""), c.get("label")
             return f'{value} ("{label}")' if label and label.strip().lower() != str(value).strip().lower() else value
-        bits.append("one of: " + ", ".join(choice(c) for c in el["choices"]))
+        # A choice that allows multiple values takes a list of them (or one
+        # string separated by ";"), stored in the order of this list.
+        lead = "any of" if is_multi_choice(el) else "one of"
+        bits.append(f"{lead}: " + ", ".join(choice(c) for c in el["choices"]))
     if el.get("dataType") == "card-lookup":
         bits.append(f"links to card '{el.get('lookupCardKey') or el.get('lookupCardId')}'")
+        # The picker's filter: KQL over that card's items. Strict means a
+        # record outside it is refused (lookup_filtered_out); a value the item
+        # already holds is kept either way.
+        if el.get("filter"):
+            bits.append(("only records where " if el.get("strict") else "preferring records where ") + el["filter"])
     if el.get("dataType") == "measurement":
         bits.append(f"{el.get('measure', '')} in {el.get('defaultUnit', '')}"
                     + (f" (allowed: {', '.join(el.get('units') or [])})" if el.get("units") else ""))
@@ -617,7 +652,8 @@ def placeholder(el):
     run loudly — better than a plausible default that silently writes nonsense."""
     kind = el.get("dataType")
     if el.get("choices"):
-        return "<one of: " + "|".join(c.get("value", "") for c in el["choices"]) + ">"
+        values = "|".join(c.get("value", "") for c in el["choices"])
+        return [f"<any of: {values}>"] if is_multi_choice(el) else f"<one of: {values}>"
     one = {
         "number": "<number>", "decimal": "<number>", "integer": "<whole number>",
         "rating": f"<0-{el.get('max', 5)}>", "boolean": "<true|false>",
@@ -628,6 +664,7 @@ def placeholder(el):
         "currency": f"<amount in {el.get('defaultCurrency') or (el.get('currencies') or ['the default currency'])[0]}, e.g. 12.50, or \"12.50 CAD\">",
         "card-lookup": "<24-hex item id, or {\"$ref\": \"<externalId>\"}>",
         "user": "<24-hex account id>",
+        "color": "<#rrggbb, e.g. #1f6feb>",
     }.get(kind, "<text>")
     return [one] if el.get("allowMultiple") else one
 
@@ -671,9 +708,13 @@ def cmd_csv(a):
         mapping[column.strip()] = element.strip()
 
     known = None
+    multi = set()
     if a.collection:
         card = find_card(load_schema(resolve_collection(a.collection)), a.card)
         known = {el["name"] for el in card.get("elements", []) if not el.get("driven")}
+        # A choice that allows multiple values takes a list: a cell holding
+        # "welding; rigging" is sent as ["welding", "rigging"].
+        multi = {el["name"] for el in card.get("elements", []) if is_multi_choice(el)}
 
     delimiter = "\t" if a.file.lower().endswith((".tsv", ".tab")) else a.delimiter
     with open(a.file, newline="", encoding="utf-8-sig") as fh:
@@ -702,7 +743,7 @@ def cmd_csv(a):
                 value = (record.get(column) or "").strip()
                 if value == "":
                     continue          # omitted, not empty: an upsert must not wipe a column the CSV left blank
-                elements[name] = value
+                elements[name] = split_choices(value) if name in multi else value
             if not elements:
                 continue
             row = {"card": a.card, "elements": elements}
@@ -1513,13 +1554,14 @@ ELEMENT_OPTION_KEYS = {
     "isTitle", "required", "requiredWhen", "help", "choices", "allowMultiple",
     "lookupCardId", "measure", "defaultUnit", "units", "decimals", "leadingZeros",
     "nonNegative", "min", "max", "trueLabel", "falseLabel", "country", "accept",
+    "percent", "thousands", "step", "control",
     "rangeEnd", "minuteStep", "weekdays", "precision", "identity", "drivenFrom",
     "currencies", "defaultCurrency", "display",
 }
 KNOWN_TYPES = {
     "text-small", "text-large", "rich-text", "choice", "number", "decimal", "integer",
     "boolean", "date", "date-time", "time", "url", "phone", "email", "location",
-    "rating", "card-lookup", "measurement", "user", "currency",
+    "rating", "card-lookup", "measurement", "user", "currency", "color",
 }
 
 

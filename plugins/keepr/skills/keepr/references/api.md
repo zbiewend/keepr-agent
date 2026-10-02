@@ -197,7 +197,7 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
 
 | field | meaning |
 | --- | --- |
-| `mode` | `create` (default) or `upsert` — upsert keys on `source.externalId` |
+| `mode` | `create` (default) or `upsert` — upsert keys on `source.externalId`. A row that creates starts an element it leaves out at the element's default (`defaultValue` in the schema) |
 | `dryRun` | validate and resolve everything, write nothing |
 | `strict` | default `true`: an unknown or driven element name fails the row. `false` drops it silently |
 | `source.system` | namespaces your external ids; required if any row carries an `externalId` |
@@ -236,6 +236,13 @@ already settled in this same request, then the database. **Parents first.** A
 plain 24-hex id works too, and an `allowMultiple` element takes an array mixing
 both forms. The target's card must be the element's `lookupCardKey` (or a
 descendant of it), and must be readable by this key.
+
+A lookup may carry a `filter` in the schema: KQL over the target card's items
+(`status = active`) that the picker offers first. To list what it offers, AND
+it into `?q=` when you read the target's items. With `strict: true` a record
+outside the filter is refused (`lookup_filtered_out`, with `itemIds`); without
+it any record of the card is accepted. A value the item already holds always
+saves, even if it has since left the filter.
 
 A dry run writes nothing, so an import split over several calls cannot find
 what an earlier call only validated. `keepr.py ingest --dry-run` tells each
@@ -382,7 +389,13 @@ Answers `{ "status", "payload": <the saved card>, "conversion"?, "conversions"?,
 The 400 codes are the preview's `refusal.code`s: `invalid_element_type`,
 `invalid_options`, `measure_immutable`, `conversion_unit_required`,
 `invalid_unit`; **409** `backfill_too_large` when a conversion would touch
-more than 50 000 items.
+more than 50 000 items; **409** `values_need_conversion` when "Allow multiple"
+is turned on or off on a choice, date, date-time, card lookup or user element
+whose items hold values (send `options.convertValues: "wrap"` / `"first"` on
+the element — `first` keeps one entry per item and drops the rest: a choice's
+first in the choices' order, a date's earliest, a lookup's or user's first
+stored — so ask the user; the refusal's `items`, `multiple` and `review.query`
+say what is affected).
 
 `DELETE /api/card-definitions/{id}` exists but this skill does not use it: a
 soft delete only an administrator can reverse, done from the web app.
@@ -434,6 +447,10 @@ names the failing rule. Row errors arrive inside a 200.
 | `invalid_unit` | not a unit of that measurement's measure, or outside its allowlist |
 | `invalid_currency` | not a currency keepr knows, an ambiguous symbol (`kr`), or not one of the element's currencies — there are no exchange rates |
 | `invalid_phone` / `invalid_email` / `invalid_location` | unparseable for that type |
+| `invalid_url` | not a link keepr stores: a scheme off its list (http, https, mailto, tel, sms, geo, facetime, spotify, zoommtg, msteams, slack), a space, or neither a link nor a host. A bare host is fine — it becomes `https://…` |
+| `too_long` | past the element's limit, which the error's `limit` names: its own `maxLength` when it sets one, else 255 characters for a short text, 20,000 long (50,000 with `extendedLength`), 100,000 rich (250,000), 2,048 for a url. Shorten it, or ask the user to change the element's type |
+| `pattern` | a short text that does not fit the element's `pattern` (the schema gives it). The message is the card author's own sentence — "A plate looks like ABC-1234". Reshape the value, never guess one the user did not give |
+| `invalid_color` | not a color keepr reads: a hex with its `#` (`#1f6feb`, `#abc`), `rgb(31, 111, 235)`, or one of the 22 choice color names (`DodgerBlue`). A translucent color, a percentage or any other name is refused — ask for the hex, never guess one |
 | `user_not_found` | no active account with that id |
 
 ### Row — the row itself cannot be written
@@ -451,8 +468,10 @@ names the failing rule. Row errors arrive inside a 200.
 | `ref_unresolved` | a `$ref` matched nothing — or its target row failed | order parents first; check the system matches |
 | `ref_wrong_card` | the target is the wrong card type for that element | link to the card the element expects |
 | `lookup_not_found` | a plain id isn't a readable item of this collection | wrong id, or not readable by this key |
+| `lookup_filtered_out` | the element is a strict lookup (`strict: true`, with a `filter` in the schema) and the record is outside its filter; `itemIds` names the refused ids | choose a record the filter offers (read the target's items with the filter in `?q=`), or ask the user — never drop the value silently |
 | `private_not_allowed` | private items aren't allowed on that card | drop `visibility` |
 | `account_already_linked` | another item already links that account | the identity is taken |
+| `duplicate_value` | the element is unique (`unique: true` in the schema) and another item of the card already holds this value — text and email compared ignoring case. `itemId` and `title` name that item when this key can read it | don't create a second record: update the one that holds it (an `upsert` keyed on your source id re-runs cleanly), or ask the user which value is right |
 | `account_link_needs_access` | the row sets the account link on a card a group built from records reads — or changes a field such a group's rule reads on a linked record so its person could join — and the key's person lacks, across the collection, the access that group gives | a manager makes that change in keepr |
 | `session_required` | the same change, made by a key: only a signed-in person may link an account on such a card, or change what puts its person in the group (re-sending the stored values is fine) | leave that value out, and tell the person to set it in keepr |
 | `internal` | server-side failure; the row was not written | retry that row |

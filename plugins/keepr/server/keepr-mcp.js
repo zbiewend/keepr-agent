@@ -13659,7 +13659,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "17a3316fc037",
+  version: "960a22dce8ad",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13728,27 +13728,27 @@ var contract_snapshot_default = {
     {
       name: "text-small",
       send: "a string",
-      note: "one line"
+      note: "one line; at most 255 characters, or the element's own maxLength (too_long past it); an element's pattern refuses a value that does not fit it (pattern), and its case / trim settings change what is stored (capitals, small letters, spaces trimmed)"
     },
     {
       name: "text-large",
       send: "a string",
-      note: "multi-line; newlines are preserved"
+      note: "multi-line; newlines are preserved; at most 20,000 characters, or 50,000 when the element's extendedLength is set, or the element's own maxLength"
     },
     {
       name: "rich-text",
       send: "a markdown string",
-      note: "as the web editor stores it"
+      note: "as the web editor stores it; at most 100,000 characters, or 250,000 with extendedLength"
     },
     {
       name: "choice",
       send: "the choice's value",
-      note: "the value, never the label; anything else is invalid_choice"
+      note: "the value, never the label; anything else is invalid_choice. allowMultiple takes an array of values (stored once each, in the order of the choices list) or one string with values separated by ';'"
     },
     {
       name: "number",
-      send: "a number, or a numeric string",
-      note: "a decimals setting ROUNDS the value; min/max and nonNegative are enforced"
+      send: 'a number, or a numeric string (en-US grouping read: "1,234,567.5")',
+      note: 'a decimals setting ROUNDS the value; min/max and nonNegative are enforced; a percent element takes the number shown (12.5 for 12.5 %, never 0.125), or "12.5%" \u2014 a "%" on any other element is refused (type); thousands grouping is display only, and commas that do not group in threes ("1,23", a decimal comma "1,5") are refused (type)'
     },
     {
       name: "decimal",
@@ -13758,7 +13758,7 @@ var contract_snapshot_default = {
     {
       name: "integer",
       send: "a whole number",
-      note: "a fractional value is rounded half away from zero"
+      note: "a fractional value is rounded half away from zero; text is read as for number"
     },
     {
       name: "boolean",
@@ -13782,8 +13782,8 @@ var contract_snapshot_default = {
     },
     {
       name: "url",
-      send: "a string",
-      note: "stored verbatim, never validated"
+      send: "a link: https://\u2026, http://\u2026, mailto:\u2026, tel:\u2026, sms:\u2026, geo:\u2026, facetime:\u2026, spotify:\u2026, zoommtg:\u2026, msteams:\u2026 or slack:\u2026",
+      note: "a bare host (example.com/x) is stored as https://example.com/x; any other scheme, or a space, is invalid_url; at most 2,048 characters"
     },
     {
       name: "phone",
@@ -13803,7 +13803,7 @@ var contract_snapshot_default = {
     {
       name: "rating",
       send: "a number from 0 to the element's max",
-      note: "outside that range is a range error"
+      note: "outside that range is a range error; whole stars, or halves when allowHalf is set \u2014 anything between is a type error"
     },
     {
       name: "card-lookup",
@@ -13824,9 +13824,14 @@ var contract_snapshot_default = {
       name: "currency",
       send: '{ amount, currency } with amount in MINOR units (1250 = 12.50), { value, currency } in major units, a number in the default currency, or a string like "$12.50" / "12.5 CAD"',
       note: "the currency must be one of the element's currencies; more decimals than the currency has (1.234 USD) is refused, never rounded"
+    },
+    {
+      name: "color",
+      send: 'a color: "#rrggbb", "#rgb", "rgb(31, 111, 235)" or one of the 22 choice color names ("DodgerBlue")',
+      note: 'stored as a lower-case "#rrggbb"; a hex needs its #, and a translucent color, a percentage or any other name is invalid_color'
     }
   ],
-  emptyValue: 'null, "" or omitting the key means empty. On upsert, an omitted key KEEPS its stored value while "" overwrites it.',
+  emptyValue: 'null or "" means empty. Omitting the key means empty too, except on a CREATE, where an element the row omits starts at its default (defaultValue, defaultToToday or defaultToNow in the schema; a default that no longer fits the element is left out and the element starts empty). On upsert, an omitted key KEEPS its stored value while "" overwrites it; a default never applies to an update.',
   errorCodes: {
     shape: [
       {
@@ -13836,6 +13841,10 @@ var contract_snapshot_default = {
       {
         code: "invalid_choice",
         means: "not one of the element's choice values"
+      },
+      {
+        code: "invalid_color",
+        means: 'not a color keepr reads: a hex with its # ("#1f6feb", "#abc"), rgb(r, g, b) with whole numbers 0\u2013255, or one of the 22 choice color names; a translucent color is refused too'
       },
       {
         code: "invalid_currency",
@@ -13862,6 +13871,14 @@ var contract_snapshot_default = {
         means: "not a unit of that measurement's measure, or outside the element's allowlist"
       },
       {
+        code: "invalid_url",
+        means: "not a link keepr stores: a scheme off its list (http, https, mailto, tel, sms, geo, facetime, spotify, zoommtg, msteams, slack), a space inside, or neither a link nor a host"
+      },
+      {
+        code: "pattern",
+        means: "a short text that does not fit the element's pattern (the collection schema gives it); the message is the element author's own sentence"
+      },
+      {
         code: "range",
         means: "outside a declared bound \u2014 a rating past max, a number past min/max, a date outside its bounds or on a disallowed weekday"
       },
@@ -13872,6 +13889,10 @@ var contract_snapshot_default = {
       {
         code: "sequence_element",
         means: "the element is numbered by the server (options.sequence); its value cannot be written \u2014 refused in strict mode, dropped otherwise"
+      },
+      {
+        code: "too_long",
+        means: "longer than the element allows (limit carries it): the element's own maxLength, else 255 characters for a short text, 20,000 long (50,000 extended), 100,000 rich (250,000 extended), 2,048 for a url"
       },
       {
         code: "type",
@@ -13893,7 +13914,7 @@ var contract_snapshot_default = {
       },
       {
         code: "account_link_needs_access",
-        means: "the row sets or changes the account link on a card a group built from records reads, or changes a field such a group's rule reads on a linked record so that its person could join, and the caller lacks, across the collection, the access that group gives \u2014 a manager makes the change"
+        means: "the row sets or changes the account link on a card a group built from records reads, changes a field such a group's rule reads on a linked record so that its person could join, or changes a field such a rule reads through this record (a looked-up record's name, a record a total counts), and the caller lacks, across the collection, the access that group gives \u2014 a manager makes the change"
       },
       {
         code: "card_in_sub_collection",
@@ -13916,6 +13937,10 @@ var contract_snapshot_default = {
         means: "create mode, and that (system, externalId) pair already exists \u2014 switch to upsert"
       },
       {
+        code: "duplicate_value",
+        means: 'another item of the card already holds this value of a unique element (text and email compared ignoring case); itemId and title name it when you can read it \u2014 use mode "upsert" keyed on the element to re-run an import'
+      },
+      {
         code: "externalId_required",
         means: "upsert mode with no source.externalId on the row"
       },
@@ -13930,6 +13955,10 @@ var contract_snapshot_default = {
       {
         code: "internal",
         means: "an unexpected server error on this row; the row was not written"
+      },
+      {
+        code: "lookup_filtered_out",
+        means: "the element is a strict lookup and the record is outside its filter (the collection schema gives filter and strict); itemIds names the refused ids \u2014 choose a record the filter offers (list them with the filter in ?q=). A record the item already holds always saves"
       },
       {
         code: "lookup_not_found",
@@ -13949,7 +13978,7 @@ var contract_snapshot_default = {
       },
       {
         code: "session_required",
-        means: "the row sets or changes the account link on a card a group built from records reads, or changes a field such a group's rule reads on a linked record so that its person could join; only a signed-in person may \u2014 an API key or assistant cannot (re-sending the stored values is fine)"
+        means: "the row sets or changes the account link on a card a group built from records reads, changes a field such a group's rule reads on a linked record so that its person could join, or changes a field such a rule reads through this record (a looked-up record's name, a record a total counts); only a signed-in person may \u2014 an API key or assistant cannot (re-sending the stored values is fine)"
       },
       {
         code: "source_invalid",
@@ -22466,7 +22495,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.3.4";
+var SERVER_VERSION = "0.3.5";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -23095,6 +23124,9 @@ var schemaTool = {
         }
         if (el.lookupCardKey)
           bits.push(`looks up card "${el.lookupCardKey}"`);
+        if (el.filter) {
+          bits.push(el.strict ? `ONLY records where ${el.filter} \u2014 any other is refused (lookup_filtered_out); a value the item already holds is kept` : `offers records where ${el.filter} first \u2014 any record of the card is accepted`);
+        }
         if (el.measure)
           bits.push(`measure ${el.measure}, default unit ${el.defaultUnit ?? "?"}`);
         if (el.min !== void 0 && el.min !== null && el.min !== "")
@@ -23105,6 +23137,10 @@ var schemaTool = {
           bits.push(`${el.decimals} decimal${el.decimals === 1 ? "" : "s"}`);
         if (el.nonNegative)
           bits.push("not negative");
+        if (el.percent === true)
+          bits.push("a percent \u2014 send the number shown (12.5 for 12.5 %), never a fraction");
+        if (el.thousands === true)
+          bits.push("shown grouped (1,234,567) \u2014 send the plain number");
         if (el.precision)
           bits.push(`precision ${el.precision}`);
         lines.push(`  ${el.name}  [${bits.join(", ")}]`);
@@ -23126,6 +23162,7 @@ var schemaTool = {
           ...el.choices ? { choices: el.choices.map((c) => c.value) } : {},
           ...labels.length ? { choiceLabels: Object.fromEntries(labels.map((c) => [c.value, c.label])) } : {},
           ...el.lookupCardKey ? { lookupCardKey: el.lookupCardKey } : {},
+          ...el.filter ? { filter: el.filter, strict: Boolean(el.strict) } : {},
           ...el.measure ? { measure: el.measure, defaultUnit: el.defaultUnit, units: el.units } : {},
           ...el.min !== void 0 && el.min !== null && el.min !== "" ? { min: el.min } : {},
           ...el.max !== void 0 && el.max !== null && el.max !== "" ? { max: el.max } : {},
@@ -23133,6 +23170,8 @@ var schemaTool = {
           ...el.nonNegative ? { nonNegative: true } : {},
           ...el.prefix ? { prefix: el.prefix } : {},
           ...typeof el.leadingZeros === "number" ? { leadingZeros: el.leadingZeros } : {},
+          ...el.percent === true ? { percent: true } : {},
+          ...el.thousands === true ? { thousands: true } : {},
           ...el.precision ? { precision: el.precision } : {},
           ...el.help ? { help: el.help } : {},
           ...form ? { accepts: form.send } : {}

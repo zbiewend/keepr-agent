@@ -3,6 +3,16 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.1.5 — 2026-10-01
+
+Skill 2.1.5, keepr-mcp 0.3.5.
+
+- **Fields have rules now.** Text has length limits and can require a pattern or capitals; a field can hold unique values; links follow one rule (a bare address becomes https://). A row that breaks a rule comes back with the field and the reason (`too_long`, `pattern`, `invalid_url`, `duplicate_value`, `invalid_color`).
+- **Defaults are filled in by keepr.** A field left out of a row starts at its default, as it does in the form.
+- **Choices can allow multiple.** Send a list, or one value with entries split by `;`. Numbers may be sent as "1,234", and as "12.5%" on a field shown as a percent.
+- **New field types and options:** color, and the angle, frequency and fuel-economy measures; a card lookup may offer only some items ("strict" refuses the rest — `lookup_filtered_out`).
+- **Groups built from records** also protect the fields they read through another record: such a change is left to a signed-in person in keepr.
+
 ## 2.1.4 — 2026-09-30
 
 Skill 2.1.4, keepr-mcp 0.3.4.

@@ -138,7 +138,7 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This is keepr skill **2.1.4**. keepr moves faster than any copy of it, so:
+This is keepr skill **2.1.5**. keepr moves faster than any copy of it, so:
 
 - Every command names this copy to keepr and, once a day, asks whether a newer
   release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
@@ -149,7 +149,7 @@ This is keepr skill **2.1.4**. keepr moves faster than any copy of it, so:
   then tell the person in one sentence. When it gives steps instead, pass them
   on in one short sentence. Once per conversation, never in place of an answer.
 - Working through the MCP tools, `keepr_collections` reports the latest keepr
-  skill. When it is newer than **2.1.4**, tell the person once that their keepr
+  skill. When it is newer than **2.1.5**, tell the person once that their keepr
   skill is out of date, with this link:
   https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this
@@ -177,7 +177,7 @@ script, drive the API directly — the contract is identical.
 - `references/reading.md` · `adding.md` · `cards.md` — the three chapters.
 - `references/kql.md` — the query language, for reading.
 - `references/api.md` — the HTTP contract, curl examples, every error code.
-- `references/elements.md` — the 19 element types and what each accepts.
+- `references/elements.md` — the 21 element types and what each accepts.
 - `references/recipes.md` — worked card specs and end-to-end examples.
 - `examples/` — sample data and prompts to try each chapter on.
 - `GETTING-STARTED.md` — the user-facing setup walkthrough (keys, install, first use).

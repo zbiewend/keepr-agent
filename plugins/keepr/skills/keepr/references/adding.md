@@ -91,10 +91,22 @@ The API validates types and refuses rather than guessing, so:
 - **Dates** are `YYYY-MM-DD`; timestamps are ISO-8601. `12/05/2024` is refused
   (nobody can tell December 5th from May 12th), so resolve it yourself from
   context and write the unambiguous form.
-- **Choice** elements take the choice's `value`, not its label.
+- **Choice** elements take the choice's `value`, not its label. A choice the
+  schema marks `allowMultiple` takes a **list** of values (`["welding",
+  "rigging"]`) — or one string separated by `;` (`"welding; rigging"`, what
+  `keepr.py csv` sends as a list) — and keepr stores each value once, in the
+  order of the choices list.
 - **card-lookup** elements take a 24-hex item id, or `{"$ref": "<externalId>"}`
   pointing at another row — *listed earlier in the same file* or already in
-  keepr under the same `source.system`. Parents before children.
+  keepr under the same `source.system`. Parents before children. A lookup
+  whose schema says `strict: true` takes only a record its `filter` matches.
+- **Numbers** take a number, or the text a spreadsheet writes: `"1,234,567.5"`
+  (en-US commas every three digits) on any number, and `"12.5%"` on an
+  element whose schema says `percent: true` — stored as 12.5, the number
+  shown, never 0.125. `keepr.py csv` sends cells as they are, and keepr reads
+  them. A `%` on any other element, a decimal comma (`"1,5"`) or a comma out
+  of place (`"1,23"`) is refused as `type`: write the plain number instead,
+  and ask the user what `"1,5"` meant rather than guessing.
 - **Driven** elements are system-owned. The schema marks them; never send one.
 - **Measurements** take a number in the element's default unit, or
   `{"value": 8.5, "unit": "lb"}`.

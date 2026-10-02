@@ -34,7 +34,7 @@ python3 scripts/keepr.py create-card --collection "My Books" --spec card.json --
 Propose first, show the user the elements and their types, and only `--apply`
 once they agree. `references/recipes.md` has worked card specs (a reading log,
 an expense tracker, a linked contacts + notes pair) to start from;
-`references/elements.md` says what each of the 20 data types accepts.
+`references/elements.md` says what each of the 21 data types accepts.
 
 The whole spec goes to keepr as **one card blueprint** (keepr 2.1): keepr checks
 it without writing anything — the proposal step prints its summary, or the
@@ -70,6 +70,21 @@ One card, for example:
     { "name": "water-every", "label": "Water every", "dataType": "integer", "help": "days" },
     { "name": "last-watered", "label": "Last watered", "dataType": "date" } ] }
 ```
+
+A choice that holds more than one value at once ("Allow multiple" in keepr) carries
+`"allowMultiple": true` beside its `choices` — only on `dataType: "choice"`,
+never on a short text with choices.
+
+Turning "Allow multiple" on or off — on a choice, date, date-time, card lookup
+or user element — on a card that already has items changes the shape of every
+stored value, so keepr refuses it (`values_need_conversion`) until the change
+says what to do with them: `"convertValues": "wrap"` in the element's options
+when turning it on (each single value becomes a list of one),
+`"convertValues": "first"` when turning it off (each item keeps ONE entry — a
+choice its first in the choices' order, a date its earliest, a linked item or
+user its first stored — and the others are DROPPED; the refusal says how many
+items hold more than one and lists them in `review.query`). Ask the user which
+they want before you send `first`; never pick it for them.
 
 Only what the user described goes in. Do not add "useful" elements they did
 not ask for; ask.

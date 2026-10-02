@@ -41,6 +41,8 @@ SCHEMA = {
               "choices": [{"value": "reading", "label": "Reading"}, {"value": "done", "label": "Done"}]},
              {"name": "shelf", "label": "Shelf", "dataType": "card-lookup", "lookupCardKey": "shelf"},
              {"name": "added", "label": "Added", "dataType": "date", "driven": True},
+             {"name": "genres", "label": "Genres", "dataType": "choice", "allowMultiple": True,
+              "choices": [{"value": "fantasy", "label": "Fantasy"}, {"value": "mystery", "label": "Mystery"}]},
          ]},
         {"id": "75a1b2c3d4e5f6a7b8c9d0e2", "key": "shelf", "name": "Shelf", "parentCardId": None,
          "elements": [{"name": "name", "label": "Name", "dataType": "text-small", "isTitle": True}]},
@@ -534,11 +536,32 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertIn("numbered by keepr — do not send", line)
         self.assertIn("shown as KPR-0042", line)
 
+    def test_schema_says_a_percent_takes_the_number_shown(self):
+        keepr = load_module()
+        line = keepr.describe_element({"name": "discount", "dataType": "number", "percent": True, "thousands": True})
+        self.assertIn("a percent — send the number shown (12.5 for 12.5 %), never a fraction", line)
+        self.assertIn("shown grouped (1,234,567) — send the plain number", line)
+        plain = keepr.describe_element({"name": "count", "dataType": "number", "percent": False})
+        self.assertNotIn("percent", plain)
+
     def test_schema_shows_a_choice_label_only_when_it_says_more(self):
         keepr = load_module()
         line = keepr.describe_element({"name": "status", "dataType": "choice", "choices": [
             {"value": "ready", "label": "Ready"}, {"value": "in-progress", "label": "In progress"}]})
         self.assertIn('one of: ready, in-progress ("In progress")', line)
+
+    def test_schema_says_a_choice_that_allows_multiple_takes_any_of_its_values(self):
+        keepr = load_module()
+        line = keepr.describe_element({"name": "genres", "dataType": "choice", "allowMultiple": True, "choices": [
+            {"value": "fantasy", "label": "Fantasy"}, {"value": "mystery", "label": "Mystery"}]})
+        self.assertIn("list", line)
+        self.assertIn("any of: fantasy, mystery", line)
+        single = keepr.describe_element({"name": "status", "dataType": "choice", "allowMultiple": False,
+                                         "choices": [{"value": "ready", "label": "Ready"}]})
+        self.assertIn("one of: ready", single)
+        legacy = keepr.describe_element({"name": "kind", "dataType": "text-small", "allowMultiple": True,
+                                         "choices": [{"value": "a", "label": "A"}]})
+        self.assertIn("one of: a", legacy)                       # only a choice holds a list of choices
 
     # -------------------------------------------------- template
 
@@ -552,6 +575,7 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertNotIn("added", elements)                       # driven
         self.assertEqual(elements["read-on"], "<YYYY-MM-DD>")
         self.assertIn("reading|done", elements["status"])
+        self.assertEqual(elements["genres"], ["<any of: fantasy|mystery>"])  # a list, and still caught unfilled
 
     def test_unfilled_template_is_caught_before_any_call(self):
         out = self.path("rows.json")
@@ -585,6 +609,29 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertNotIn("isbn", first["elements"])                # mapped to a name the card lacks
         self.assertNotIn("rating", doc["items"][1]["elements"])     # blank cell omitted, not ""
         self.assertIn("Sales rank", result.stderr)
+
+    def test_csv_sends_a_choice_that_allows_multiple_as_a_list(self):
+        csv_path = self.path("books.csv")
+        with open(csv_path, "w") as fh:
+            fh.write('title,genres,status\nDune,"fantasy; mystery ;",reading\nPiranesi,fantasy,done\n')
+        out = self.path("rows.json")
+        result = run("csv", "--file", csv_path, "--card", "book", "--collection", COLLECTION, "--out", out)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with open(out) as fh:
+            doc = json.load(fh)
+        self.assertEqual(doc["items"][0]["elements"]["genres"], ["fantasy", "mystery"])
+        self.assertEqual(doc["items"][1]["elements"]["genres"], ["fantasy"])
+        self.assertEqual(doc["items"][0]["elements"]["status"], "reading")   # a single choice stays a string
+        # Without the schema the cell goes as written: keepr splits it on ";" itself.
+        bare = self.path("bare.json")
+        run("csv", "--file", csv_path, "--card", "book", "--out", bare)
+        with open(bare) as fh:
+            self.assertEqual(json.load(fh)["items"][0]["elements"]["genres"], "fantasy; mystery ;")
+
+    def test_the_codes_of_the_data_types_second_pass_are_known(self):
+        keepr = load_module()
+        for code in ("duplicate_value", "invalid_url", "too_long", "pattern", "account_link_needs_access", "session_required"):
+            self.assertIn(code, keepr.KNOWN_ERROR_CODES)
 
     def test_csv_without_id_column_warns_about_duplicates(self):
         csv_path = self.path("books.csv")

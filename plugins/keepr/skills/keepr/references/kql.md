@@ -85,10 +85,18 @@ three days ago, and `spent-on = 2026-03-14` matches a datetime stored that day.
 
 ## Per-type behaviour worth knowing
 
-- **text** (`text-small`, `text-large`, `url`, `phone`, `email`): `=` is the
-  whole value, `~` is a substring. `status ~ open` matches "reopened".
+- **text** (`text-small`, `text-large`, `url`, `phone`, `email`, `color`): `=`
+  is the whole value, `~` is a substring. `status ~ open` matches "reopened".
+  A color is its stored `#rrggbb` — quote it, `trim = "#1f6feb"`; a color name
+  in a filter is matched as text, not read as a color.
 - **choice**: compare against the choice **value** the schema lists, not its
-  label — `status = in-progress`, not `"In progress"`.
+  label — `status = in-progress`, not `"In progress"`. A choice that allows
+  multiple values (`allowMultiple` in the schema) holds a list, and a condition
+  asks **any entry**: `skills = welding` matches an item holding welding among
+  others, `skills in (welding, rigging)` any of them. A negation asks **no
+  entry**: `skills != welding` matches only items with no welding at all (and
+  blank ones). For "has welding but not rigging" write
+  `skills = welding and skills != rigging`.
 - **number**, `rating`: numeric. A rating is `0` to its max.
 - **date**, `date-time`, `time`: ranges compare as dates; blanks are excluded
   from ranges (`due < today` does not match an empty due date — add
@@ -101,7 +109,9 @@ three days ago, and `spent-on = 2026-03-14` matches a datetime stored that day.
 - **location**: matches the address text (`where ~ portland`); coordinates
   are not queryable.
 - **measurement**: compared in the canonical unit, so `weight = "8 lb 7 oz"`
-  finds 8.4375 lb; `~` matches nothing.
+  finds 8.4375 lb; `~` matches nothing. A bound reads the way it is written:
+  `mileage < "8 L/100km"` finds the items using LESS than 8 L/100km (the
+  better economies), even though fuel economy is stored as km/L.
 - **currency**: compared only within one currency — `total > 20USD` never
   matches a CAD amount, and a CAD amount IS `!= 20USD`. `~` matches nothing.
 
