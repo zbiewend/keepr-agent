@@ -48,7 +48,11 @@ One capability differs. The MCP server does not share a filesystem with you, so
 `keepr_attach_file` takes the file's bytes (`content_base64`) rather than a
 path, and is limited to roughly a megabyte. For a folder of photos matched to
 records by external id, `keepr.py attach` is still the better tool and works
-wherever a shell can reach the network.
+wherever a shell can reach the network. To put a file INTO a file element (a
+card's `file` element — a photo field, say), pass `keepr_attach_file` the
+element's name as `element`: a single file element takes one file and
+replaces what is there (that needs a key with Can delete records), a list
+appends. Without `element` the file is one of the item's other attachments.
 
 ## The key
 
@@ -139,7 +143,7 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This is keepr skill **2.2.0**. keepr moves faster than any copy of it, so:
+This is keepr skill **2.3.0**. keepr moves faster than any copy of it, so:
 
 - Every command names this copy to keepr and, once a day, asks whether a newer
   release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
@@ -150,7 +154,7 @@ This is keepr skill **2.2.0**. keepr moves faster than any copy of it, so:
   then tell the person in one sentence. When it gives steps instead, pass them
   on in one short sentence. Once per conversation, never in place of an answer.
 - Working through the MCP tools, `keepr_collections` reports the latest keepr
-  skill. When it is newer than **2.2.0**, tell the person once that their keepr
+  skill. When it is newer than **2.3.0**, tell the person once that their keepr
   skill is out of date, with this link:
   https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this
@@ -178,7 +182,7 @@ script, drive the API directly — the contract is identical.
 - `references/reading.md` · `adding.md` · `cards.md` — the three chapters.
 - `references/kql.md` — the query language, for reading.
 - `references/api.md` — the HTTP contract, curl examples, every error code.
-- `references/elements.md` — the 21 element types and what each accepts.
+- `references/elements.md` — the 22 element types and what each accepts.
 - `references/recipes.md` — worked card specs and end-to-end examples.
 - `examples/` — sample data and prompts to try each chapter on.
 - `GETTING-STARTED.md` — the user-facing setup walkthrough (keys, install, first use).

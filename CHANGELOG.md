@@ -3,6 +3,14 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.3.0 — 2026-10-02
+
+Skill 2.3.0, keepr-mcp 0.5.0.
+
+- **File and photo fields.** A card can hold a file field (any file, or photos only; one file or a list of up to 20; a size limit). `keepr_attach_file` takes an `element` and puts the upload into that field: a single field's file is replaced (the key needs `delete` scope, and the assistant says so first), a list gains it at the end. The field's limits are read from the schema first.
+- **Re-runs are safe.** An attachment already on the item is reused only when it is a loose attachment with the same name and size, never a different file that merely shares the name.
+- **Rows never carry files.** Imports and item updates leave file fields as they are; a row that tries to set or clear one is refused for that field (`file_not_settable`). The schema describes each file field so the assistant knows to attach rather than type.
+
 ## 2.2.0 — 2026-10-02
 
 Skill 2.2.0, keepr-mcp 0.4.0.

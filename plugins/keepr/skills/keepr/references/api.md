@@ -337,6 +337,23 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
 
 Only when the collection's `allowAttachments` is true.
 
+**Into a file element.** The upload answers the attachment's `_id`. Bind it
+with a merge PUT of the item — the id as a single file element's value, or the
+element's list with the id appended:
+
+```bash
+curl -s -X PUT -H "Authorization: Bearer $KEEPR_API_KEY" -H 'Content-Type: application/json' \
+  https://api.keepr.cloud/api/items/<itemId> \
+  -d '{ "elements": { "photo": "<attachmentId>" }, "merge": true }'
+```
+
+Replacing a file already in the element deletes the old one (softly, 30 days),
+so the key needs the `delete` scope. Refusals carry `element`: `file_wrong_kind`
+(`accept: "image"` and not a photo), `file_too_large` (`limitMb`),
+`too_many_files` (20), `file_already_used`, `attachments_disabled`. A bound
+file cannot be removed with `DELETE …/attachments/{id}` (409
+`attachment_in_use`): clear the element with a PUT instead.
+
 ## 6. Create a card
 
 Needs **manage** on the collection. Ask the user first — this is schema.

@@ -13659,7 +13659,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "6f5e44cee47e",
+  version: "e3fa26985b0d",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13836,14 +13836,47 @@ var contract_snapshot_default = {
       name: "color",
       send: 'a color: "#rrggbb", "#rgb", "rgb(31, 111, 235)" or one of the 22 choice color names ("DodgerBlue")',
       note: 'stored as a lower-case "#rrggbb"; a hex needs its #, and a translucent color, a percentage or any other name is invalid_color'
+    },
+    {
+      name: "file",
+      send: "nothing: an attachment of this item, set with keepr_attach_file (element) or the item form",
+      note: "stored as a 24-hex attachment id, or an array of up to 20 with allowMultiple; an import row, a bulk edit or an automation may only re-send the stored value unchanged (anything else, a blank included, is file_not_settable)"
     }
   ],
   emptyValue: 'null or "" means empty. Omitting the key means empty too, except on a CREATE, where an element the row omits starts at its default (defaultValue, defaultToToday or defaultToNow in the schema; a default that no longer fits the element is left out and the element starts empty). On upsert, an omitted key KEEPS its stored value while "" overwrites it; a default never applies to an update.',
   errorCodes: {
     shape: [
       {
+        code: "attachment_in_use",
+        means: "409 on DELETE /api/items/{id}/attachments/{aid}: the attachment is the value of a file element (element names it) \u2014 clear or replace the value with an item write instead; never met by a row"
+      },
+      {
+        code: "attachments_disabled",
+        means: "a new or changed file value while the collection's attachments are switched off (the stored value, unchanged, still saves)"
+      },
+      {
         code: "driven_element",
         means: "the element is system-owned; its value is computed, never sent"
+      },
+      {
+        code: "file_already_used",
+        means: "the same file named twice under one element, or a file another element of the item already holds"
+      },
+      {
+        code: "file_not_found",
+        means: "an id under a file element that is not a file this write may use: unknown, deleted, someone else's, or on another item (one answer for every reason)"
+      },
+      {
+        code: "file_not_settable",
+        means: "a file element's value is set by a person (the item form) or keepr_attach_file, never by an import row, a bulk edit or an automation: only the stored value, unchanged, may ride along \u2014 a new value, another one, or a blank on a stored file is refused"
+      },
+      {
+        code: "file_too_large",
+        means: "the file is larger than the element's maxSizeMb (limitMb carries it)"
+      },
+      {
+        code: "file_wrong_kind",
+        means: 'the element takes photos only (accept: "image") and the file is not one keepr could read as a photo \u2014 a PDF never is'
       },
       {
         code: "invalid_choice",
@@ -13900,6 +13933,10 @@ var contract_snapshot_default = {
       {
         code: "too_long",
         means: "longer than the element allows (limit carries it): the element's own maxLength, else 255 characters for a short text, 20,000 long (50,000 extended), 100,000 rich (250,000 extended), 2,048 for a url"
+      },
+      {
+        code: "too_many_files",
+        means: "more files than a file element holds (limit carries it: 20)"
       },
       {
         code: "type",
@@ -22555,7 +22592,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.4.0";
+var SERVER_VERSION = "0.5.0";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -25064,16 +25101,19 @@ var REFUSED_EXT = /* @__PURE__ */ new Set([
   "lnk",
   "reg"
 ]);
+var MAX_FILES = 20;
+var PHOTO_EXT = /* @__PURE__ */ new Set(["jpg", "jpeg", "jpe", "png", "gif", "webp", "tif", "tiff", "avif", "heic", "heif"]);
 var attachFileTool = {
   name: "keepr_attach_file",
-  description: "Attach files to a keepr item. Give the bytes as content_base64 with a filename \u2014 this server usually does NOT share a filesystem with you, so a `path` only works when they happen to be on the same machine. Address the item by item_id, or by external_id from a keepr_ingest run.",
+  description: "Attach files to a keepr item. Give the bytes as content_base64 with a filename \u2014 this server usually does NOT share a filesystem with you, so a `path` only works when they happen to be on the same machine. Address the item by item_id, or by external_id from a keepr_ingest run. Pass `element` to put the files INTO one of the item's file elements (keepr_schema lists them: dataType \"file\", with accept, maxSizeMb and allowMultiple): a single file element takes exactly one file and REPLACES the one there (the old file is deleted, so the key needs Can delete records), a list appends (20 files at most). Without `element` the files are the item's other attachments.",
   writes: true,
   inputSchema: {
     item_id: external_exports.string().optional().describe("The item to attach to, 24 hex characters."),
     run_id: external_exports.string().optional().describe("A runId from a committed keepr_ingest, used with external_id instead of item_id."),
     external_id: external_exports.string().optional().describe("The external_id of a row written by keepr_ingest in this session."),
     files: external_exports.array(external_exports.custom()).min(1).max(20).describe("Files: {filename, content_base64, content_type?} \u2014 or {path} when this server shares your filesystem."),
-    skip_if_present: external_exports.boolean().optional().describe("Default true. Skips a file whose name is already attached, so re-running after adding two photos uploads two photos.")
+    skip_if_present: external_exports.boolean().optional().describe("Default true. Skips a file whose name is already attached, so re-running after adding two photos uploads two photos. With `element`, an attachment already there is reused only when no element holds it and its name and size both match; anything else is uploaded fresh."),
+    element: external_exports.string().optional().describe("A file element of the item's card to put the files into (its name, as keepr_schema lists it). A single file element is replaced; a list is appended to.")
   },
   handler: async (args, ctx) => {
     let itemId = typeof args.item_id === "string" ? args.item_id : "";
@@ -25102,13 +25142,41 @@ var attachFileTool = {
     if (collection?.archived) {
       return fail(`"${collection.name}" is archived and is read-only for everyone, so nothing can be attached.`);
     }
-    let present = /* @__PURE__ */ new Set();
+    const elementName = typeof args.element === "string" ? args.element.trim() : "";
+    let target = null;
+    let current = [];
+    if (elementName) {
+      const schema = await ctx.http.request({ path: `/api/collections/${collectionId}/schema` });
+      if (!schema.ok)
+        return failFromResponse(schema, "reading the elements of this item's collection");
+      const card = (schema.body?.cards ?? []).find((c) => c.id === String(item.body?.card_id ?? ""));
+      const fileElements = (card?.elements ?? []).filter((e) => e.dataType === "file");
+      target = fileElements.find((e) => e.name === elementName) ?? null;
+      if (!target) {
+        return fail(`"${elementName}" is not a file element of this item's card.` + (fileElements.length ? ` Its file elements: ${fileElements.map((e) => e.name).join(", ")}.` : " The card has no file element \u2014 leave out `element` to attach the files as other attachments."));
+      }
+      const stored = item.body?.elements?.[elementName];
+      current = (Array.isArray(stored) ? stored : stored ? [stored] : []).map(String).filter(Boolean);
+      if (!target.allowMultiple && files.length > 1) {
+        return fail(`"${elementName}" holds one file, and ${files.length} were given. Pass one file for it, or leave out \`element\` to attach the rest as other attachments.`);
+      }
+      if (target.allowMultiple && current.length + files.length > MAX_FILES) {
+        return fail(`"${elementName}" holds at most ${MAX_FILES} files; it has ${current.length}, and ${files.length} more would pass that.`);
+      }
+      if (!target.allowMultiple && current.length && ctx.hasScope("delete") === false) {
+        return fail(`"${elementName}" already holds a file, and putting another there REPLACES it: the old file is deleted (restorable for 30 days), which needs Can delete records. ${ctx.deleteRefusal()}`);
+      }
+    }
+    const present = /* @__PURE__ */ new Map();
     if (args.skip_if_present !== false) {
       const existing = await ctx.http.request({ path: `/api/items/${itemId}/attachments` });
       if (existing.ok && Array.isArray(existing.body)) {
-        present = new Set(existing.body.map((a) => String(a.originalName ?? "")));
+        for (const a of existing.body)
+          present.set(String(a.originalName ?? ""), { id: String(a._id ?? ""), element: a.element ?? null, size: typeof a.size === "number" ? a.size : null });
       }
     }
+    const bindReplaces = !!target && !target.allowMultiple && current.length > 0;
+    const toBind = [];
     const uploaded = [];
     const skipped = [];
     const failed = [];
@@ -25119,13 +25187,33 @@ var attachFileTool = {
         continue;
       }
       const { filename, bytes } = loaded;
-      if (present.has(filename)) {
+      const there = present.get(filename);
+      if (there && !target) {
         skipped.push({ filename, reason: "already attached to this item" });
         continue;
+      }
+      if (there && target && there.id && there.size === bytes.length) {
+        if (there.element === elementName && current.includes(there.id)) {
+          skipped.push({ filename, reason: `already in "${elementName}"` });
+          continue;
+        }
+        if (there.element === null && !bindReplaces && !toBind.includes(there.id)) {
+          toBind.push(there.id);
+          skipped.push({ filename, reason: "already attached to this item (same name and size) \u2014 put into the element" });
+          continue;
+        }
       }
       const ext = filename.includes(".") ? filename.split(".").pop().toLowerCase() : "";
       if (REFUSED_EXT.has(ext)) {
         failed.push({ filename, message: `keepr refuses .${ext} files \u2014 executables and scripts are never accepted. Images, PDFs and documents are fine.` });
+        continue;
+      }
+      if (target && target.accept === "image" && !PHOTO_EXT.has(ext) && !String(spec.content_type ?? "").startsWith("image/")) {
+        failed.push({ filename, message: `"${elementName}" takes photos only (JPEG, PNG, WebP, GIF, AVIF, TIFF, HEIC) \u2014 a PDF or a document never fits it. Leave out \`element\` to attach it as another attachment.` });
+        continue;
+      }
+      if (target && typeof target.maxSizeMb === "number" && bytes.length > target.maxSizeMb * 1024 * 1024) {
+        failed.push({ filename, message: `larger than ${target.maxSizeMb} MB, the limit of "${elementName}".` });
         continue;
       }
       const form = new FormData();
@@ -25144,12 +25232,38 @@ var attachFileTool = {
         continue;
       }
       uploaded.push({ attachmentId: String(res.body?._id ?? ""), filename, bytes: bytes.length });
-      present.add(filename);
+      present.set(filename, { id: String(res.body?._id ?? ""), element: null, size: bytes.length });
+      if (target && res.body?._id)
+        toBind.push(String(res.body._id));
+    }
+    let bound = [];
+    let bindError = null;
+    if (target && toBind.length) {
+      const replacing = !target.allowMultiple && current.length > 0;
+      const value = target.allowMultiple ? [...current, ...toBind] : toBind[0];
+      const put = await ctx.http.request({
+        method: "PUT",
+        path: `/api/items/${itemId}`,
+        body: { elements: { [elementName]: value }, merge: true }
+      });
+      ctx.noteWriteAttempt(put, replacing ? "delete" : "write");
+      if (put.ok)
+        bound = target.allowMultiple ? toBind : [toBind[0]];
+      else {
+        const code = errorCode(put.body);
+        const meaning = code ? ctx.contract.meaningOf(code) : null;
+        bindError = `${code ? `${code}: ` : ""}${errorMessage(put.body, `HTTP ${put.status}`)}${meaning ? ` (${meaning})` : ""}` + (put.status === 403 && replacing ? ` ${ctx.deleteRefusal()}` : "");
+      }
     }
     const title = item.body?.displayValue ?? itemId;
     const lines = [
       failed.length ? `PARTIAL \u2014 ${uploaded.length} attached to "${title}", ${failed.length} failed.` : `Attached ${uploaded.length} file${uploaded.length === 1 ? "" : "s"} to "${title}".`
     ];
+    if (target && bound.length) {
+      lines.push("", !target.allowMultiple && current.length ? `Put into "${elementName}", replacing the file that was there (deleted softly \u2014 History can bring it back for 30 days).` : `Put into "${elementName}" (${bound.length} file${bound.length === 1 ? "" : "s"}).`);
+    }
+    if (bindError)
+      lines.push("", `NOT PUT INTO "${elementName}" \u2014 keepr refused the bind: ${bindError}`, "The uploaded files stay on the item as other attachments.");
     if (uploaded.length) {
       lines.push("", "ATTACHED:");
       for (const u of uploaded)
@@ -25165,8 +25279,15 @@ var attachFileTool = {
       for (const f of failed)
         lines.push(`  ${f.filename} \u2014 ${f.message}`);
     }
-    const result = { itemId, itemDisplayValue: item.body?.displayValue ?? null, uploaded, skipped, failed };
-    return failed.length ? fail(lines.join("\n"), result) : ok(lines.join("\n"), result);
+    const result = {
+      itemId,
+      itemDisplayValue: item.body?.displayValue ?? null,
+      uploaded,
+      skipped,
+      failed,
+      ...target ? { element: elementName, bound, ...bindError ? { bindError } : {} } : {}
+    };
+    return failed.length || bindError ? fail(lines.join("\n"), result) : ok(lines.join("\n"), result);
   }
 };
 async function loadBytes(spec, allowPath) {

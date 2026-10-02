@@ -37,6 +37,7 @@ Two rules hold for every type:
 | `user` | `"65a1…"` | a 24-hex account id of an active account |
 | `currency` | `12.5`, `"$12.50"`, `"12.50 CAD"`, `{"value": 12.5, "currency": "CAD"}` or `{"amount": 1250, "currency": "CAD"}` | see below |
 | `color` | `"#1f6feb"`, `"#abc"`, `"rgb(31, 111, 235)"` or `"DodgerBlue"` | stored as a lower-case `#rrggbb`. A hex needs its `#`; the names are the 22 choice colors (Olive, ForestGreen, … DarkGray — CSS names, any case). A translucent color, a percentage or any other name is `invalid_color` |
+| `file` | nothing — never send one in a row | an attachment of the item (a 24-hex id, or a list of up to 20 with `allowMultiple`). Attach it with the item form or `keepr_attach_file` with `element` (a single element is replaced — the key needs Can delete records — a list is appended to); an import row may only re-send the stored value unchanged — anything else, a blank or a replace that leaves it out included, is `file_not_settable`. `accept: "image"` takes photos only, `maxSizeMb` caps the size |
 
 ## Defaults
 

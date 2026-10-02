@@ -34,7 +34,7 @@ python3 scripts/keepr.py create-card --collection "My Books" --spec card.json --
 Propose first, show the user the elements and their types, and only `--apply`
 once they agree. `references/recipes.md` has worked card specs (a reading log,
 an expense tracker, a linked contacts + notes pair) to start from;
-`references/elements.md` says what each of the 21 data types accepts.
+`references/elements.md` says what each of the 22 data types accepts.
 
 The whole spec goes to keepr as **one card blueprint** (keepr 2.1): keepr checks
 it without writing anything — the proposal step prints its summary, or the

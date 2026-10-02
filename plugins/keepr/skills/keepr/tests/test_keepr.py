@@ -735,6 +735,14 @@ class KeeprScriptTest(unittest.TestCase):
         for code in ("duplicate_value", "invalid_url", "too_long", "pattern", "account_link_needs_access", "session_required"):
             self.assertIn(code, keepr.KNOWN_ERROR_CODES)
 
+    def test_the_file_element_and_its_codes_are_known(self):
+        keepr = load_module()
+        self.assertIn("file", keepr.KNOWN_ELEMENT_TYPES)
+        self.assertIn("file", keepr.KNOWN_TYPES)
+        for code in ("file_not_settable", "file_not_found", "file_already_used", "attachments_disabled",
+                     "file_too_large", "file_wrong_kind", "too_many_files", "attachment_in_use"):
+            self.assertIn(code, keepr.KNOWN_ERROR_CODES)
+
     def test_csv_without_id_column_warns_about_duplicates(self):
         csv_path = self.path("books.csv")
         with open(csv_path, "w") as fh:

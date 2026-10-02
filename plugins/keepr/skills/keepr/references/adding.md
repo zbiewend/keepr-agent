@@ -191,6 +191,16 @@ upload is a 403). One item, one or more files:
 python3 scripts/keepr.py attach --item <24-hex item id> --file receipt.pdf --file back.jpg
 ```
 
+These land among the item's **other attachments**. A card may also have a
+**file element** (`dataType: "file"` in `schema`, with `accept`, `maxSizeMb`
+and `allowMultiple`): a file that belongs IN that field — the vehicle's photo,
+the signed form — is put there with `keepr_attach_file` and its `element`
+argument, which uploads the file and then binds it with one merge PUT. A
+single file element takes one file and **replaces** the one there (the old
+file is deleted softly, so the key needs Can delete records); a list appends,
+20 files at most. `accept: "image"` takes photos only (never a PDF). An import
+row can never set a file element (`file_not_settable`).
+
 **A folder of files, matched to the records you just created** — the common
 case: a directory of subjects and their photos.
 

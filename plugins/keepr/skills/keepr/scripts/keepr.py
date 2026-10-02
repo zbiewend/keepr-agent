@@ -204,6 +204,12 @@ KNOWN_ERROR_CODES = {
     "lookup_filtered_out",
     # A string a color element cannot read as a color (PR 9).
     "invalid_color",
+    # The file element (PR 10b): an import row may only re-send a file value
+    # unchanged (file_not_settable); the rest are the item form's binding codes.
+    "file_not_settable", "file_not_found", "file_already_used", "attachments_disabled",
+    "file_too_large", "file_wrong_kind", "too_many_files",
+    # A bound attachment's ✕ (409): the value is cleared with an item write.
+    "attachment_in_use",
     # Not a row status: the hint.code beside a card_not_allowed whose card
     # belongs to a sub-collection (the message names it and its ingest path).
     "card_in_sub_collection",
@@ -212,7 +218,7 @@ KNOWN_ELEMENT_TYPES = {
     "text-small", "text-large", "rich-text", "choice", "number", "decimal",
     "integer", "boolean", "date", "date-time", "time", "url", "phone", "email",
     "location", "rating", "card-lookup", "measurement", "user", "currency",
-    "color",
+    "color", "file",
 }
 STALE_HINT = ("This keepr deployment uses %s this skill does not know: %s.\n"
               "  Run `keepr.py contract` — it returns the live contract from the server, "
@@ -719,6 +725,8 @@ def cmd_template(a):
     for el in card.get("elements", []):
         if el.get("driven"):
             continue           # system-owned: sending one is a refused row in strict mode
+        if el.get("dataType") == "file":
+            continue           # files are attached (attach-file), never imported: file_not_settable
         elements[el["name"]] = placeholder(el)
     row = {"card": card.get("key"), "elements": elements, "source": {"externalId": "<stable id from your data>"}}
     doc = {
@@ -1638,12 +1646,12 @@ ELEMENT_OPTION_KEYS = {
     "nonNegative", "min", "max", "trueLabel", "falseLabel", "country", "accept",
     "percent", "thousands", "step", "control",
     "rangeEnd", "minuteStep", "weekdays", "precision", "identity", "drivenFrom",
-    "currencies", "defaultCurrency", "display",
+    "currencies", "defaultCurrency", "display", "maxSizeMb",
 }
 KNOWN_TYPES = {
     "text-small", "text-large", "rich-text", "choice", "number", "decimal", "integer",
     "boolean", "date", "date-time", "time", "url", "phone", "email", "location",
-    "rating", "card-lookup", "measurement", "user", "currency", "color",
+    "rating", "card-lookup", "measurement", "user", "currency", "color", "file",
 }
 
 
