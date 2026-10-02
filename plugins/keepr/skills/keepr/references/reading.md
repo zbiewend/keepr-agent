@@ -20,7 +20,7 @@ error — you would report "none" for a question that had an answer.
 | `keepr.py schema --collection X` | `keepr_schema` | the cards and elements — read this first |
 | `keepr.py items --collection X [--q KQL] [--card KEY] [--sort F] [--desc] [--limit N] [--skip N]` | `keepr_get_items` with `collection` and `q` | a page of items, count first |
 | `keepr.py get --id ID [--id ID …]` | `keepr_get_items` with `ids` (or `item_id`) | one or more items in full, up to 100 |
-| `keepr.py search --q TEXT [--types …] [--limit N]` | `keepr_search` | free-text substring search across collections, cards and items |
+| `keepr.py search --q TEXT [--types …] [--limit N]` | `keepr_search` | free-text substring search across collections, cards, items and tags — tags by name and items used as tags by title; `--types` / `types` narrows it (`tags` for tags alone) |
 
 `--q` is KQL — `references/kql.md` has the grammar and worked examples. It is
 the difference between paging a collection into context and asking the server
@@ -84,6 +84,14 @@ filter is a number nobody can check.
 not "mid-March"); a measurement in the unit it was entered in; a choice by
 its value or label as the schema names it. Round or convert only when asked,
 and say so.
+
+**Tags are the person's labels — report them by name.** `items` and `get`
+show each item's tags (and `keepr_get_items` returns them); filter with
+`tags = <name>` (`kql.md`), which also matches the tags beneath it. A tag "by a
+rule" was applied automatically. **My tags** are the person's own private
+tags: only they see them, so mention them to them and nobody else. A tag shown
+as "no longer available" is an item used as a tag that this key can no longer
+read — say that, don't guess what it was.
 
 **Don't answer what you didn't fetch.** If a question needs an element the
 schema does not have, say the collection does not track that. If it needs a

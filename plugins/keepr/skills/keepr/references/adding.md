@@ -65,8 +65,18 @@ A rows file is JSON. Minimum viable:
   It is set once, when the item is created: an upsert that sends a different
   one still writes the row, and the row's note says the date was not changed
   (`keepr_ingest` calls the field `created_at`).
-- **`tags`** (list of strings) and **`visibility`** (`"shared"` | `"private"`)
-  are optional.
+- **`visibility`** (`"shared"` | `"private"`) is optional.
+- **`tags`** is the item's tags, by the names `schema` lists under TAGS — a
+  name, or the path when two tags share a name (`"Genre/Sci-fi"`), or an id.
+  An item used as a tag (a card whose items are tags) goes by its id:
+  `keepr.py search` / `keepr_search` finds it by title (add `--types tags` /
+  `types: ["tags"]` to search tags alone). On an upsert the list **replaces** the item's tags:
+  leave `tags` out to keep them, `[]` takes them off. A tag marked
+  *restricted* decides who can see what: **only the person, signed in to
+  keepr, can put one on or take one off** — you never can, whatever the key
+  holds (the row fails `session_required`). Leave it out (an upsert keeps it)
+  and tell the person to add or remove it in keepr. One *applied by a rule
+  only* is never sent.
 
 `scripts/keepr.py template --collection X --card book --out rows.json` gives
 you a skeleton with every writable element and a placeholder saying what each
@@ -128,6 +138,14 @@ and what to do about it is in `references/api.md`.
   merchant, or split one book into two because it has two authors.
 - **Data that fits nowhere** is a question for the user, not something to stuff
   into a notes field. Ask whether to add an element, drop it, or put it in notes.
+- **Never invent a tag.** Use the collection's own tags, as `schema` lists
+  them — keepr never creates one from a row, and a name it does not know fails
+  the row (`unknown_tag`). When the user's data has a label the collection
+  has no tag for, or you think one would help, **ask the person**: they can
+  add the tag in keepr, or you leave it out. Never fold a tag into another
+  element to keep it, and never pick a near-miss ("Scifi" for "Sci-fi") without
+  saying so. A name that could be two tags fails with the candidates — send the
+  path of the one the user means.
 - **Confirm before you write.** Show what the dry run found — how many rows, of
   which cards, into which collection — and get a yes before committing. Always,
   and especially past a handful of rows.

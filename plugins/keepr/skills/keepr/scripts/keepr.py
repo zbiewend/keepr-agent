@@ -182,7 +182,19 @@ KNOWN_ERROR_CODES = {
     "source_invalid", "externalId_required", "duplicate", "card_mismatch",
     "ref_unresolved", "ref_wrong_card", "lookup_not_found",
     "private_not_allowed", "account_already_linked", "account_link_needs_access",
-    "session_required", "internal",
+    "internal",
+    # Tags: a row's `tags` by name, path or id (keepr resolves them and never
+    # creates one), and the gate every tag passes.
+    "unknown_tag", "ambiguous_tag", "private_tag_not_allowed",
+    "restricted_tag", "rule_owned_tag", "too_many_tags", "invalid_tag_ids",
+    # An upsert row that changes a locked record's tags, or whose tag write
+    # lost a race twice (T2b's security review).
+    "item_locked", "stale",
+    # Only a person signed in to keepr may (a key never can) — a row that adds
+    # or takes off a RESTRICTED tag, or sets an account link (or a field a
+    # group built from records reads) that decides who is in such a group.
+    # Ask them to do it in the app.
+    "session_required",
     # Another item already holds the row's value of a unique element.
     "duplicate_value",
     # The data types second pass: a link off the URL rule, a value past its
@@ -632,8 +644,14 @@ def cmd_schema(a):
         parent = (f" (child of '{parent_card.get('key')}')" if parent_card
                   else f" (child of {card.get('parentCardId')})") if card.get("parentCardId") else ""
         print(f"\n  card '{card.get('key')}' — {card.get('name')}  [id {card.get('id')}]{parent}")
+        if card.get("itemTags") in ("chosen", "every"):
+            # Items used as tags are never listed by name (a title is only for
+            # readers of that item): say how to find one.
+            print(f"    {'every item' if card['itemTags'] == 'every' else 'chosen items'} of this card can be used as tags — "
+                  "find one with `search --q <title> --types tags` and send its id in a row's \"tags\"")
         for el in card.get("elements", []):
             print(describe_element(el))
+    print_tag_vocabulary(schema.get("tags"))
     wc = schema.get("writeContract", {})
     print(f"\n  write contract: up to {wc.get('maxBatch', MAX_BATCH)} rows per call · "
           f"idempotent on {wc.get('idempotency')} · unknown element names are refused by default")
@@ -643,6 +661,31 @@ def cmd_schema(a):
                      - KNOWN_ELEMENT_TYPES - {None})
     if unknown:
         print("\n" + STALE_HINT % ("element types", ", ".join(unknown)), file=sys.stderr)
+
+
+def print_tag_vocabulary(tags):
+    """The collection's tags, as a row's `tags` names them. Absent on an older
+    keepr, which lists none."""
+    if not isinstance(tags, list):
+        return
+    if not tags:
+        print("\n  tags: none. keepr never creates a tag from a row — if the user wants one, they add it in keepr.")
+        return
+    print("\n  tags — name them in a row's \"tags\" like this (the path when two share a name); keepr never creates one:")
+    for tag in tags:
+        bits = []
+        if tag.get("aliases"):
+            bits.append("also: " + ", ".join(tag["aliases"]))
+        if tag.get("restricted"):
+            bits.append("restricted — only a manager, signed in to keepr, puts it on or takes it off; never from here")
+        rule = tag.get("rule") or {}
+        if rule.get("strict"):
+            bits.append("applied by a rule only — never send it")
+        elif tag.get("rule"):
+            bits.append("a rule applies it too")
+        if tag.get("inheritedFrom"):
+            bits.append(f"from \"{tag['inheritedFrom'].get('name')}\", the collection above")
+        print(f"    {tag.get('path') or tag.get('name')}  [id {tag.get('id')}]" + (f"  ({'; '.join(bits)})" if bits else ""))
 
 
 # ------------------------------------------------------------------ template
@@ -812,6 +855,20 @@ def unfilled(rows):
     return bad
 
 
+def bad_tags(rows):
+    """Rows whose `tags` keepr would refuse for its shape: not a list of
+    non-empty strings (names, paths or ids). What the names MEAN is keepr's to
+    judge, per row — it resolves them and never creates a tag."""
+    bad = []
+    for i, row in enumerate(rows):
+        tags = row.get("tags")
+        if tags is None:
+            continue
+        if not isinstance(tags, list) or any(not isinstance(t, str) or not t.strip() for t in tags):
+            bad.append(i)
+    return bad
+
+
 def choose_import_id(a, results_path):
     """One import, one id (keepr lists its batches as one and a person can undo
     it from Settings → Imports). --import-id wins; otherwise an import that is
@@ -879,6 +936,10 @@ def cmd_ingest(a):
         die("These values are still template placeholders — fill them in or delete the keys:\n  "
             + "\n  ".join(placeholders[:20])
             + (f"\n  … and {len(placeholders) - 20} more" if len(placeholders) > 20 else ""))
+    shapeless = bad_tags(rows)
+    if shapeless:
+        die(f"{len(shapeless)} row(s) have \"tags\" that are not a list of tag names, paths or ids "
+            f"(first: row {shapeless[0]}). Write them like [\"Urgent\", \"Genre/Sci-fi\"], from the tags `schema` lists.")
     if a.mode == "upsert":
         missing = [i for i, row in enumerate(rows)
                    if not (row.get("source") or {}).get("externalId")]
@@ -895,7 +956,7 @@ def cmd_ingest(a):
     batches = [rows[i:i + MAX_BATCH] for i in range(0, len(rows), MAX_BATCH)]
     totals = {"created": 0, "updated": 0, "skipped": 0, "failed": 0}
     results = {"collection": collection, "dryRun": a.dry_run, "mode": a.mode, "importId": import_id,
-               "runs": [], "items": {}, "failures": [], "notes": []}
+               "runs": [], "items": {}, "failures": [], "notes": [], "warnings": []}
 
     # A dry run writes nothing, so a later batch cannot see the rows an earlier
     # one only validated: every $ref to one would come back ref_unresolved.
@@ -943,6 +1004,10 @@ def cmd_ingest(a):
             if row.get("notes"):
                 results["notes"].append({"batch": n, "index": row.get("index"),
                                          "externalId": external, "notes": row["notes"]})
+            # A row that landed but left a tag off (tag_dropped: deleted since).
+            if row.get("warnings") and row.get("status") != "failed":
+                results["warnings"].append({"batch": n, "index": row.get("index"),
+                                            "externalId": external, "warnings": row["warnings"]})
             index = row.get("index")
             if carry and row.get("status") == "would-create" and external and isinstance(index, int) and index < len(batch):
                 sent = batch[index]
@@ -976,7 +1041,7 @@ def cmd_ingest(a):
             print(f"import {import_id} — if it was a mistake, someone who manages the collection can undo it "
                   "from its Settings → Imports in the web app.")
     for failure in results["failures"][:25]:
-        codes = "; ".join(f"{e.get('element') or '-'}: {e.get('code')} — {e.get('message')}"
+        codes = "; ".join(f"{e.get('element') or '-'}: {e.get('code')} — {e.get('message')}" + candidates_note(e)
                           for e in failure["errors"])
         label = failure["externalId"] or f"batch {failure['batch']} row {failure['index']}"
         print(f"  FAILED {label}: {codes}")
@@ -993,6 +1058,11 @@ def cmd_ingest(a):
         print(f"  NOTE {label}: {'; '.join(noted['notes'])}")
     if len(results["notes"]) > 25:
         print(f"  … {len(results['notes']) - 25} more notes in {out}")
+    for warned in results["warnings"][:25]:
+        label = warned["externalId"] or f"batch {warned['batch']} row {warned['index']}"
+        print(f"  WARNING {label}: {'; '.join(w.get('message') or w.get('code', '') for w in warned['warnings'])}")
+    if len(results["warnings"]) > 25:
+        print(f"  … {len(results['warnings']) - 25} more warnings in {out}")
 
     # A code this bundle does not document means the deployment has moved on.
     # Say so once, loudly, rather than letting the agent guess at the meaning.
@@ -1005,6 +1075,18 @@ def cmd_ingest(a):
         print(json.dumps(results, indent=2))
     if totals["failed"]:
         sys.exit(2)
+
+
+def candidates_note(error):
+    """An ambiguous tag name's candidates, so the next run can send the path."""
+    candidates = error.get("candidates") or []
+    if not candidates:
+        return ""
+    paths = []
+    for c in candidates:
+        path = c.get("path")
+        paths.append(("/".join(path) if isinstance(path, list) else str(path)) + f" ({c.get('tagId')})")
+    return " [could be: " + ", ".join(paths) + "]"
 
 
 def cmd_runs(a):
@@ -1650,7 +1732,7 @@ def check_card_references(todo, card_ids):
 SYSTEM_COLUMNS = ("title", "primaryDate", "updatedAt", "createdAt", "sourceCreatedAt", "tags", "owner")
 
 
-def build_blueprint(todo, card_ids, filters, layouts):
+def build_blueprint(todo, card_ids, filters, layouts, tags=None):
     """A card blueprint for the cards of a spec (keepr 2.1, docs/SCHEMA.md
     "Card blueprints"): a card named by key that is IN the spec is { "ref" } —
     the card itself too, for a lookup to its own kind — and any other is
@@ -1699,6 +1781,45 @@ def build_blueprint(todo, card_ids, filters, layouts):
             out.append({"kind": "table", "scope": "card", "cardRef": {"ref": local[card_key]},
                         "body": {"columns": columns, **({"sort": layout["sort"]} if layout.get("sort") else {})}})
         collection["cardLayouts"] = out
+    if tags:
+        # keepr 2.2 (tags T10): NEW collection tags, each optionally applied by a
+        # rule on a card. Every rule arrives PAUSED — it tags nothing until the
+        # person resumes it in keepr. `parent` names another tag of the spec;
+        # a rule's `card` (and each related clause's) is named like lookupCard.
+        tag_local = {}
+        for tag in tags:
+            base = "tag-" + (slug(tag.get("name", "")) or "tag")[:52]
+            local_id, n = base, 2
+            while local_id in tag_local.values():
+                local_id, n = f"{base}-{n}", n + 1
+            tag_local[(tag.get("name") or "").strip().lower()] = local_id
+        out = []
+        for tag in tags:
+            name = (tag.get("name") or "").strip()
+            if not name:
+                die("a tag in the spec has no name")
+            entry = {"localId": tag_local[name.lower()], "name": name}
+            for field in ("description", "color", "icon", "aliases"):
+                if tag.get(field):
+                    entry[field] = tag[field]
+            if tag.get("parent"):
+                parent = tag_local.get(str(tag["parent"]).strip().lower())
+                if not parent:
+                    die(f"tag '{name}': its parent '{tag['parent']}' is not a tag in the spec — a spec nests only the tags it makes")
+                entry["parentRef"] = {"ref": parent}
+            rule = tag.get("rule")
+            if rule:
+                if not rule.get("card"):
+                    die(f"tag '{name}': its rule needs the card whose items it tags")
+                built = {"cardRef": ref_for(rule["card"])}
+                for field in ("where", "match", "strict"):
+                    if field in rule:
+                        built[field] = rule[field]
+                if rule.get("related"):
+                    built["related"] = [{**{k: v for k, v in c.items() if k != "card"}, "cardRef": ref_for(c.get("card"))} for c in rule["related"]]
+                entry["rule"] = built
+            out.append(entry)
+        collection["tags"] = out
     return {"cards": cards, **({"collection": collection} if collection else {})}
 
 
@@ -1728,16 +1849,17 @@ def cmd_create_card(a):
         return
     filters = spec.get("filters", []) if isinstance(spec, dict) else []
     layouts = spec.get("layouts", []) if isinstance(spec, dict) else []
+    tags = spec.get("tags", []) if isinstance(spec, dict) else []
 
     # keepr 2.1: one blueprint, checked by keepr, applied all or nothing.
-    blueprint = build_blueprint(todo, card_ids, filters, layouts)
+    blueprint = build_blueprint(todo, card_ids, filters, layouts, tags)
     verb = "apply" if a.apply else "preview"
     status, res = request("POST", f"/api/collections/{collection}/blueprints/{verb}", {"blueprint": blueprint})
     res = res if isinstance(res, dict) else {}
     if status == 404 and str(res.get("message", "")).lower() == "not found" and not res.get("code"):
         # A deployment without blueprints: the 2.0 path, card by card.
-        if filters or layouts:
-            die("this keepr deployment cannot create filters or layouts with new cards — drop them from the spec")
+        if filters or layouts or tags:
+            die("this keepr deployment cannot create filters, layouts or tags with new cards — drop them from the spec")
         return create_cards_one_by_one(a, collection, todo, card_ids)
     if status >= 400:
         print(f"keepr refused the cards ({status}{' ' + res['code'] if res.get('code') else ''}): {res.get('message', '')}", file=sys.stderr)
@@ -1771,6 +1893,12 @@ def cmd_create_card(a):
                 print(f"--- would save the filter '{step.get('name')}'")
             elif step.get("kind") == "layout":
                 print(f"--- would set a {step.get('layoutKind')} layout")
+            elif step.get("kind") == "tag":
+                print(f"--- would add the tag '{step.get('name')}'")
+            elif step.get("kind") == "tagRule":
+                card = step.get("card") or {}
+                print(f"--- would apply '{step.get('name')}' by a rule on {card.get('ref') or card.get('key') or card.get('globalKey')}"
+                      f"{' (only the rule applies it)' if step.get('strict') else ''} — PAUSED: it tags nothing until the person resumes it in keepr")
         print("\nNothing was created. Show this to the user, and re-run with --apply once they agree —\n"
               "a card is schema, and creating one needs `manage` on the collection. The apply is all or nothing.")
         return
@@ -1782,6 +1910,12 @@ def cmd_create_card(a):
         print(f"set a {layout.get('kind')} layout")
     for member in res.get("members") or []:
         print(f"added the global card '{member.get('key')}' to the collection")
+    for tag in res.get("tags") or []:
+        print(f"added the tag '{tag.get('name')}' → {tag.get('id')}")
+    for rule in res.get("rules") or []:
+        preview = rule.get("preview") or {}
+        would = f", would tag {preview.get('matching')} of {preview.get('total')} items now" if isinstance(preview.get("matching"), int) else ""
+        print(f"'{rule.get('name')}' is applied by a rule, PAUSED{would} — the person resumes it in keepr (Settings → Tags)")
 
 
 def create_cards_one_by_one(a, collection, todo, card_ids):
@@ -2230,6 +2364,53 @@ def primary_date(item, card):
     return str(item.get("createdAt") or "")[:10]
 
 
+def tag_words(item):
+    """An item's tags as words — (tags, my_tags): hand-applied first, then a
+    rule's, each named through the item's `tagTitles` as far as this key may
+    see; an id with no name is said as such, never dropped. `my_tags` are the
+    key owner's own private tags."""
+    titles = {str(k).lower(): v for k, v in (item.get("tagTitles") or {}).items()}
+    hand = [str(t).lower() for t in item.get("tagIds") or []]
+    rule = [str(t).lower() for t in item.get("tagAutoIds") or []]
+    order = hand + [t for t in rule if t not in hand]
+
+    def name(tag_id):
+        entry = titles.get(tag_id)
+        if not entry:
+            return f"(a tag this key cannot name, {tag_id})"
+        if entry.get("kind") == "tag":
+            return entry.get("name") or tag_id
+        if entry.get("unavailable"):
+            return f"(no longer available, {tag_id})"
+        return entry.get("title") or tag_id
+
+    tags = []
+    for tag_id in order:
+        word = name(tag_id)
+        if tag_id in rule and tag_id in hand:
+            word += " (by hand and by a rule)"
+        elif tag_id in rule:
+            word += " (by a rule)"
+        tags.append(word)
+    mine = []
+    for entry in item.get("myTags") or []:
+        tag_id = str(entry.get("tagId")).lower()
+        if entry.get("kind") == "item":
+            word = name(tag_id) if tag_id in titles else f"(no longer available, {tag_id})"
+        else:
+            word = entry.get("name") or tag_id
+        if entry.get("fromCollection"):
+            word += " (on the collection)"
+        mine.append(word)
+    return tags, mine
+
+
+def tags_suffix(item):
+    tags, mine = tag_words(item)
+    parts = ([f"tags: {', '.join(tags)}"] if tags else []) + ([f"my tags: {', '.join(mine)}"] if mine else [])
+    return ("  · " + " · ".join(parts)) if parts else ""
+
+
 def item_link(item):
     return f"{WEB_URL}/collections/{item.get('collection_id')}/items/{item.get('_id')}"
 
@@ -2289,7 +2470,7 @@ def cmd_items(a):
     for item in items:
         card = cards.get(str(item.get("card_id")))
         key = card.get("key") if card else str(item.get("card_id"))
-        print(f"  {item_title(item, card):<40} {key:<16} {str(item.get('_id')):<26} {primary_date(item, card)}")
+        print(f"  {item_title(item, card):<40} {key:<16} {str(item.get('_id')):<26} {primary_date(item, card)}{tags_suffix(item)}")
     if total > params["skip"] + len(items):
         print(f"\n{total - params['skip'] - len(items)} more not shown. Next page: --skip {params['skip'] + len(items)}"
               " — or narrow with --q rather than paging a whole collection.")
@@ -2343,10 +2524,13 @@ def cmd_get(a):
         for name in order + [n for n in elements if n not in order]:
             if name in elements:
                 print(f"  {name}: {render_value(elements.pop(name))}")
-        if item.get("tags"):
-            print(f"  tags: {', '.join(str(t) for t in item['tags'])}")
         if item.get("notes"):
             print(f"  notes: {item['notes']}")
+        tags, mine = tag_words(item)
+        if tags:
+            print(f"  tags: {', '.join(tags)}")
+        if mine:
+            print(f"  my tags: {', '.join(mine)}  (only the key's owner sees these)")
         if isinstance(item.get("attachments"), list):
             print(f"  attachments: {len(item['attachments'])}")
         # The batch projection carries no timestamps; a single get does.
@@ -2360,14 +2544,30 @@ def cmd_search(a):
     if len(q) < 2:
         die("--q needs at least 2 characters.")
     params = {"q": q, "limit": max(1, min(a.limit, 50))}
-    if a.types:
-        params["types"] = a.types
-    body = get("/api/search?" + urllib.parse.urlencode(params), "searching")
+    asked = [t.strip() for t in a.types.split(",") if t.strip()] if a.types else None
+    # Tags have their own search (items used as tags are found by title there),
+    # asked beside the records by default — ruled b31 (2026-09-30); --types
+    # can still narrow it.
+    wants_tags = asked is None or "tags" in asked
+    plain = [t for t in asked if t != "tags"] if asked else None
+    body = {}
+    if plain is None or plain:
+        if plain:
+            params["types"] = ",".join(plain)
+        body = get("/api/search?" + urllib.parse.urlencode(params), "searching")
+    tag_hits = []
+    if wants_tags:
+        found = get("/api/tags/search?" + urllib.parse.urlencode({"q": q, "limit": params["limit"]}), "searching tags") or {}
+        tag_hits = found.get("results") or []
+        body["tags"] = tag_hits
     if a.json:
         print(json.dumps(body, indent=2, default=str))
         return
     buckets = {k: body.get(k) or [] for k in ("collections", "cards", "items")}
-    print(f'"{q}": ' + " · ".join(f"{k} {len(v)}" for k, v in buckets.items())
+    counts = {k: len(v) for k, v in buckets.items()} if (plain is None or plain) else {}
+    if wants_tags:
+        counts["tags"] = len(tag_hits)
+    print(f'"{q}": ' + " · ".join(f"{k} {n}" for k, n in counts.items())
           + f" (each bucket capped at {params['limit']}; search is a substring match, not a query)")
     for c in buckets["collections"]:
         print(f"  collection  {str(c.get('_id')):<26} {c.get('name', '')}  [{access_label(c)}]")
@@ -2378,6 +2578,15 @@ def cmd_search(a):
         card = cards_by_id(schema_for(str(item.get("collection_id")))).get(str(item.get("card_id")))
         key = card.get("key") if card else str(item.get("card_id"))
         print(f"  item        {str(item.get('_id')):<26} {item_title(item, card)}  [{key}]  {item_link(item)}")
+    for hit in tag_hits:
+        tag = hit.get("tag") or {}
+        where = f"  in collection {(hit.get('collection') or {}).get('name') or (hit.get('collection') or {}).get('_id')}" if hit.get("collection") else ""
+        if hit.get("kind") == "item":
+            print(f"  item tag    {str(tag.get('_id')):<26} {tag.get('title', '')}  (an item used as a tag — send this id in a row's \"tags\"){where}")
+        elif hit.get("kind") == "private":
+            print(f"  my tag      {str(tag.get('_id')):<26} {'/'.join(tag.get('path') or [tag.get('name', '')])}  (private — only you see it; never on a row)")
+        else:
+            print(f"  tag         {str(tag.get('_id')):<26} {'/'.join(tag.get('path') or [tag.get('name', '')])}{where}")
     if buckets["items"]:
         print("Full values: keepr.py get --id <id>")
 
@@ -2499,7 +2708,7 @@ def main():
 
     p = sub.add_parser("search", help="free-text search across collections, cards and items")
     p.add_argument("--q", required=True, help="at least 2 characters; a substring, not a query")
-    p.add_argument("--types", help="comma-separated subset of collections,cards,items")
+    p.add_argument("--types", help="comma-separated subset of collections,cards,items,tags (all four by default)")
     p.add_argument("--limit", type=int, default=20, help="per bucket, max 50")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_search)

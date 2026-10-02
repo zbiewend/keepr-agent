@@ -45,7 +45,19 @@ SCHEMA = {
               "choices": [{"value": "fantasy", "label": "Fantasy"}, {"value": "mystery", "label": "Mystery"}]},
          ]},
         {"id": "75a1b2c3d4e5f6a7b8c9d0e2", "key": "shelf", "name": "Shelf", "parentCardId": None,
+         "itemTags": "chosen", "applyWhereReferenced": True,
          "elements": [{"name": "name", "label": "Name", "dataType": "text-small", "isTitle": True}]},
+    ],
+    # The collection's tag vocabulary (keepr T8): the only tags a row may name.
+    "tags": [
+        {"id": "c0a1b2c3d4e5f6a7b8c9d0e1", "name": "Genre", "path": "Genre", "parentId": None,
+         "restricted": False, "rule": None, "aliases": []},
+        {"id": "c0a1b2c3d4e5f6a7b8c9d0e2", "name": "Sci-fi", "path": "Genre/Sci-fi", "parentId": "c0a1b2c3d4e5f6a7b8c9d0e1",
+         "restricted": False, "rule": None, "aliases": ["SF"]},
+        {"id": "c0a1b2c3d4e5f6a7b8c9d0e3", "name": "Signed", "path": "Signed", "parentId": None,
+         "restricted": True, "rule": None, "aliases": []},
+        {"id": "c0a1b2c3d4e5f6a7b8c9d0e4", "name": "Overdue", "path": "Overdue", "parentId": None,
+         "restricted": False, "rule": {"strict": True}, "aliases": []},
     ],
     "writeContract": {"maxBatch": 200, "idempotency": "source.externalId",
                       "strictDefault": True, "ingestPath": f"/api/collections/{COLLECTION}/ingest",
@@ -71,13 +83,20 @@ SHELF_ID = "75a1b2c3d4e5f6a7b8c9d0e2"
 ITEMS = [
     {"_id": "aaaaaaaaaaaaaaaaaaaaaaa1", "collection_id": COLLECTION, "card_id": BOOK_ID,
      "elements": {"title": "Dune", "author": "Frank Herbert", "rating": 5, "read-on": "2026-01-10"},
-     "displayValue": "Dune", "tags": ["scifi"], "createdAt": "2026-01-11T00:00:00Z", "updatedAt": "2026-01-12T00:00:00Z"},
+     "displayValue": "Dune", "tags": ["scifi"], "createdAt": "2026-01-11T00:00:00Z", "updatedAt": "2026-01-12T00:00:00Z",
+     # The rebuilt tags as keepr serves them (a legacy "tags" list is never printed).
+     "tagIds": ["c0a1b2c3d4e5f6a7b8c9d0e2", "d0a1b2c3d4e5f6a7b8c9d0e1", "d0a1b2c3d4e5f6a7b8c9d0e2"],
+     "tagAutoIds": ["c0a1b2c3d4e5f6a7b8c9d0e4"],
+     "tagTitles": {"c0a1b2c3d4e5f6a7b8c9d0e2": {"kind": "tag", "name": "Sci-fi", "restricted": False},
+                   "c0a1b2c3d4e5f6a7b8c9d0e4": {"kind": "tag", "name": "Overdue", "restricted": False},
+                   "d0a1b2c3d4e5f6a7b8c9d0e1": {"title": "Top shelf", "item_id": "e0a1b2c3d4e5f6a7b8c9d0e1"}},
+     "myTags": [{"tagId": "f0a1b2c3d4e5f6a7b8c9d0e1", "kind": "tag", "name": "To reread"}]},
     {"_id": "aaaaaaaaaaaaaaaaaaaaaaa2", "collection_id": COLLECTION, "card_id": BOOK_ID,
      "elements": {"title": "Piranesi", "author": "Susanna Clarke", "rating": 4, "read-on": "2026-02-02"},
-     "displayValue": "Piranesi", "tags": [], "createdAt": "2026-02-03T00:00:00Z", "updatedAt": "2026-02-03T00:00:00Z"},
+     "displayValue": "Piranesi", "createdAt": "2026-02-03T00:00:00Z", "updatedAt": "2026-02-03T00:00:00Z"},
     {"_id": "aaaaaaaaaaaaaaaaaaaaaaa3", "collection_id": COLLECTION, "card_id": BOOK_ID,
      "elements": {"title": "Hyperion", "author": "Dan Simmons", "rating": 3},
-     "displayValue": "Hyperion", "tags": [], "createdAt": "2026-03-01T00:00:00Z", "updatedAt": "2026-03-01T00:00:00Z"},
+     "displayValue": "Hyperion", "createdAt": "2026-03-01T00:00:00Z", "updatedAt": "2026-03-01T00:00:00Z"},
 ]
 
 # The card definition as PATCH wants it back: the card's OWN elements in
@@ -209,8 +228,16 @@ class Stub(BaseHTTPRequestHandler):
                 "collections": [{"_id": COLLECTION, "name": "My Books", "status": "active", "myAccess": {"role": "owner"}}],
                 "cards": [{"_id": BOOK_ID, "name": "Book", "key": "book", "description": "", "scope": "collection",
                            "collection_id": COLLECTION}],
-                "items": [{k: ITEMS[0][k] for k in ("_id", "collection_id", "card_id", "elements", "tags")}],
+                "items": [{k: ITEMS[0][k] for k in ("_id", "collection_id", "card_id", "elements")}],
             })
+        if parsed.path == "/api/tags/search":
+            return self._send(200, {"results": [
+                {"kind": "collection", "tag": {"_id": "c0a1b2c3d4e5f6a7b8c9d0e2", "name": "Sci-fi", "path": ["Genre", "Sci-fi"]},
+                 "collection": {"_id": COLLECTION, "name": "My Books"}},
+                {"kind": "item", "tag": {"_id": "d0a1b2c3d4e5f6a7b8c9d0e1", "title": "Top shelf"},
+                 "collection": {"_id": COLLECTION, "name": "My Books"}},
+                {"kind": "private", "tag": {"_id": "f0a1b2c3d4e5f6a7b8c9d0e1", "name": "To reread", "path": ["To reread"]}},
+            ], "more": False})
         if parsed.path == f"/api/card-definitions/{BOOK_ID}":
             return self._send(200, BOOK_DEF)
         if parsed.path == "/api/card-definitions":
@@ -295,6 +322,23 @@ class Stub(BaseHTTPRequestHandler):
                                  "errors": [{"element": "rating", "code": "from_the_future",
                                              "message": "a code this skill has never seen"}]})
                     continue
+                # Tags, as keepr judges a row's names (T8): one that names no
+                # tag, and one that names two.
+                tags = item.get("tags") or []
+                if "Nowhere" in tags:
+                    summary["failed"] += 1
+                    rows.append({"index": i, "status": "failed", "externalId": external,
+                                 "errors": [{"element": None, "code": "unknown_tag",
+                                             "message": 'tags: "Nowhere" is not a tag of this collection or the collection above it.'}]})
+                    continue
+                if "Classic" in tags:
+                    summary["failed"] += 1
+                    rows.append({"index": i, "status": "failed", "externalId": external,
+                                 "errors": [{"element": None, "code": "ambiguous_tag",
+                                             "message": 'tags: "Classic" could be more than one tag. Send its path or its id.',
+                                             "candidates": [{"tagId": "c0a1b2c3d4e5f6a7b8c9d0f1", "path": ["Genre", "Classic"], "private": False},
+                                                            {"tagId": "c0a1b2c3d4e5f6a7b8c9d0f2", "path": ["Era", "Classic"], "private": False}]}]})
+                    continue
                 if str((item.get("elements") or {}).get("rating", "")).strip() == "n/a":
                     summary["failed"] += 1
                     rows.append({"index": i, "status": "failed", "externalId": external,
@@ -308,6 +352,10 @@ class Stub(BaseHTTPRequestHandler):
                 # keepr's one row note today: an upsert's source date is fixed at create.
                 if body.get("mode") == "upsert" and (item.get("source") or {}).get("createdAt"):
                     rows[-1]["notes"] = ["source is fixed when the item is created; its created date was not changed"]
+                # A tag deleted since the row was written: left off, with a warning.
+                if "c0a1b2c3d4e5f6a7b8c9d0e9" in tags:
+                    rows[-1]["warnings"] = [{"code": "tag_dropped", "field": "tags", "tagIds": ["c0a1b2c3d4e5f6a7b8c9d0e9"],
+                                             "message": "A tag on the form is no longer available and was left off. Everything else was saved."}]
             return self._send(200, {"runId": "run-1", "summary": summary, "rows": rows})
         return self._send(404, {"message": "not found"})
 
@@ -512,6 +560,15 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("No collection named 'Recipes'", result.stderr)
 
+    def test_schema_lists_the_tag_vocabulary_and_where_items_are_tags(self):
+        out = run("schema", "--collection", COLLECTION)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("tags — name them in a row's \"tags\" like this", out.stdout)
+        self.assertIn("    Genre/Sci-fi  [id c0a1b2c3d4e5f6a7b8c9d0e2]  (also: SF)", out.stdout)
+        self.assertIn("    Signed  [id c0a1b2c3d4e5f6a7b8c9d0e3]  (restricted — only a manager, signed in to keepr, puts it on or takes it off; never from here)", out.stdout)
+        self.assertIn("    Overdue  [id c0a1b2c3d4e5f6a7b8c9d0e4]  (applied by a rule only — never send it)", out.stdout)
+        self.assertIn("chosen items of this card can be used as tags — find one with `search --q <title> --types tags`", out.stdout)
+
     def test_schema_shows_types_choices_and_driven_warning(self):
         result = run("schema", "--collection", COLLECTION)
         self.assertIn("one of: reading, done", result.stdout)
@@ -585,6 +642,51 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("template placeholders", result.stderr)
         self.assertFalse([c for c in CALLS if c[0] == "POST"])
+
+    def test_rows_tags_are_sent_as_written_for_keepr_to_resolve(self):
+        out = self.path("rows.json")
+        with open(out, "w") as fh:
+            json.dump({"collection": COLLECTION, "items": [
+                {"card": "book", "elements": {"title": "Dune"}, "tags": ["SF", "Genre/Sci-fi", "c0a1b2c3d4e5f6a7b8c9d0e3"]},
+                {"card": "book", "elements": {"title": "Piranesi"}, "tags": []},
+            ]}, fh)
+        result = run("ingest", "--rows", out, "--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        sent = [c for c in CALLS if c[0] == "POST"][0][2]["items"]
+        self.assertEqual(sent[0]["tags"], ["SF", "Genre/Sci-fi", "c0a1b2c3d4e5f6a7b8c9d0e3"])
+        self.assertEqual(sent[1]["tags"], [], "an empty list is an instruction on an upsert: take the tags off")
+
+    def test_tags_that_are_not_a_list_of_names_are_refused_before_any_call(self):
+        out = self.path("rows.json")
+        with open(out, "w") as fh:
+            json.dump({"collection": COLLECTION, "items": [
+                {"card": "book", "elements": {"title": "Dune"}, "tags": ["SF"]},
+                {"card": "book", "elements": {"title": "Piranesi"}, "tags": "fantasy"},
+                {"card": "book", "elements": {"title": "Hyperion"}, "tags": [""]},
+            ]}, fh)
+        CALLS.clear()
+        result = run("ingest", "--rows", out, "--dry-run")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("2 row(s) have \"tags\" that are not a list of tag names, paths or ids (first: row 1)", result.stderr)
+        self.assertFalse([c for c in CALLS if c[0] == "POST"])
+
+    def test_tag_refusals_name_the_candidates_and_a_dropped_tag_is_a_warning(self):
+        out = self.path("rows.json")
+        with open(out, "w") as fh:
+            json.dump({"collection": COLLECTION, "source": {"system": "books"}, "items": [
+                {"card": "book", "elements": {"title": "Dune"}, "tags": ["Nowhere"], "source": {"externalId": "b1"}},
+                {"card": "book", "elements": {"title": "Emma"}, "tags": ["Classic"], "source": {"externalId": "b2"}},
+                {"card": "book", "elements": {"title": "Hyperion"}, "tags": ["c0a1b2c3d4e5f6a7b8c9d0e9"], "source": {"externalId": "b3"}},
+            ]}, fh)
+        result = run("ingest", "--rows", out, "--dry-run")
+        self.assertEqual(result.returncode, 2, "a refused row is a failure")
+        self.assertIn('FAILED b1: -: unknown_tag — tags: "Nowhere" is not a tag', result.stdout)
+        self.assertIn("ambiguous_tag", result.stdout)
+        self.assertIn("[could be: Genre/Classic (c0a1b2c3d4e5f6a7b8c9d0f1), Era/Classic (c0a1b2c3d4e5f6a7b8c9d0f2)]", result.stdout)
+        self.assertIn("WARNING b3: A tag on the form is no longer available", result.stdout)
+        self.assertNotIn("does not know", result.stderr, "every tag code is one this skill documents")
+        with open(self.path("rows.results.json")) as fh:
+            self.assertEqual(json.load(fh)["warnings"][0]["externalId"], "b3")
 
     # -------------------------------------------------- csv
 
@@ -907,6 +1009,44 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertIn("would create card 'task'", result.stdout)
         self.assertFalse([c for c in CALLS if c[1] == "/api/card-definitions"], "no card-by-card write")
 
+    def test_tags_and_a_paused_rule_ride_the_blueprint(self):
+        def preview(bp):
+            steps = [{"kind": "card", "localId": c["localId"], "key": c["key"], "name": c["name"]} for c in bp["cards"]]
+            steps += [{"kind": "tag", "localId": t["localId"], "name": t["name"]} for t in bp["collection"]["tags"]]
+            steps += [{"kind": "tagRule", "tag": t["localId"], "name": t["name"], "card": t["rule"]["cardRef"], "strict": False, "paused": True}
+                      for t in bp["collection"]["tags"] if t.get("rule")]
+            return {"wouldApply": True, "problems": [], "steps": steps, "summary": ["Creates 1 card in \"My Books\", with 2 tags."]}
+        BLUEPRINTS.update(enabled=True, preview=preview, apply=lambda bp: (201, {
+            "collectionId": COLLECTION, "cards": [{"localId": "task", "id": "8" * 24, "key": "task", "name": "Task"}],
+            "filters": [], "layouts": [], "quickAdds": [], "elementSets": [], "members": [],
+            "tags": [{"localId": "tag-work", "id": "6" * 24, "name": "Work"}, {"localId": "tag-late", "id": "7" * 24, "name": "Late"}],
+            "rules": [{"localId": "tag-late", "tagId": "7" * 24, "name": "Late", "enabled": False, "preview": {"total": 4, "matching": 3, "complete": True}}]}))
+        self.addCleanup(lambda: BLUEPRINTS.update(enabled=False))
+        spec = self.write_spec({"cards": [{"name": "Task", "key": "task", "elements": [{"name": "status", "label": "Status", "dataType": "text-small"}]}],
+                                "tags": [{"name": "Work", "color": "emerald"},
+                                         {"name": "Late", "parent": "Work", "rule": {"card": "task", "where": "status = open"}}]})
+        shown = run("create-card", "--collection", COLLECTION, "--spec", spec)
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        sent = [c[2] for c in CALLS if c[0] == "POST" and c[1].endswith("/blueprints/preview")][-1]["blueprint"]
+        self.assertEqual(sent["collection"]["tags"], [
+            {"localId": "tag-work", "name": "Work", "color": "emerald"},
+            {"localId": "tag-late", "name": "Late", "parentRef": {"ref": "tag-work"}, "rule": {"cardRef": {"ref": "task"}, "where": "status = open"}},
+        ])
+        self.assertIn("would add the tag 'Late'", shown.stdout)
+        self.assertIn("would apply 'Late' by a rule on task — PAUSED", shown.stdout)
+        applied = run("create-card", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertIn("'Late' is applied by a rule, PAUSED, would tag 3 of 4 items now", applied.stdout)
+
+    def test_a_tag_whose_parent_is_not_in_the_spec_is_refused_before_any_call(self):
+        self.blueprint_stub()
+        spec = self.write_spec({"cards": [{"name": "Task", "key": "task", "elements": [{"name": "t", "label": "T", "dataType": "text-small"}]}],
+                                "tags": [{"name": "Late", "parent": "Elsewhere"}]})
+        result = run("create-card", "--collection", COLLECTION, "--spec", spec)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("is not a tag in the spec", result.stderr)
+        self.assertFalse([c for c in CALLS if c[1].endswith("/blueprints/preview")])
+
     def test_blueprint_problems_are_listed_and_nothing_is_created(self):
         self.blueprint_stub(problems=[{"path": "cards[0].key", "code": "key_taken", "message": "A card with the key \"book\" already exists."}])
         spec = self.write_spec({"name": "Book 2", "key": "book2", "elements": [{"name": "t", "label": "T", "dataType": "text-small"}]})
@@ -1129,9 +1269,29 @@ class KeeprScriptTest(unittest.TestCase):
                         out.stdout)
         self.assertNotIn("deleted", out.stdout.lower())
         self.assertIn("author: Frank Herbert", out.stdout)
+        # The batch read carries no tags (keepr projects elements only), and a
+        # legacy tag string is never printed.
+        self.assertNotIn("tags:", out.stdout)
+        self.assertNotIn("scifi", out.stdout)
         self.assertIn(f"https://keepr.cloud/collections/{COLLECTION}/items/{ITEMS[0]['_id']}", out.stdout)
         ids_call = [c for c in CALLS if c[0] == "GET" and "ids=" in c[1]][0][1]
         self.assertIn("ids=" + ",".join([ITEMS[0]["_id"], ITEMS[1]["_id"], "bbbbbbbbbbbbbbbbbbbbbbb9"]), ids_call)
+
+    def test_get_one_item_names_its_tags_who_applied_them_and_the_owners_own(self):
+        out = run("get", "--id", ITEMS[0]["_id"])
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("  tags: Sci-fi, Top shelf, (a tag this key cannot name, d0a1b2c3d4e5f6a7b8c9d0e2), Overdue (by a rule)", out.stdout)
+        self.assertIn("  my tags: To reread  (only the key's owner sees these)", out.stdout)
+        self.assertNotIn("scifi", out.stdout, "the legacy string list is never printed")
+
+    def test_items_lines_carry_the_tags(self):
+        out = run("items", "--collection", COLLECTION)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        dune = next(line for line in out.stdout.splitlines() if "Dune" in line)
+        self.assertIn("· tags: Sci-fi, Top shelf", dune)
+        self.assertIn("· my tags: To reread", dune)
+        piranesi = next(line for line in out.stdout.splitlines() if "Piranesi" in line)
+        self.assertNotIn("tags:", piranesi)
 
     def test_get_one_unreadable_item_is_a_count_not_a_crash(self):
         out = run("get", "--id", "bbbbbbbbbbbbbbbbbbbbbbb9")
@@ -1143,6 +1303,25 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertEqual(out.returncode, 1)
         self.assertIn("Not item ids", out.stderr)
         self.assertEqual(CALLS, [])
+
+    def test_search_includes_tags_by_default_and_types_narrows(self):
+        out = run("search", "--q", "shelf", "--types", "tags")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertTrue(out.stdout.startswith('"shelf": tags 3'), out.stdout)
+        self.assertEqual([c[1].split("?")[0] for c in CALLS if c[0] == "GET"], ["/api/tags/search"], "no record search")
+        self.assertIn("tag         c0a1b2c3d4e5f6a7b8c9d0e2   Genre/Sci-fi  in collection My Books", out.stdout)
+        self.assertIn("item tag    d0a1b2c3d4e5f6a7b8c9d0e1   Top shelf  (an item used as a tag — send this id", out.stdout)
+        self.assertIn("my tag      f0a1b2c3d4e5f6a7b8c9d0e1   To reread  (private — only you see it; never on a row)", out.stdout)
+        CALLS.clear()
+        out = run("search", "--q", "dune")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        asked = [c[1].split("?")[0] for c in CALLS if c[0] == "GET"]
+        self.assertIn("/api/search", asked)
+        self.assertIn("/api/tags/search", asked, "records and tags by default (b31)")
+        self.assertIn(" · tags 3", out.stdout.splitlines()[0])
+        CALLS.clear()
+        run("search", "--q", "dune", "--types", "items")
+        self.assertFalse([c for c in CALLS if "/api/tags/search" in c[1]], "--types narrows it: items alone ask no tag search")
 
     def test_search_reports_per_bucket_counts_first(self):
         out = run("search", "--q", "dune", "--types", "collections,cards,items")

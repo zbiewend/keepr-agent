@@ -3,6 +3,15 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.2.0 — 2026-10-02
+
+Skill 2.2.0, keepr-mcp 0.4.0.
+
+- **Tags are back.** Rows and item updates carry the collection's tags by name (or by path for a nested tag), items are read with their tags, and the schema lists the tags there are. A name that is no tag of the collection is refused (`unknown_tag`), never created.
+- **Restricted tags stay with people.** A tag that decides who can see what is applied or taken off only by a collection manager in keepr; your assistant leaves it alone and tells you.
+- **A card proposal may bring new tags,** each optionally applied by a rule that arrives paused for you to turn on.
+- The old tag words are retired: a row that still sends them is refused (`tags_retired`) until the assistant is updated.
+
 ## 2.1.5 — 2026-10-01
 
 Skill 2.1.5, keepr-mcp 0.3.5.

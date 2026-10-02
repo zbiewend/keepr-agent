@@ -32,7 +32,7 @@ slug the schema prints — `read-on`, not "Read on"):
 | --- | --- |
 | `card` | the card, by **key** (`card = book`) or 24-hex id. Matches the card **and its descendants** |
 | `id` | the item id |
-| `tags` | any tag on the item |
+| `tags` | the item's tags: by **name**, alias, **path** (`"Health/Digestive"`) or id — `tags = urgent`, `tags in (urgent, "Genre/Sci-fi")`. Matches the tag **and every tag beneath it**, applied by hand or by a rule, and your own private tags. An **item used as a tag** goes by its id only (`tags = <24-hex>`; the search finds it). A name that is no tag matches nothing; one that names two tags matches either. `tags is empty` ignores your private tags. `=`, `!=`, `in`, `not in`, `is empty` only — `~` and `<` `>` are refused (400 `unsupported_operator`). Anything keepr stores (a saved filter) keeps ids: keepr rewrites the names when it saves. An access setting (who can see what) may name only *restricted* tags |
 | `notes` | the card-level Notes field |
 | `created`, `updated` | the item's timestamps |
 | `set` | the element set the item's card carries (by key or id) |
@@ -56,7 +56,7 @@ lookup element, whatever it is called: `@person = "Molly Blake"`,
 | --- | --- |
 | `=`, `!=` | equal / not equal. Text is case-insensitive and anchored (the whole value) |
 | `>`, `>=`, `<`, `<=` | numeric, date or lexicographic range |
-| `~`, `!~` | contains / does not contain, case-insensitive substring (text; also `tags` and `notes`) |
+| `~`, `!~` | contains / does not contain, case-insensitive substring (text; also `notes`) |
 | `in (a, b, c)`, `not in (…)` | one of / none of |
 | `is empty`, `is not empty` | missing, `null`, `""` or `[]` — and the inverse |
 
@@ -142,7 +142,9 @@ Written against the showcase collections; the element names are theirs — read
 | Work orders pointing at truck 14, however the link is named | `@truck = "Truck 14" and status in (open, blocked)` |
 | Stock at or below its reorder point | `on-hand <= {{reorder-at}}` |
 | Controls assigned to me and due this week | `card = control and owner = me and due <= +7d and due >= today` |
-| Items nobody has tagged | `tags is empty` |
+| Everything tagged Urgent that is still open | `tags = urgent and status != done` |
+| Notes about Mom (an item used as a tag), by its id | `card = note and tags = 66f1a2b3c4d5e6f708192a3b` |
+| Items with no tags at all | `tags is empty` |
 
 Count without listing: `keepr.py items --collection X --q "…" --limit 1` and
 read the total on the first line (the MCP tool has `mode: count`).

@@ -13659,7 +13659,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "960a22dce8ad",
+  version: "6f5e44cee47e",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13709,6 +13709,13 @@ var contract_snapshot_default = {
   },
   dryRun: {
     wouldCreate: "OPTIONAL on a dry-run envelope only: up to 10000 of { card, externalId, system?, createdAt? }, the rows earlier calls of the same dry run answered would-create (system defaults to the request's source.system). A $ref to one resolves as it will at commit, and a row repeating one is a duplicate (create) or would-update (upsert; checked on its own elements, not merged over the earlier row's, so it cannot say skipped). Send only the entries this call refers to or repeats. On a commit it is 400 would_create_not_dry_run \u2014 the earlier calls have written their rows \u2014 and an entry with no system, or naming a card the collection does not have, is 400 would_create_invalid."
+  },
+  tags: {
+    tags: "OPTIONAL on a row: the item's hand-applied tags, the whole list, as tag names, aliases, paths (Parent/Child) or 24-hex ids. Names resolve among the tags of this collection and the collection above it \u2014 GET /api/collections/{id}/schema lists them under tags. An item tag (a card's items used as tags) goes by its id only: GET /api/tags/search finds it by its item's title. keepr never creates a tag on a write: a name that is no tag here is unknown_tag, one that could be two is ambiguous_tag (with candidates), a private tag is private_tag_not_allowed. On an upsert the list replaces the stored one, except that a restricted tag is kept when the list leaves it out; [] takes off every tag you may take off. A RESTRICTED tag (restricted: true in the schema) decides who can see what: only a person signed in to keepr puts one on or takes one off, so a row that adds or removes one is session_required \u2014 ask the person to do it in keepr. A new item may also come back carrying a restricted tag the collection puts on new items of its card. Absent or null changes nothing. At most 50. Send tags or tagIds, not both.",
+    tagIds: "OPTIONAL on a row, instead of tags: the same whole list as 24-hex tag ids only.",
+    tagAutoIds: "NEVER sent: tags a rule applies are written by the rule; a row carrying the key is refused.",
+    warnings: 'A row that succeeded may carry warnings[]: { code: "tag_dropped", tagIds } names tags it sent that were deleted since \u2014 left off, the rest written.',
+    blueprints: "A card blueprint (blueprintPreview / blueprintApply) may bring NEW collection tags in collection.tags ({ localId, name, color?, icon?, description?, aliases?, parentRef?: { ref }, rule? }), each optionally applied by a rule ({ cardRef, where?, match?, strict?, related? }; its filters name tags by name). A key needs write beside cards for it. Every rule arrives PAUSED: it tags nothing until it is resumed (leave that to the person, in keepr), and the apply answers what each would tag (rules[].preview). A blueprint tag is never restricted."
   },
   writeContract: {
     maxBatch: 200,
@@ -13917,6 +13924,10 @@ var contract_snapshot_default = {
         means: "the row sets or changes the account link on a card a group built from records reads, changes a field such a group's rule reads on a linked record so that its person could join, or changes a field such a rule reads through this record (a looked-up record's name, a record a total counts), and the caller lacks, across the collection, the access that group gives \u2014 a manager makes the change"
       },
       {
+        code: "ambiguous_tag",
+        means: "a tags name could be more than one tag; candidates lists each one's tagId and path \u2014 send the path or the id"
+      },
+      {
         code: "card_in_sub_collection",
         means: "hint.code on a card_not_allowed row: the card belongs to a sub-collection (hint.collection_id, hint.name) \u2014 ingest the row there"
       },
@@ -13957,6 +13968,14 @@ var contract_snapshot_default = {
         means: "an unexpected server error on this row; the row was not written"
       },
       {
+        code: "invalid_tag_ids",
+        means: "tags is not a list of tag names, paths or ids, tagIds is not a list of tag ids, or the row sends both"
+      },
+      {
+        code: "item_locked",
+        means: "an upsert row changes the tags of a record its card has locked (as PUT refuses); a manager's unlock reopens it"
+      },
+      {
         code: "lookup_filtered_out",
         means: "the element is a strict lookup and the record is outside its filter (the collection schema gives filter and strict); itemIds names the refused ids \u2014 choose a record the filter offers (list them with the filter in ?q=). A record the item already holds always saves"
       },
@@ -13969,6 +13988,10 @@ var contract_snapshot_default = {
         means: "private items are not allowed on that card, or the caller may not flip visibility"
       },
       {
+        code: "private_tag_not_allowed",
+        means: "a tags entry is a private tag: only its owner sees it and it is never on an item, so a row carries collection tags only"
+      },
+      {
         code: "ref_unresolved",
         means: "a $ref matched no readable item, or its target row failed earlier in the request"
       },
@@ -13977,12 +14000,32 @@ var contract_snapshot_default = {
         means: "the reference resolves to an item whose card the element does not accept"
       },
       {
+        code: "restricted_tag",
+        means: "the row adds, or takes off, a restricted tag, and only managers of the collection it belongs to may; a restricted tag the list leaves out is kept, not refused"
+      },
+      {
+        code: "rule_owned_tag",
+        means: "a tag a strict rule applies, and only the rule \u2014 a row cannot add it by hand"
+      },
+      {
         code: "session_required",
-        means: "the row sets or changes the account link on a card a group built from records reads, changes a field such a group's rule reads on a linked record so that its person could join, or changes a field such a rule reads through this record (a looked-up record's name, a record a total counts); only a signed-in person may \u2014 an API key or assistant cannot (re-sending the stored values is fine)"
+        means: "only a person signed in to keepr may make this change, never an API key or an assistant: the row adds or takes off a restricted tag (those decide who can see what; a restricted tag the list leaves out is kept), or sets or changes the account link on a card a group built from records reads, changes a field such a group's rule reads on a linked record so that its person could join, or changes a field such a rule reads through this record (a looked-up record's name, a record a total counts); only a signed-in person may \u2014 an API key or assistant cannot (re-sending the stored values is fine)"
       },
       {
         code: "source_invalid",
         means: "the effective source is malformed \u2014 most often an externalId with no system in effect"
+      },
+      {
+        code: "stale",
+        means: "somebody changed the item's tags while the row was being written, twice; nothing was written for it \u2014 send the row again"
+      },
+      {
+        code: "too_many_tags",
+        means: "the row would give the item more than 50 tags"
+      },
+      {
+        code: "unknown_tag",
+        means: "a tags or tagIds entry is not a tag this item can carry: a name or path that names no tag of this collection or the collection above it that the caller can read, or an id that is not one (one answer for every reason \u2014 missing, deleted, private, another collection's). keepr never creates a tag on a write"
       }
     ]
   },
@@ -14131,6 +14174,14 @@ var ContractCache = class {
    */
   get takesWouldCreate() {
     return Boolean(this.body.dryRun?.wouldCreate);
+  }
+  /**
+   * Whether an ingest row takes `tags` by name, path or id (tags T8). An
+   * older deployment answered a row carrying tags `tags_retired` (T1) or
+   * knew nothing of them, so rows carry `tags` only when this says so.
+   */
+  get takesTagNames() {
+    return Boolean(this.body.tags?.tags);
   }
   knowsScope(name) {
     const scopes = this.body.auth?.scopes;
@@ -22431,6 +22482,9 @@ function formatIngest(body, opts) {
         lines.push(`    ${where}${e.code ?? "error"}: ${e.message ?? ""}`);
         if (meaning)
           lines.push(`      -> ${meaning}`);
+        if (Array.isArray(e.candidates) && e.candidates.length) {
+          lines.push(`      could be: ${e.candidates.map((c) => `${Array.isArray(c.path) ? c.path.join("/") : c.path ?? "?"} (${c.tagId ?? "?"})`).join(", ")}`);
+        }
       }
     }
   }
@@ -22448,6 +22502,12 @@ function formatIngest(body, opts) {
     lines.push("", "NOTES \u2014 these rows were written, but:");
     for (const row of noted)
       lines.push(`  ${row.externalId ?? `row index ${row.index}`}: ${(row.notes ?? []).join("; ")}`);
+  }
+  const warned = (body.rows ?? []).filter((r) => r.status !== "failed" && r.warnings?.length);
+  if (warned.length) {
+    lines.push("", opts.dryRun ? "WARNINGS \u2014 these rows would be written, but:" : "WARNINGS \u2014 these rows were written, but:");
+    for (const row of warned)
+      lines.push(`  ${row.externalId ?? `row index ${row.index}`}: ${(row.warnings ?? []).map((w) => w.message ?? w.code).join("; ")}`);
   }
   if (opts.importId) {
     lines.push("", opts.dryRun ? `IMPORT ${opts.importId}: pass import_id "${opts.importId}" when you commit these rows, and on every later call of this same import, so keepr lists them as one.` : `IMPORT ${opts.importId}${wrote ? ` \u2014 if this import was a mistake, someone who manages "${opts.collectionName}" can undo it from the collection's Settings \u2192 Imports.` : ""} Pass import_id "${opts.importId}" on any further rows of this same import.`);
@@ -22495,7 +22555,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.3.5";
+var SERVER_VERSION = "0.4.0";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -23043,7 +23103,7 @@ function primaryDateText(pd) {
 }
 var schemaTool = {
   name: "keepr_schema",
-  description: "What a keepr collection accepts: its cards (record types), every element (field) on each, the data type each element wants, and which elements are written by the server and must never be sent. Call this before building any rows. Never guess a shape.",
+  description: "What a keepr collection accepts: its cards (record types), every element (field) on each, the data type each element wants, which elements are written by the server and must never be sent, and the tags its items can carry. Call this before building any rows. Never guess a shape.",
   inputSchema: {
     collection: external_exports.string().describe("Collection id, or its name. A name is matched exactly, then by unique substring; an ambiguous name is refused rather than guessed."),
     card: external_exports.string().optional().describe("Narrow to one card, by key or id."),
@@ -23101,6 +23161,9 @@ var schemaTool = {
       const sortedBy = primaryDateText(card.primaryDate);
       if (sortedBy)
         lines.push(`  Items sort by ${sortedBy}.`);
+      if (card.itemTags === "chosen" || card.itemTags === "every") {
+        lines.push(`  ${card.itemTags === "every" ? "Every item" : "Chosen items"} of this card can be used as tags. Find one with keepr_search (types: ["tags"]) and apply it by its id.`);
+      }
       const outElements = (card.elements ?? []).map((el) => {
         const serverAssigned = el.serverAssigned ?? Boolean(el.driven || el.sequence);
         const form = ctx.contract.formOf(el.dataType);
@@ -23187,6 +23250,7 @@ var schemaTool = {
         displayTemplate: title,
         primaryDate: card.primaryDate ?? null,
         allowPrivateItems: Boolean(card.allowPrivateItems),
+        ...card.itemTags ? { itemTags: card.itemTags, applyWhereReferenced: card.applyWhereReferenced !== false } : {},
         writable: !attest && target.writable,
         ...attest ? { notWritableReason: "attest", attest } : {},
         ...card.record ? { record: card.record } : {},
@@ -23204,6 +23268,30 @@ var schemaTool = {
         lines.push("", `SAVED FILTERS (ready-made queries the user already named): ${savedFilters.map((f) => `"${f.name}"`).join(", ")}`);
       }
     }
+    const tags = Array.isArray(body.tags) ? body.tags : null;
+    if (tags) {
+      if (!tags.length) {
+        lines.push("", "TAGS: this collection has none. keepr never creates a tag from here \u2014 if the person wants one, they add it in keepr.");
+      } else {
+        lines.push("", "TAGS \u2014 name them like this in a row's `tags` or keepr_update_item (the path, or the name when it is unique). keepr never creates a tag from here:");
+        for (const tag of tags) {
+          const bits = [];
+          if (tag.aliases?.length)
+            bits.push(`also: ${tag.aliases.join(", ")}`);
+          if (tag.restricted)
+            bits.push("restricted \u2014 only a manager, signed in to keepr, puts it on or takes it off; never from here");
+          if (tag.rule?.strict)
+            bits.push("applied by a rule only \u2014 never send it");
+          else if (tag.rule)
+            bits.push("a rule applies it too");
+          if (tag.inheritedFrom)
+            bits.push(`from "${tag.inheritedFrom.name}", the collection above`);
+          lines.push(`  ${tag.path ?? tag.name}${bits.length ? `  [${bits.join("; ")}]` : ""}`);
+          if (tag.description)
+            lines.push(`      ${tag.description}`);
+        }
+      }
+    }
     if (attestGated.length) {
       warnings.push(`These cards require a signed write and CANNOT be written by an API key: ${attestGated.join(", ")}. They have to be created in the web app.`);
     }
@@ -23219,6 +23307,7 @@ var schemaTool = {
         allowAttachments: body.collection?.allowAttachments ?? null
       },
       cards: outCards,
+      ...tags ? { tags } : {},
       writeContract: body.writeContract ?? null,
       savedFilters,
       warnings
@@ -23226,14 +23315,118 @@ var schemaTool = {
   }
 };
 
-// dist/src/tools/getItems.js
+// dist/src/tags.js
 var HEX24 = /^[0-9a-fA-F]{24}$/;
+function normalizeKey(raw) {
+  return String(raw ?? "").normalize("NFKC").toLowerCase().normalize("NFKC").replace(/\s+/gu, " ").trim();
+}
+function candidatesOf(vocabulary) {
+  const byId = new Map(vocabulary.map((t) => [t.id.toLowerCase(), t]));
+  return vocabulary.map((tag) => {
+    const chain = [tag];
+    const seen = /* @__PURE__ */ new Set([tag.id.toLowerCase()]);
+    let parent = tag.parentId ? String(tag.parentId).toLowerCase() : "";
+    for (let i = 0; parent && i < 6; i++) {
+      const up = byId.get(parent);
+      if (!up || seen.has(parent))
+        break;
+      seen.add(parent);
+      chain.unshift(up);
+      parent = up.parentId ? String(up.parentId).toLowerCase() : "";
+    }
+    const keys = chain.map((t) => /* @__PURE__ */ new Set([normalizeKey(t.name), ...(t.aliases ?? []).map(normalizeKey)]));
+    return { tag, keys, label: tag.path ?? chain.map((t) => t.name).join("/") };
+  });
+}
+function answers(candidate, segments) {
+  if (segments.length > candidate.keys.length)
+    return false;
+  for (let i = 1; i <= segments.length; i++) {
+    if (!candidate.keys[candidate.keys.length - i].has(segments[segments.length - i]))
+      return false;
+  }
+  return true;
+}
+function resolveTagNames(vocabulary, values) {
+  const candidates = candidatesOf(vocabulary);
+  const ids = [];
+  const problems = [];
+  for (const value of values) {
+    const raw = typeof value === "string" ? value.trim() : "";
+    if (!raw) {
+      problems.push(`${JSON.stringify(value)} is not a tag name, path or id.`);
+      continue;
+    }
+    if (HEX24.test(raw)) {
+      ids.push(raw.toLowerCase());
+      continue;
+    }
+    const segments = normalizeKey(raw).split("/").map((s) => s.trim());
+    const hits = segments.every(Boolean) ? candidates.filter((c) => answers(c, segments)) : [];
+    if (!hits.length) {
+      problems.push(`"${raw}" is not a tag in this collection. keepr never creates a tag from here \u2014 ask the person whether it should exist (they add it in keepr), or use one keepr_schema lists. An item used as a tag goes by its id (keepr_search with types: ["tags"]).`);
+    } else if (hits.length > 1) {
+      problems.push(`"${raw}" could be more than one tag: ${hits.map((c) => c.label).join(", ")}. Send the path or the id.`);
+    } else {
+      ids.push(hits[0].tag.id.toLowerCase());
+    }
+  }
+  return { ids, problems };
+}
+var lower = (v) => String(v ?? "").toLowerCase();
+function shownTags(item) {
+  const titles = {};
+  for (const [id, entry] of Object.entries(item?.tagTitles ?? {}))
+    titles[lower(id)] = entry;
+  const hand = (item?.tagIds ?? []).map(lower);
+  const rule = new Set((item?.tagAutoIds ?? []).map(lower));
+  const handSet = new Set(hand);
+  const order = [...hand, ...[...rule].filter((id) => !handSet.has(id))];
+  const tags = order.map((id) => {
+    const t = titles[id];
+    const appliedBy = handSet.has(id) && rule.has(id) ? "both" : rule.has(id) ? "rule" : "hand";
+    if (!t)
+      return { id, kind: null, name: null, appliedBy };
+    if (t.kind === "tag")
+      return { id, kind: "collection", name: t.name ?? null, appliedBy, ...t.restricted ? { restricted: true } : {} };
+    return { id, kind: "item", name: t.unavailable ? null : t.title ?? null, appliedBy, ...t.unavailable ? { unavailable: true } : {} };
+  });
+  const myTags = (item?.myTags ?? []).map((m) => {
+    const id = lower(m.tagId);
+    if (m.kind === "item") {
+      const t = titles[id];
+      return { id, kind: "item", name: t && !t.unavailable ? t.title ?? null : null, ...m.fromCollection ? { fromCollection: true } : {}, ...!t || t.unavailable ? { unavailable: true } : {} };
+    }
+    return { id, kind: "private", name: m.name ?? null, ...m.fromCollection ? { fromCollection: true } : {} };
+  });
+  return { tags, myTags };
+}
+function word(t, id) {
+  if (t.name)
+    return t.name;
+  return t.unavailable ? `(no longer available, ${id})` : `(a tag this key cannot name, ${id})`;
+}
+function tagsLine(shown) {
+  const parts = [];
+  if (shown.tags.length) {
+    parts.push(`tags: ${shown.tags.map((t) => `${word(t, t.id)}${t.appliedBy === "rule" ? " (by a rule)" : t.appliedBy === "both" ? " (by hand and by a rule)" : ""}`).join(", ")}`);
+  }
+  if (shown.myTags.length) {
+    parts.push(`my tags: ${shown.myTags.map((t) => `${word(t, t.id)}${t.fromCollection ? " (on the collection)" : ""}`).join(", ")}`);
+  }
+  return parts.join(" \xB7 ");
+}
+
+// dist/src/tools/getItems.js
+var HEX242 = /^[0-9a-fA-F]{24}$/;
 var API_LIST_MAX = 200;
 var IDS_MAX = 100;
 var EXPORT_MAX = 1e3;
+var IDS_NO_TAGS = "Fetching by ids returns elements only \u2014 no tags and no timestamps. Fetch one item_id, or list with q, to see an item's tags.";
+var EXPORT_TAG_IDS = "Past 200 items the bulk path gives tag ids without their names; list 200 or fewer, or fetch an item_id, to see the names.";
 var getItemsTool = {
   name: "keepr_get_items",
-  description: "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id. Use this when you know which collection to look in; use keepr_search when you do not.",
+  description: "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id. Each item comes with its tags by name (and your own private tags). Filter by tag with q, e.g. `tags = Urgent`. Use this when you know which collection to look in; use keepr_search when you do not.",
   inputSchema: {
     collection: external_exports.string().optional().describe("Collection id or name. Required unless you are fetching by item_id or ids."),
     card: external_exports.string().optional().describe("Narrow to one card type, by key or id."),
@@ -23249,7 +23442,7 @@ var getItemsTool = {
   },
   handler: async (args, ctx) => {
     if (typeof args.item_id === "string" && args.item_id) {
-      if (!HEX24.test(args.item_id))
+      if (!HEX242.test(args.item_id))
         return fail(`"${args.item_id}" is not an item id. An id is 24 hex characters.`);
       const res2 = await ctx.http.request({ path: `/api/items/${args.item_id}` });
       if (!res2.ok)
@@ -23258,7 +23451,7 @@ var getItemsTool = {
     }
     if (Array.isArray(args.ids) && args.ids.length) {
       const wanted = args.ids.map(String);
-      const bad = wanted.filter((id) => !HEX24.test(id));
+      const bad = wanted.filter((id) => !HEX242.test(id));
       if (bad.length)
         return fail(`These are not item ids (an id is 24 hex characters): ${bad.join(", ")}.`);
       if (wanted.length > IDS_MAX)
@@ -23269,6 +23462,8 @@ var getItemsTool = {
       const got = Array.isArray(res2.body) ? res2.body : [];
       const omitted = wanted.filter((id) => !got.some((i) => i._id === id));
       const lines2 = describeItems(got, got.length, false);
+      if (got.length)
+        lines2.push("", IDS_NO_TAGS);
       if (omitted.length) {
         lines2.push("", `NOT RETURNED (${omitted.length}): ${omitted.join(", ")}`, "These ids are not readable by this key \u2014 wrong id, deleted, or outside the key's allowlist. A short response from this endpoint is NOT an error, which is why they are named here.");
       }
@@ -23285,7 +23480,7 @@ var getItemsTool = {
     let cardId = null;
     if (args.card !== void 0 && args.card !== null && String(args.card).trim() !== "") {
       const ref = String(args.card).trim();
-      if (HEX24.test(ref))
+      if (HEX242.test(ref))
         cardId = ref;
       else {
         const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
@@ -23324,6 +23519,8 @@ var getItemsTool = {
       const items2 = Array.isArray(res2.body) ? res2.body.slice(0, limit) : [];
       const truncated = items2.length >= EXPORT_MAX;
       const lines2 = describeItems(items2, res2.totalCount ?? items2.length, truncated);
+      if (items2.some((i) => (i.tagIds?.length ?? 0) + (i.tagAutoIds?.length ?? 0) > 0))
+        lines2.push("", EXPORT_TAG_IDS);
       if (truncated)
         lines2.push("", `TRUNCATED at the export cap of ${EXPORT_MAX}. Narrow with \`q\` rather than paging \u2014 the export path does not paginate.`);
       return ok(lines2.join("\n"), { mode: "list", total: res2.totalCount ?? items2.length, returned: items2.length, truncated, items: items2.map(shape), collectionId: target.id });
@@ -23350,14 +23547,18 @@ var getItemsTool = {
 function shape(item) {
   if (!item)
     return null;
+  const { tags, myTags } = shownTags(item);
   return {
     id: item._id,
     displayValue: item.displayValue ?? null,
     cardId: item.card_id ?? null,
     externalId: item.source?.externalId ?? null,
     elements: item.elements ?? {},
-    tags: item.tags ?? [],
     ...item.notes ? { notes: item.notes } : {},
+    // Absent when the item has none: a read that carries no tag fields
+    // (the ids path) must not claim the item has no tags.
+    ...tags.length ? { tags } : {},
+    ...myTags.length ? { myTags } : {},
     createdAt: item.createdAt ?? null,
     updatedAt: item.updatedAt ?? null
   };
@@ -23368,7 +23569,8 @@ function describeItems(items, total, truncated) {
     return ["No items matched."];
   const lines = [`${real.length} of ${total} item${total === 1 ? "" : "s"}${truncated ? " (truncated)" : ""}:`];
   for (const item of real) {
-    lines.push(`  ${item._id}  ${item.displayValue ?? "(no title)"}${item.source?.externalId ? `  [externalId ${item.source.externalId}]` : ""}`);
+    const tags = tagsLine(shownTags(item));
+    lines.push(`  ${item._id}  ${item.displayValue ?? "(no title)"}${item.source?.externalId ? `  [externalId ${item.source.externalId}]` : ""}${tags ? `  \xB7 ${tags}` : ""}`);
   }
   return lines;
 }
@@ -23377,10 +23579,10 @@ function describeItems(items, total, truncated) {
 var PER_BUCKET_MAX = 50;
 var searchTool = {
   name: "keepr_search",
-  description: "Find something by text across every keepr collection this key can reach \u2014 collections, card types, and items. Use when you do not know where a thing lives. Once you know the collection, keepr_get_items is more precise.",
+  description: "Find something by text across every keepr collection this key can reach \u2014 collections, card types, items, and tags (tags by name, and items used as tags by title, with the id to apply them by). Use when you do not know where a thing lives. Once you know the collection, keepr_get_items is more precise.",
   inputSchema: {
     q: external_exports.string().min(2).describe("Text to look for. At least 2 characters. Matched as a case-insensitive substring, not a KQL query."),
-    types: external_exports.array(external_exports.enum(["collections", "cards", "items"])).optional().describe("Which buckets to search. All three by default."),
+    types: external_exports.array(external_exports.enum(["collections", "cards", "items", "tags"])).optional().describe('Which buckets to search \u2014 all four by default. Name some to narrow it: ["tags"] for tags alone (and items used as tags, with the id to apply them by), ["items"] for items alone.'),
     limit: external_exports.number().int().min(1).max(PER_BUCKET_MAX).optional().describe(`Results per bucket, default 10, max ${PER_BUCKET_MAX}.`)
   },
   handler: async (args, ctx) => {
@@ -23388,11 +23590,25 @@ var searchTool = {
     if (q.length < 2)
       return fail("Search needs at least 2 characters after trimming.");
     const limit = Math.min(Number(args.limit ?? 10), PER_BUCKET_MAX);
-    const types = Array.isArray(args.types) && args.types.length ? args.types.join(",") : void 0;
-    const res = await ctx.http.request({ path: "/api/search", query: { q, limit, types } });
-    if (!res.ok)
-      return failFromResponse(res, `searching for "${q}"`);
-    const body = res.body ?? { query: q };
+    const asked = Array.isArray(args.types) && args.types.length ? args.types : null;
+    const wantsTags = !asked || asked.includes("tags");
+    const plain = asked ? asked.filter((t) => t !== "tags") : null;
+    let body = { query: q };
+    if (!plain || plain.length) {
+      const res = await ctx.http.request({ path: "/api/search", query: { q, limit, types: plain ? plain.join(",") : void 0 } });
+      if (!res.ok)
+        return failFromResponse(res, `searching for "${q}"`);
+      body = res.body ?? { query: q };
+    }
+    let tagHits = [];
+    let moreTags = false;
+    if (wantsTags) {
+      const res = await ctx.http.request({ path: "/api/tags/search", query: { q, limit } });
+      if (!res.ok)
+        return failFromResponse(res, `searching tags for "${q}"`);
+      tagHits = res.body?.results ?? [];
+      moreTags = Boolean(res.body?.more);
+    }
     const collections = body.collections ?? [];
     const cards = body.cards ?? [];
     const items = body.items ?? [];
@@ -23415,12 +23631,24 @@ var searchTool = {
         lines.push(`  ${i._id}  ${truncate(title, 70)}  in ${byId.get(String(i.collection_id)) ?? i.collection_id}`);
       }
     }
+    if (tagHits.length) {
+      lines.push(lines.length ? "" : "", `TAGS (${tagHits.length}):`);
+      for (const hit of tagHits) {
+        const where = hit.collection ? `  in ${hit.collection.name ?? byId.get(String(hit.collection._id)) ?? hit.collection._id}` : "";
+        if (hit.kind === "item")
+          lines.push(`  ${hit.tag._id}  ${truncate(hit.tag.title ?? "(untitled)", 60)}  [an item used as a tag \u2014 apply it by this id]${where}`);
+        else if (hit.kind === "private")
+          lines.push(`  ${hit.tag._id}  ${(hit.tag.path ?? [hit.tag.name]).join("/")}  [your private tag \u2014 only you see it; it is not applied from here]`);
+        else
+          lines.push(`  ${hit.tag._id}  ${(hit.tag.path ?? [hit.tag.name]).join("/")}  [tag${hit.tag.restricted ? ", restricted" : ""}${hit.tag.rule?.strict ? ", applied by a rule only" : ""}]${where}`);
+      }
+    }
     if (!lines.length) {
       return ok(`Nothing matched "${q}".
 
-Search is a literal substring, not a fuzzy match and not KQL \u2014 a shorter or differently-spelled fragment may find it.`, { query: q, buckets: { collections: [], cards: [], items: [] }, truncated: false });
+Search is a literal substring, not a fuzzy match and not KQL \u2014 a shorter or differently-spelled fragment may find it.`, { query: q, buckets: { collections: [], cards: [], items: [], ...wantsTags ? { tags: [] } : {} }, truncated: false });
     }
-    const truncated = [collections.length, cards.length, items.length].some((n) => n >= limit);
+    const truncated = [collections.length, cards.length, items.length].some((n) => n >= limit) || moreTags;
     if (truncated)
       lines.push("", `At least one bucket hit the limit of ${limit} and this endpoint does not paginate. Narrow the text, or switch to keepr_get_items with a KQL filter.`);
     lines.push("", "NEXT: call keepr_schema for the collection you want, then keepr_get_items to read precisely.");
@@ -23429,7 +23657,15 @@ Search is a literal substring, not a fuzzy match and not KQL \u2014 a shorter or
       buckets: {
         collections: collections.map((c) => ({ id: c._id, name: c.name })),
         cards: cards.map((c) => ({ id: c._id, key: c.key ?? null, name: c.name, collectionId: c.collection_id ?? null })),
-        items: items.map((i) => ({ id: i._id, collectionId: i.collection_id ?? null, cardId: i.card_id ?? null }))
+        items: items.map((i) => ({ id: i._id, collectionId: i.collection_id ?? null, cardId: i.card_id ?? null })),
+        ...wantsTags ? {
+          tags: tagHits.map((h) => ({
+            id: h.tag._id,
+            kind: h.kind,
+            name: h.kind === "item" ? h.tag.title ?? null : (h.tag.path ?? [h.tag.name]).join("/"),
+            collectionId: h.collection?._id ?? null
+          }))
+        } : {}
       },
       truncated
     });
@@ -23451,12 +23687,12 @@ var PLACEHOLDER = /^<[^<>]{1,60}>$/;
 var IMPORT_ID = /^[A-Za-z0-9._-]{1,64}$/;
 var ingestTool = {
   name: "keepr_ingest",
-  description: "Write records into a keepr collection. ALWAYS call with dry_run: true first, show the user what it found, and only then commit with dry_run: false. Never invent a value: omit an element you have no data for rather than guessing. Element names come from keepr_schema.",
+  description: "Write records into a keepr collection. ALWAYS call with dry_run: true first, show the user what it found, and only then commit with dry_run: false. Never invent a value: omit an element you have no data for rather than guessing. Element names and tags come from keepr_schema.",
   writes: true,
   inputSchema: {
     collection: external_exports.string().describe("Collection id or name."),
     dry_run: external_exports.boolean().describe("REQUIRED, no default. true validates every row and writes nothing. Run true first, always."),
-    rows: external_exports.array(external_exports.custom()).min(1).describe("The records to write. Each is {card, elements, external_id?, created_at?, tags?, visibility?}. created_at is when the record was created in the system it comes from (YYYY-MM-DD, or a date-time with an offset) \u2014 only with an external_id, only from the source data, never guessed; it is kept as provenance, set once when the item is created."),
+    rows: external_exports.array(external_exports.custom()).min(1).describe("The records to write. Each is {card, elements, external_id?, created_at?, visibility?, tags?}. created_at is when the record was created in the system it comes from (YYYY-MM-DD, or a date-time with an offset) \u2014 only with an external_id, only from the source data, never guessed; it is kept as provenance, set once when the item is created. tags is the item's tags, by name or path (Parent/Child) as keepr_schema lists them, or by id \u2014 an item used as a tag goes by its id. keepr never creates a tag: a name that is not a tag there fails the row, so ask the person rather than inventing one. On an upsert tags replaces the item's tags: leave it out to keep them, [] takes them off."),
     mode: external_exports.enum(["create", "upsert"]).optional().describe("`create` (default) refuses a row whose external_id already exists, which is how a double-import is caught. `upsert` updates it instead, merging the elements you send over the stored ones."),
     source_system: external_exports.string().optional().describe('Namespaces your external ids so two imports never collide, e.g. "books-csv". Required if any row has an external_id.'),
     source_ref: external_exports.string().optional().describe("Where this data came from \u2014 a filename, a URL. Recorded on every row."),
@@ -23499,6 +23735,14 @@ var ingestTool = {
           problems.push(`row ${i}: element "${name}" is still the placeholder ${value.trim()}. Fill it in with the user's real value, or remove the key \u2014 an omitted element stays empty, a guessed one is a lie written into their records.`);
         }
       }
+      const tags = row.tags;
+      if (tags !== void 0 && tags !== null) {
+        if (!Array.isArray(tags) || tags.some((t) => typeof t !== "string" || !t.trim())) {
+          problems.push(`row ${i}: tags must be a list of tag names, paths or ids, e.g. ["Urgent", "Health/Digestive"].`);
+        } else if (tags.length && !ctx.contract.takesTagNames) {
+          problems.push(`row ${i}: carries tags, and this keepr does not take tags on rows yet \u2014 send the row without \`tags\`, and tell the user their tags cannot be kept this way yet.`);
+        }
+      }
       if (row.created_at !== void 0 && !row.external_id) {
         problems.push(`row ${i}: created_at needs an external_id \u2014 it is the date the record was created in the system its external_id comes from.`);
       }
@@ -23534,7 +23778,7 @@ var ingestTool = {
       const payload = {
         mode,
         dryRun,
-        items: batch.map(toApiRow),
+        items: batch.map((row) => toApiRow(row, ctx.contract.takesTagNames)),
         ...args.strict === false ? { strict: false } : {},
         ...args.source_system ? { source: { system: String(args.source_system), ...args.source_ref ? { ref: String(args.source_ref) } : {} } } : {},
         ...importId ? { importId } : {},
@@ -23621,12 +23865,15 @@ var ingestTool = {
     return result;
   }
 };
-function toApiRow(row) {
+function toApiRow(row, takesTags = true) {
   return {
     card: row.card,
     elements: row.elements,
-    ...row.tags?.length ? { tags: row.tags } : {},
     ...row.visibility ? { visibility: row.visibility } : {},
+    // Passed as given — keepr resolves the names (an empty list is a real
+    // instruction on an upsert: take the tags off). Never to a deployment
+    // whose contract does not take them.
+    ...takesTags && Array.isArray(row.tags) ? { tags: row.tags } : {},
     ...row.external_id || row.ref ? { source: {
       ...row.external_id ? { externalId: row.external_id } : {},
       ...row.ref ? { ref: row.ref } : {},
@@ -23671,58 +23918,119 @@ function mintImportId() {
 }
 
 // dist/src/tools/updateItem.js
-var HEX242 = /^[0-9a-fA-F]{24}$/;
+var HEX243 = /^[0-9a-fA-F]{24}$/;
 var updateItemTool = {
   name: "keepr_update_item",
-  description: 'Change specific elements on ONE existing keepr item, addressed by its id. Elements you do not mention are left alone. For bulk changes, or anything with an external_id, use keepr_ingest with mode: "upsert" instead.',
+  description: 'Change specific elements on ONE existing keepr item, or add and take off its tags, addressed by its id. Elements you do not mention are left alone. Name tags as keepr_schema lists them (a name, or a path like Health/Digestive) or by id; an item used as a tag goes by its id. keepr never creates a tag here: if the tag the person wants does not exist, ask them. A restricted tag (it decides who can see what) is added or taken off only by the person in keepr, never from here. For bulk changes, or anything with an external_id, use keepr_ingest with mode: "upsert" instead.',
   writes: true,
   inputSchema: {
     item_id: external_exports.string().describe("The item id \u2014 24 hex characters, from keepr_get_items or keepr_search."),
-    elements: external_exports.record(external_exports.unknown()).describe("Only the elements to change. Anything omitted keeps its stored value."),
-    tags: external_exports.array(external_exports.string()).optional().describe("Replaces the whole tag list when given."),
-    visibility: external_exports.enum(["shared", "private"]).optional()
+    elements: external_exports.record(external_exports.unknown()).optional().describe("Only the elements to change. Anything omitted keeps its stored value."),
+    visibility: external_exports.enum(["shared", "private"]).optional(),
+    tags_add: external_exports.array(external_exports.string()).optional().describe("Tags to add, by name, path (Parent/Child) or id. Tags already on the item stay."),
+    tags_remove: external_exports.array(external_exports.string()).optional().describe("Tags to take off, by name, path or id. Other tags stay.")
   },
   handler: async (args, ctx) => {
     const itemId = String(args.item_id ?? "");
-    if (!HEX242.test(itemId))
+    if (!HEX243.test(itemId))
       return fail(`"${itemId}" is not an item id. An id is 24 hex characters \u2014 get one from keepr_get_items.`);
     const elements = args.elements ?? {};
-    if (!Object.keys(elements).length)
-      return fail("No elements given. Name at least one element to change.");
+    const toAdd = Array.isArray(args.tags_add) ? args.tags_add : [];
+    const toRemove = Array.isArray(args.tags_remove) ? args.tags_remove : [];
+    const changesTags = toAdd.length > 0 || toRemove.length > 0;
+    if (!Object.keys(elements).length && !changesTags) {
+      return fail("Nothing to change. Name at least one element, or tags to add or take off.");
+    }
+    if (changesTags && args.visibility) {
+      return fail("Change visibility in its own call, not together with tags. Nothing was changed.");
+    }
     const before = await ctx.http.request({ path: `/api/items/${itemId}` });
     if (!before.ok)
       return failFromResponse(before, `reading item ${itemId} before updating it`);
     const storedElements = before.body?.elements ?? {};
-    const res = await ctx.http.request({
-      method: "PUT",
-      path: `/api/items/${itemId}`,
-      body: {
-        elements,
-        // NOT a parameter. See the file header.
-        merge: true,
-        ...Array.isArray(args.tags) ? { tags: args.tags } : {},
-        ...args.visibility ? { visibility: args.visibility } : {}
+    let after = null;
+    let tagIdsAdd = [];
+    let tagIdsRemove = [];
+    if (changesTags) {
+      const collectionId = String(before.body?.collection_id ?? "");
+      const schema = await ctx.http.request({ path: `/api/collections/${collectionId}/schema` });
+      if (!schema.ok)
+        return failFromResponse(schema, `reading the tags this item's collection has`);
+      if (!Array.isArray(schema.body?.tags)) {
+        return fail("This keepr does not list its tags to assistants yet, so tags cannot be changed from here. Nothing was changed \u2014 the person can change them in keepr.");
       }
-    });
-    ctx.noteWriteAttempt(res);
-    if (!res.ok) {
-      if (res.status === 403 && ctx.keyScope === "read")
-        return fail(ctx.readOnlyRefusal());
-      return failFromResponse(res, `updating item ${itemId}`);
+      const adds = resolveTagNames(schema.body.tags, toAdd);
+      const removes = resolveTagNames(schema.body.tags, toRemove);
+      const problems = [...adds.problems.map((p) => `tags_add: ${p}`), ...removes.problems.map((p) => `tags_remove: ${p}`)];
+      const both = adds.ids.filter((id) => removes.ids.includes(id));
+      if (both.length)
+        problems.push(`The same tag is both added and taken off (${both.join(", ")}).`);
+      if (problems.length) {
+        return fail(`NOTHING WAS CHANGED. ${problems.length === 1 ? "One tag" : `${problems.length} tags`} could not be matched:
+
+${problems.map((p) => `  ${p}`).join("\n")}`);
+      }
+      tagIdsAdd = [...new Set(adds.ids)];
+      tagIdsRemove = [...new Set(removes.ids)];
+      const restricted = restrictedAmong(schema.body.tags, [...tagIdsAdd, ...tagIdsRemove]);
+      if (restricted.length) {
+        return fail(`NOTHING WAS CHANGED. ${restricted.map((n) => `"${n}"`).join(", ")} ${restricted.length === 1 ? "is a restricted tag" : "are restricted tags"}: ${restricted.length === 1 ? "it decides" : "they decide"} who can see what, so only the person, signed in to keepr, can add ${restricted.length === 1 ? "it" : "them"} to an item or take ${restricted.length === 1 ? "it" : "them"} off \u2014 an assistant never can. Ask them to do it in keepr.`);
+      }
+      const res = await ctx.http.request({
+        method: "POST",
+        path: "/api/items/bulk",
+        body: {
+          collection_id: collectionId,
+          // NOT a parameter. See the file header.
+          merge: true,
+          rows: [{
+            _id: itemId,
+            ...Object.keys(elements).length ? { elements } : {},
+            ...tagIdsAdd.length ? { tagIdsAdd } : {},
+            ...tagIdsRemove.length ? { tagIdsRemove } : {}
+          }]
+        }
+      });
+      ctx.noteWriteAttempt(res);
+      if (!res.ok) {
+        if (res.status === 403 && ctx.keyScope === "read")
+          return fail(ctx.readOnlyRefusal());
+        return rowRefusal(res, itemId, ctx) ?? failFromResponse(res, `updating item ${itemId}`);
+      }
+      const fresh = await ctx.http.request({ path: `/api/items/${itemId}` });
+      after = fresh.ok ? fresh.body : null;
+    } else {
+      const res = await ctx.http.request({
+        method: "PUT",
+        path: `/api/items/${itemId}`,
+        body: {
+          elements,
+          // NOT a parameter. See the file header.
+          merge: true,
+          ...args.visibility ? { visibility: args.visibility } : {}
+        }
+      });
+      ctx.noteWriteAttempt(res);
+      if (!res.ok) {
+        if (res.status === 403 && ctx.keyScope === "read")
+          return fail(ctx.readOnlyRefusal());
+        return failFromResponse(res, `updating item ${itemId}`);
+      }
+      after = res.body;
     }
-    const after = res.body?.elements ?? {};
+    const afterElements = after?.elements ?? {};
     const changed = [];
     const unchanged = [];
     for (const name of Object.keys(elements)) {
       const from = storedElements[name];
-      const to = after[name];
+      const to = afterElements[name];
       if (JSON.stringify(from) === JSON.stringify(to))
         unchanged.push(name);
       else
         changed.push({ element: name, from: from ?? null, to: to ?? null });
     }
     const preserved = Object.keys(storedElements).filter((k) => !(k in elements)).length;
-    const lines = [`Updated "${res.body?.displayValue ?? itemId}".`];
+    const lines = [`Updated "${after?.displayValue ?? before.body?.displayValue ?? itemId}".`];
     if (changed.length) {
       lines.push("", "CHANGED:");
       for (const c of changed)
@@ -23730,16 +24038,45 @@ var updateItemTool = {
     }
     if (unchanged.length)
       lines.push("", `Already had that value: ${unchanged.join(", ")}.`);
-    lines.push("", `${preserved} other element${preserved === 1 ? "" : "s"} on this item ${preserved === 1 ? "was" : "were"} left untouched.`);
+    let tags = null;
+    if (changesTags) {
+      tags = shownTags(after);
+      if (tagIdsAdd.length)
+        lines.push("", `Tags added: ${toAdd.join(", ")}.`);
+      if (tagIdsRemove.length)
+        lines.push("", `Tags taken off: ${toRemove.join(", ")}.`);
+      lines.push("", tags.tags.length || tags.myTags.length ? `The item now carries ${tagsLine(tags)}.` : "The item now carries no tags.");
+    }
+    if (Object.keys(elements).length || !changesTags) {
+      lines.push("", `${preserved} other element${preserved === 1 ? "" : "s"} on this item ${preserved === 1 ? "was" : "were"} left untouched.`);
+    }
     return ok(lines.join("\n"), {
       itemId,
-      displayValue: res.body?.displayValue ?? null,
+      displayValue: after?.displayValue ?? null,
       changed,
       unchanged,
-      preserved
+      preserved,
+      ...changesTags ? { tagIdsAdded: tagIdsAdd, tagIdsRemoved: tagIdsRemove, tags: tags?.tags ?? [], myTags: tags?.myTags ?? [] } : {}
     });
   }
 };
+function rowRefusal(res, itemId, ctx) {
+  if (errorCode(res.body) !== "rows_invalid")
+    return null;
+  const rows = res.body?.rows ?? [];
+  const lines = [`NOTHING WAS CHANGED \u2014 keepr refused the update of item ${itemId}:`];
+  for (const e of rows) {
+    lines.push(`  ${e.element ? `${e.element}  ` : ""}${e.code ?? "error"}: ${e.message ?? ""}`);
+    const meaning = ctx.contract.meaningOf(e.code);
+    if (meaning)
+      lines.push(`    -> ${meaning}`);
+  }
+  return fail(lines.join("\n"), { ok: false, status: res.status, code: "rows_invalid", errors: rows, requestId: res.requestId });
+}
+function restrictedAmong(vocabulary, ids) {
+  const wanted = new Set(ids.map((id) => id.toLowerCase()));
+  return vocabulary.filter((t) => t.restricted === true && wanted.has(String(t.id).toLowerCase())).map((t) => t.path ?? t.name);
+}
 function fmt(v) {
   if (v === null || v === void 0 || v === "")
     return "(empty)";
@@ -23853,7 +24190,7 @@ async function planParents(cards, target, ctx) {
 }
 var SYSTEM_COLUMNS = ["title", "primaryDate", "updatedAt", "createdAt", "sourceCreatedAt", "tags", "owner"];
 var localIdOf = (s) => String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64) || "card";
-function buildBlueprint(cards, filters = [], layouts = []) {
+function buildBlueprint(cards, filters = [], layouts = [], tags = []) {
   const problems = [];
   const used = /* @__PURE__ */ new Set();
   const localIds = cards.map((c) => {
@@ -23917,6 +24254,49 @@ function buildBlueprint(cards, filters = [], layouts = []) {
       const own = new Set((idx >= 0 ? cards[idx].elements ?? [] : []).map((el) => el.name));
       const columns = (Array.isArray(l.columns) ? l.columns : []).map((col) => typeof col === "string" ? !own.has(col) && SYSTEM_COLUMNS.includes(col) ? { system: col } : { element: col } : col);
       return { kind: "table", scope: "card", cardRef: { ref: idx >= 0 ? localIds[idx] : localIdOf(l.card) }, body: { columns, ...l.sort ? { sort: l.sort } : {} } };
+    });
+  }
+  if (tags.length) {
+    const usedTags = /* @__PURE__ */ new Set();
+    const tagLocal = tags.map((t) => {
+      const base = localIdOf(t.name).replace(/^card$/, "tag").slice(0, 52);
+      let id = `tag-${base}`;
+      for (let n = 2; usedTags.has(id); n += 1)
+        id = `tag-${base}-${n}`;
+      usedTags.add(id);
+      return id;
+    });
+    const tagIndexOf = (name) => tags.findIndex((t) => norm2(t.name) === norm2(name));
+    collection.tags = tags.map((t, i) => {
+      if (!t?.name)
+        problems.push(`tag ${i}: no name.`);
+      const parentIdx = t?.parent ? tagIndexOf(t.parent) : -1;
+      if (t?.parent && parentIdx < 0)
+        problems.push(`tag "${t.name}": its parent "${t.parent}" is not a tag in this proposal \u2014 a proposal nests only the tags it makes.`);
+      let rule;
+      if (t?.rule) {
+        if (!t.rule.card)
+          problems.push(`tag "${t.name}": its rule needs the card whose items it tags.`);
+        rule = {
+          cardRef: refFor(t.rule.card),
+          ...t.rule.where !== void 0 ? { where: t.rule.where } : {},
+          ...t.rule.match ? { match: t.rule.match } : {},
+          ...t.rule.strict !== void 0 ? { strict: t.rule.strict } : {},
+          ...Array.isArray(t.rule.related) && t.rule.related.length ? {
+            related: t.rule.related.map(({ card: relatedCard, ...rest }) => ({ ...rest, cardRef: refFor(relatedCard) }))
+          } : {}
+        };
+      }
+      return {
+        localId: tagLocal[i],
+        name: t?.name,
+        ...t?.description ? { description: t.description } : {},
+        ...t?.color ? { color: t.color } : {},
+        ...t?.icon ? { icon: t.icon } : {},
+        ...Array.isArray(t?.aliases) && t.aliases.length ? { aliases: t.aliases } : {},
+        ...parentIdx >= 0 ? { parentRef: { ref: tagLocal[parentIdx] } } : {},
+        ...rule ? { rule } : {}
+      };
     });
   }
   if (problems.length)
@@ -24091,6 +24471,7 @@ var proposeCardTool = {
     cards: external_exports.array(external_exports.custom()).min(1).optional().describe('NEW cards to propose, checked by keepr and created all or nothing: {name, key?, description?, icon?, color?, displayTemplate?, parentCardKey?, elementSets?: [set keys], options?: {primaryDate\u2026}, elements:[{name, label?, dataType, options?, lookupCardKey?, sourceCardKey?}]}. `parentCardKey` makes the card inherit a parent\'s elements. `lookupCardKey` is the card a card-lookup element points at (a global card the collection does not have yet is added to it, which needs a key with write); `sourceCardKey` the card a rollup (options.drivenFrom) reads from. Each names a card by key or name: another card in THIS proposal (the card itself too \u2014 a lookup to its own kind), a card the collection has, or a global card. `displayTemplate` titles the items, e.g. "{{kpr}} {{title}}". Not with `change`.'),
     filters: external_exports.array(external_exports.custom()).optional().describe('With `cards`: filters to save for the whole collection, e.g. {name: "Ready", query: "card = task and status = ready", sort_field: "priority", sort_direction: "asc"}. The query is KQL. Needs a key with write as well as Can change cards.'),
     layouts: external_exports.array(external_exports.custom()).optional().describe('With `cards`: a table layout for a card in this proposal \u2014 which columns its list shows, in order: {card: "task", columns: ["kpr", "title", "status"]}. System columns: title, primaryDate, updatedAt, createdAt, tags, owner.'),
+    tags: external_exports.array(external_exports.custom()).optional().describe('With `cards`: NEW tags for the collection, e.g. {name: "Late", parent?: "Work", color?, icon?, description?, aliases?}, each optionally applied by a rule: rule: {card: "task" (key or name, like lookupCardKey), where?: "status = open and due < today", match?: "all" | "any", strict?: true (only the rule applies it), related?: [{card, link, aggregate, op, value, filter?, window?, of?, whenNone?}]}. Every rule arrives PAUSED: it tags nothing until the user resumes it in keepr (Settings \u2192 Tags), and the proposal says what it would tag. `parent` names another tag in this list. Filters and rules name tags by name ("tags = Late"). Needs a key with write as well as Can change cards.'),
     change: external_exports.custom().optional().describe("A change to ONE existing card: {card (key or id), name?, description?, icon?, color?, displayTemplate?, parentCardKey? (null removes the parent), elementSets? (the whole list, by key), options?, elements?: [{name, label?, dataType?, options?}], remove_elements?: [names]}. Elements you name are merged onto the stored ones; a name the card does not have is added (and needs a dataType); every element you do not mention is kept exactly as it is. An element is removed ONLY by naming it in remove_elements. Not with `cards`.")
   },
   handler: async (args, ctx) => {
@@ -24107,7 +24488,8 @@ var proposeCardTool = {
       return fail(ctx.cardsRefusal());
     return hasChange ? proposeChange(args.change, target, ctx) : proposeCreate(args.cards ?? [], target, ctx, {
       filters: args.filters,
-      layouts: args.layouts
+      layouts: args.layouts,
+      tags: args.tags
     });
   }
 };
@@ -24115,9 +24497,10 @@ async function proposeCreate(cards, target, ctx, extras = {}) {
   const blueprints = !ctx.contract.isLive || ctx.contract.hasEndpoint("blueprintPreview");
   const filters = Array.isArray(extras.filters) ? extras.filters : [];
   const layouts = Array.isArray(extras.layouts) ? extras.layouts : [];
+  const tags = Array.isArray(extras.tags) ? extras.tags : [];
   if (!blueprints) {
-    if (filters.length || layouts.length) {
-      return fail("This keepr deployment cannot create filters or layouts together with new cards. Propose the cards alone; the user can add filters and layouts in the web app. Nothing was sent to keepr.");
+    if (filters.length || layouts.length || tags.length) {
+      return fail("This keepr deployment cannot create filters, layouts or tags together with new cards. Propose the cards alone; the user can add them in the web app. Nothing was sent to keepr.");
     }
     return proposeCreateOneByOne(cards, target, ctx);
   }
@@ -24127,7 +24510,7 @@ async function proposeCreate(cards, target, ctx, extras = {}) {
 
 ${local.map((p) => `  ${p}`).join("\n")}`, { validation: { ok: false, problems: local } });
   }
-  const built = buildBlueprint(cards, filters, layouts);
+  const built = buildBlueprint(cards, filters, layouts, tags);
   if (!built.ok) {
     return fail(`This card spec cannot be created \u2014 nothing was sent to keepr:
 
@@ -24180,6 +24563,13 @@ ${problems.map((p) => `  ${p.path ?? ""}: ${p.message ?? ""}${p.code ? ` (${p.co
   const layoutSteps = steps.filter((s) => s.kind === "layout");
   if (layoutSteps.length)
     lines.push("", `LAYOUTS: ${layoutSteps.map((s) => `${s.layoutKind} for ${describeRef(s.card, nameOfLocal, target.name)}`).join(", ")}`);
+  const tagSteps = steps.filter((s) => s.kind === "tag");
+  if (tagSteps.length)
+    lines.push("", `TAGS: ${tagSteps.map((s) => `"${s.name}"`).join(", ")}`);
+  const ruleSteps = steps.filter((s) => s.kind === "tagRule");
+  if (ruleSteps.length) {
+    lines.push("", `APPLIED BY A RULE (arrives PAUSED \u2014 tags nothing until the user resumes it in keepr): ${ruleSteps.map((s) => `"${s.name}" on ${describeRef(s.card, nameOfLocal, target.name)}${s.strict ? ", only the rule applies it" : ""}`).join("; ")}`);
+  }
   lines.push("", "A card is SCHEMA: it changes the shape of the user's data, and this tool set cannot delete one.", "", `NEXT: if the user agrees, call keepr_apply_card with proposal_token "${proposal.token}" and confirm_collection_name "${target.name}". The token is good for 30 minutes and can be used once. The apply is all or nothing.`);
   return ok(lines.join("\n"), {
     kind: "create",
@@ -24190,6 +24580,8 @@ ${problems.map((p) => `  ${p.path ?? ""}: ${p.message ?? ""}${p.code ? ` (${p.co
     filters: filterSteps.map((s) => s.name),
     layouts: layoutSteps.map((s) => ({ kind: s.layoutKind, card: s.card })),
     members: memberSteps.map((s) => ({ key: s.key ?? null, name: s.name ?? "" })),
+    tags: tagSteps.map((s) => s.name),
+    rules: ruleSteps.map((s) => ({ tag: s.name, card: s.card, strict: !!s.strict, paused: true })),
     summary: body.summary ?? [],
     validation: { ok: true, problems: [] }
   });
@@ -24580,6 +24972,15 @@ async function applyBlueprint(proposal, ctx) {
     lines.push("", `LAYOUTS: ${out.layouts.map((l) => `${l.kind} for ${cards.find((c) => c.id === l.cardId)?.name ?? l.cardId}`).join(", ")}`);
   if (out.members?.length)
     lines.push("", `ADDED TO THE COLLECTION: ${out.members.map((m) => `${m.name} (${m.key}), a global card`).join(", ")}`);
+  if (out.tags?.length)
+    lines.push("", `TAGS: ${out.tags.map((t) => `"${t.name}"`).join(", ")}`);
+  if (out.rules?.length) {
+    lines.push("", "APPLIED BY A RULE, PAUSED \u2014 nothing is tagged until the user resumes each in keepr (Settings \u2192 Tags):");
+    for (const r of out.rules) {
+      const p = r.preview;
+      lines.push(`  "${r.name}"${p && typeof p.matching === "number" ? ` would tag ${p.matching}${p.complete === false ? "+" : ""} of ${p.total} item${p.total === 1 ? "" : "s"} now` : ""}`);
+    }
+  }
   lines.push("", "Use the keys above when writing rows.");
   lines.push("", "NEXT: call keepr_schema to see the cards as stored, then keepr_ingest with dry_run: true.");
   return ok(lines.join("\n"), {
@@ -24589,6 +24990,8 @@ async function applyBlueprint(proposal, ctx) {
     filters: out.filters ?? [],
     layouts: out.layouts ?? [],
     members: out.members ?? [],
+    tags: out.tags ?? [],
+    rules: out.rules ?? [],
     collectionId: proposal.collectionId
   });
 }
@@ -24638,7 +25041,7 @@ async function applyChange(proposal, args, ctx) {
 // dist/src/tools/attach.js
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
-var HEX243 = /^[0-9a-fA-F]{24}$/;
+var HEX244 = /^[0-9a-fA-F]{24}$/;
 var MAX_INLINE_BYTES = 1e6;
 var REFUSED_EXT = /* @__PURE__ */ new Set([
   "exe",
@@ -24682,7 +25085,7 @@ var attachFileTool = {
       }
       itemId = found.itemId;
     }
-    if (!HEX243.test(itemId)) {
+    if (!HEX244.test(itemId)) {
       return fail("No item given. Pass item_id (24 hex characters), or external_id from a committed keepr_ingest run in this session.");
     }
     const files = args.files ?? [];

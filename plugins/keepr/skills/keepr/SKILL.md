@@ -16,6 +16,7 @@ keepr's vocabulary, because everything below uses it:
 | **card** | a record *type* — its elements are the fields. "Book", "Expense", "Progress note". |
 | **item** | one record of a card. One book, one expense. |
 | **element** | one field on a card, with a data type the API enforces. |
+| **tag** | a label on an item, from the collection's own list (`schema` shows it). Never invented. |
 
 You never guess at any of this: **the collection tells you what it accepts.**
 
@@ -138,7 +139,7 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This is keepr skill **2.1.5**. keepr moves faster than any copy of it, so:
+This is keepr skill **2.2.0**. keepr moves faster than any copy of it, so:
 
 - Every command names this copy to keepr and, once a day, asks whether a newer
   release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
@@ -149,7 +150,7 @@ This is keepr skill **2.1.5**. keepr moves faster than any copy of it, so:
   then tell the person in one sentence. When it gives steps instead, pass them
   on in one short sentence. Once per conversation, never in place of an answer.
 - Working through the MCP tools, `keepr_collections` reports the latest keepr
-  skill. When it is newer than **2.1.5**, tell the person once that their keepr
+  skill. When it is newer than **2.2.0**, tell the person once that their keepr
   skill is out of date, with this link:
   https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this

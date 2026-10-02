@@ -59,6 +59,16 @@ write as well) and table layouts for cards in the spec
 carry `icon`, `color`, `displayTemplate` (`"{{kpr}} {{title}}"`),
 `elementSets` (set keys) and `options` (`primaryDate`…).
 
+A spec may also bring **new tags** — `"tags": [{ "name": "Work" }, { "name":
+"Late", "parent": "Work", "rule": { "card": "task", "where": "status = open" }
+}]` (`tags` on `keepr_propose_card`). A tag with a `rule` is applied
+automatically to the items of that card the rule holds for — but it arrives
+**paused**: nothing is tagged until the person resumes it in keepr (Settings →
+Tags), and the proposal and the apply say so, with how many items it would tag.
+Say that to the user in those words. `parent` names another tag in the spec;
+filters name tags by name. Only tags the user asked for; the key needs write as
+well.
+
 One card, for example:
 
 ```json

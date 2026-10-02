@@ -77,7 +77,12 @@ better thing to hand a model composing rows.
         { "name": "shelf", "dataType": "card-lookup", "lookupCardKey": "shelf", "allowMultiple": false },
         { "name": "added", "dataType": "date", "driven": true }
       ],
+      "itemTags": "off",               // "chosen" | "every": this card's items are used as tags here
       "jsonSchema": { "type": "object", "properties": { … }, "additionalProperties": false } }
+  ],
+  "tags": [                            // the collection's tags — the only ones a row may name
+    { "id": "…", "name": "Sci-fi", "path": "Genre/Sci-fi", "parentId": "…",
+      "restricted": false, "rule": null, "aliases": ["SF"] }
   ],
   "writeContract": { "maxBatch": 200, "idempotency": "source.externalId", "strictDefault": true,
                      "ingestPath": "/api/collections/<id>/ingest" }
@@ -87,6 +92,18 @@ better thing to hand a model composing rows.
 Nothing is cached server-side — ask right before you write. A card marked
 `driven` on an element means the platform owns that value; sending one fails
 the row.
+
+**`tags`** is the collection's tag vocabulary: its own tags, then the ones of
+the collection above it (marked `inheritedFrom`), as far as this key may see
+them. `path` is how to name a tag that shares its name with another
+(`Genre/Sci-fi`). `restricted: true` — it decides who can see what: only a
+manager, signed in to keepr, puts it on or takes it off (a key never can:
+`session_required`), and a collection may put it on new items of chosen cards
+by itself. `rule: { "strict": true }` — a rule applies it and nothing else may; never
+send it. **Items used as tags are never listed** (their names are their items'
+titles): a card with `itemTags` other than `off` has them, and
+`GET /api/tags/search?q=` (below) finds one by title, to send by id. Private
+tags are never listed either — no item carries one.
 
 The schema lists the collection's member cards whatever the key's scope, so a
 read-only key uses it too: for element names to query on, the title element,
@@ -119,10 +136,22 @@ filter — not the page — is the **`X-Total-Count`** header, which is where
   { "_id": "66b2…", "collection_id": "65a1…", "card_id": "75a1…",
     "elements": { "title": "Dune", "author": "Frank Herbert", "rating": 5, "read-on": "2026-01-10" },
     "displayValue": "Dune",              // the item's title, server-computed
-    "tags": ["scifi"], "notes": "…",     // notes only when the card's Notes field is on
+    "notes": "…",                        // only when the card's Notes field is on
+    "tagIds": ["…"],                     // tags applied by hand (absent when none)
+    "tagAutoIds": ["…"],                 // tags a rule applied (absent when none)
+    "tagTitles": { "<tagId>": { "kind": "tag", "name": "Sci-fi", "restricted": false },
+                   "<itemTagId>": { "title": "Mom", "item_id": "…" } },   // what each is called, as far as this key may see
+    "myTags": [ { "tagId": "…", "kind": "tag", "name": "To reread" } ],   // the key owner's own private tags
     "owner": "…", "createdAt": "2026-01-11T00:00:00.000Z", "updatedAt": "2026-01-12T00:00:00.000Z" }
 ]
 ```
+
+Tags are ids on the item; `tagTitles` names them. A collection tag's entry is
+`{ kind: "tag", name }`; an item used as a tag is `{ title }` — or
+`{ unavailable: true }` when this key can no longer read that item. An id with
+no entry is a tag this key cannot see the name of. `myTags` are the key
+owner's own private tags (only they see them; `fromCollection: true` when the
+tag is on the collection rather than the item).
 
 A `measurement` element's value is `{ "value": 8.4375, "unit": "lb-oz", "base": 3.8272 }`;
 a `currency`'s is `{ "amount": 1250, "currency": "USD" }` — amount in **minor
@@ -145,7 +174,7 @@ A single fetch returns the item above, or **404** when it is missing or not
 readable by this key — the two are indistinguishable on purpose.
 
 The batch form returns the **readable subset**, projected to `_id`,
-`collection_id`, `card_id` and `elements` (no `displayValue`, no timestamps),
+`collection_id`, `card_id` and `elements` (no `displayValue`, no timestamps, no tags),
 in no promised order. Missing, invalid and unreadable ids are **silently
 omitted**; the cap is **100 ids** and extras are ignored. A short answer is
 therefore "not readable by this key", never "deleted", and never a reason to
@@ -165,15 +194,28 @@ curl -s -H "Authorization: Bearer $KEEPR_API_KEY" \
 | `limit` | per bucket, default 20, max 50. No pagination — search is a jump-off, not a listing |
 
 Each bucket uses exactly the read scope of its own list endpoint. Items are
-matched on `tags`, `notes` and text-bearing element values; the response has
+matched on `notes` and text-bearing element values; the response has
 every bucket, empty when not searched:
 
 ```jsonc
 { "query": "blue bottle",
   "collections": [ { "_id", "name", "status", "myAccess" } ],
   "cards":       [ { "_id", "name", "key", "description", "scope", "collection_id" } ],
-  "items":       [ { "_id", "collection_id", "card_id", "elements", "tags", "notes" } ] }
+  "items":       [ { "_id", "collection_id", "card_id", "elements", "notes" } ] }
 ```
+
+Tags have their own search:
+
+```bash
+curl -s -H "Authorization: Bearer $KEEPR_API_KEY" \
+  "https://api.keepr.cloud/api/tags/search?q=mom&collection_id=<collectionId>"
+```
+
+`{ "results": [ { "kind": "private" | "collection" | "item", "tag": { "_id", "name"?, "path"?, "title"? }, "collection"? } ], "more": false }`
+— your private tags, collection tags by name or alias, and **items used as
+tags by their item's title** (`kind: "item"`, `tag.title`): that `tag._id` is
+what a row's `tags` sends to apply one. `collection_id` narrows it to that
+collection (its tags and the ones above it; its items and its sub-collections'); `limit` (max 50) and `skip` page it.
 
 ## 3. Write rows
 
@@ -189,7 +231,6 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
     "items": [
       { "card": "book",
         "elements": { "title": "Piranesi", "author": "Susanna Clarke", "rating": 5 },
-        "tags": ["imported"],
         "source": { "externalId": "978-1-63557-563-4" } }
     ]
   }'
@@ -202,6 +243,17 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
 | `strict` | default `true`: an unknown or driven element name fails the row. `false` drops it silently |
 | `source.system` | namespaces your external ids; required if any row carries an `externalId` |
 | `items` | 1–200 rows, 5 MB per call |
+
+A row may carry **`tags`** — the item's tags, by name, alias, path
+(`Genre/Sci-fi`) or id, from the schema's `tags`; an item used as a tag goes by
+its id. keepr resolves them and **never creates a tag**: a name that is not a
+tag there fails the row (`unknown_tag`), one that could be two tags fails with
+`ambiguous_tag` and its `candidates`, and a private tag fails with
+`private_tag_not_allowed`. On an upsert the list replaces the item's tags —
+leave `tags` out to keep them, `[]` takes them off — except that a restricted
+tag is always kept. A row that adds or takes off a restricted tag fails with
+`session_required`: only the person, in keepr, may. A row that succeeded but left a tag off (it
+was deleted meanwhile) carries `warnings: [{ "code": "tag_dropped", … }]`.
 
 **Always 200.** Read the rows, not the status code:
 
@@ -239,7 +291,10 @@ descendant of it), and must be readable by this key.
 
 A lookup may carry a `filter` in the schema: KQL over the target card's items
 (`status = active`) that the picker offers first. To list what it offers, AND
-it into `?q=` when you read the target's items. With `strict: true` a record
+it into `?q=` and send `q_stored=true` when you read the target's items: the
+list then reads the filter exactly as the strict gate does (a tag by its id, a
+term naming something since removed matching nothing), so name a tag in your
+own terms there by its id too. With `strict: true` a record
 outside the filter is refused (`lookup_filtered_out`, with `itemIds`); without
 it any record of the card is accepted. A value the item already holds always
 saves, even if it has since left the filter.
@@ -313,6 +368,16 @@ one in the blueprint (itself too), `{ "key": "work-item" }` for one the
 collection has, `{ "globalKey": "person" }` for a global card — as `parentRef`,
 an element's `options.lookupCardId`, a rollup's `options.drivenFrom.sourceCardId`,
 a layout's `cardRef`. `keepr.py create-card` builds it for you.
+
+A blueprint may also bring **new tags** (keepr 2.2): `"collection": { "tags":
+[{ "localId": "late", "name": "Late", "parentRef"?: { "ref": "<another tag's
+localId>" }, "color"?, "icon"?, "rule"?: { "cardRef": REF, "where": "status =
+open", "strict"?: false } }] }` — each optionally **applied by a rule**. Every
+rule arrives **paused**: it tags nothing until the person resumes it in keepr
+(Settings → Tags), and the apply answers `rules[{ name, enabled: false,
+preview: { total, matching } }]`, what each would tag. Filters and rules name
+tags by name. The key needs `write` as well as `cards` for tags. A blueprint tag
+is never restricted.
 
 ## 6a. Change a card — preview first, then PATCH
 
@@ -468,12 +533,21 @@ names the failing rule. Row errors arrive inside a 200.
 | `ref_unresolved` | a `$ref` matched nothing — or its target row failed | order parents first; check the system matches |
 | `ref_wrong_card` | the target is the wrong card type for that element | link to the card the element expects |
 | `lookup_not_found` | a plain id isn't a readable item of this collection | wrong id, or not readable by this key |
-| `lookup_filtered_out` | the element is a strict lookup (`strict: true`, with a `filter` in the schema) and the record is outside its filter; `itemIds` names the refused ids | choose a record the filter offers (read the target's items with the filter in `?q=`), or ask the user — never drop the value silently |
+| `lookup_filtered_out` | the element is a strict lookup (`strict: true`, with a `filter` in the schema) and the record is outside its filter; `itemIds` names the refused ids | choose a record the filter offers (read the target's items with the filter in `?q=` and `q_stored=true`), or ask the user — never drop the value silently |
 | `private_not_allowed` | private items aren't allowed on that card | drop `visibility` |
 | `account_already_linked` | another item already links that account | the identity is taken |
+| `unknown_tag` | a tag name that is not a tag of this collection (or the one above it), or an id that is not one this item can carry — keepr never creates a tag | use a tag the schema lists; if the person wants a new one, ask them to add it in keepr — never invent one |
+| `ambiguous_tag` | a tag name that could be more than one tag; `candidates` lists each one's `tagId` and `path` | send the path (`Genre/Sci-fi`) or the id |
+| `private_tag_not_allowed` | a private tag — only its owner sees it, and no item carries one | leave it out; private tags are applied in keepr |
+| `restricted_tag` | adds (or takes off) a restricted tag, which only the collection's managers may | leave it out, or have a manager apply it |
+| `session_required` | a change only a person signed in to keepr may make, never a key: adding (or taking off) a restricted tag — those decide who can see what —, linking an account on a card a group built from records reads, or changing what puts that record's person in such a group (re-sending the stored values is fine) | leave that value out (an upsert keeps a restricted tag it leaves out) and ask the person to do it in keepr |
+| `rule_owned_tag` | a tag a rule applies, and only the rule | leave it out |
+| `too_many_tags` | the item would carry more than 50 tags | send fewer |
+| `invalid_tag_ids` | `tags` is not a list of names, `tagIds` is not a list of ids, or the row sends both | send one list |
+| `item_locked` | an upsert changes the tags of a record its card has locked | leave its tags as they are, or have a manager unlock it |
+| `stale` | someone changed the item's tags while the row was being written, twice | send the row again |
 | `duplicate_value` | the element is unique (`unique: true` in the schema) and another item of the card already holds this value — text and email compared ignoring case. `itemId` and `title` name that item when this key can read it | don't create a second record: update the one that holds it (an `upsert` keyed on your source id re-runs cleanly), or ask the user which value is right |
 | `account_link_needs_access` | the row sets the account link on a card a group built from records reads — or changes a field such a group's rule reads on a linked record so its person could join — and the key's person lacks, across the collection, the access that group gives | a manager makes that change in keepr |
-| `session_required` | the same change, made by a key: only a signed-in person may link an account on such a card, or change what puts its person in the group (re-sending the stored values is fine) | leave that value out, and tell the person to set it in keepr |
 | `internal` | server-side failure; the row was not written | retry that row |
 
 ### HTTP statuses
