@@ -3,6 +3,12 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.3.1 — 2026-10-03
+
+Skill 2.3.1, keepr-mcp 0.5.1.
+
+- **A refused upload says what keepr said.** When keepr refuses a file — for example on a record its card has locked, which now covers attachments too — `keepr_attach_file` reports keepr's own reason (`item_locked`: a manager can unlock it) instead of a bare error number.
+
 ## 2.3.0 — 2026-10-02
 
 Skill 2.3.0, keepr-mcp 0.5.0.

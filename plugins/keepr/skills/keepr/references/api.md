@@ -561,7 +561,7 @@ names the failing rule. Row errors arrive inside a 200.
 | `rule_owned_tag` | a tag a rule applies, and only the rule | leave it out |
 | `too_many_tags` | the item would carry more than 50 tags | send fewer |
 | `invalid_tag_ids` | `tags` is not a list of names, `tagIds` is not a list of ids, or the row sends both | send one list |
-| `item_locked` | an upsert changes the tags of a record its card has locked | leave its tags as they are, or have a manager unlock it |
+| `item_locked` | the record's card has locked it: an upsert changes its tags, or a file is attached to or removed from it | leave it as it is, or have a manager unlock it |
 | `stale` | someone changed the item's tags while the row was being written, twice | send the row again |
 | `duplicate_value` | the element is unique (`unique: true` in the schema) and another item of the card already holds this value — text and email compared ignoring case. `itemId` and `title` name that item when this key can read it | don't create a second record: update the one that holds it (an `upsert` keyed on your source id re-runs cleanly), or ask the user which value is right |
 | `account_link_needs_access` | the row sets the account link on a card a group built from records reads — or changes a field such a group's rule reads on a linked record so its person could join — and the key's person lacks, across the collection, the access that group gives | a manager makes that change in keepr |

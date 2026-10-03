@@ -13659,7 +13659,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "e3fa26985b0d",
+  version: "e2f2eb26b558",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -14010,7 +14010,7 @@ var contract_snapshot_default = {
       },
       {
         code: "item_locked",
-        means: "an upsert row changes the tags of a record its card has locked (as PUT refuses); a manager's unlock reopens it"
+        means: "the record's card has locked it: an upsert row that changes its tags, or an attachment added to or removed from it, is refused (as PUT refuses); a manager's unlock reopens it"
       },
       {
         code: "lookup_filtered_out",
@@ -22592,7 +22592,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.5.0";
+var SERVER_VERSION = "0.5.1";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -25227,7 +25227,10 @@ var attachFileTool = {
       if (!res.ok) {
         if (res.status === 403 && ctx.keyScope === "read")
           return fail(ctx.readOnlyRefusal());
-        const why = res.status === 413 ? "over the per-user attachment cap (100 MB). The user has to free space before this will work." : res.status === 403 ? "refused \u2014 attachments may be off for this collection, or the owner's email is unverified." : `HTTP ${res.status}`;
+        const code = errorCode(res.body);
+        const meaning = code ? ctx.contract.meaningOf(code) : null;
+        const said = `${code ? `${code}: ` : ""}${errorMessage(res.body, "")}${meaning ? ` (${meaning})` : ""}`.trim();
+        const why = res.status === 413 ? "over the per-user attachment cap (100 MB). The user has to free space before this will work." : res.status === 403 ? `refused \u2014 attachments may be off for this collection, or the owner's email is unverified.${said ? ` keepr said: ${said}` : ""}` : said || `HTTP ${res.status}`;
         failed.push({ filename, message: why });
         continue;
       }
