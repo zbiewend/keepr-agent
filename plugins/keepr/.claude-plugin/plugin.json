@@ -1,7 +1,7 @@
 {
 	"name": "keepr",
 	"displayName": "keepr",
-	"version": "2.3.1",
+	"version": "2.3.2",
 	"description": "Read, add and change the records you keep in keepr. Ships the keepr skill and the keepr MCP server; the key comes from `keepr.py login`, which you run yourself.",
 	"author": {
 		"name": "Zachary Biewend",

@@ -32,7 +32,7 @@ slug the schema prints — `read-on`, not "Read on"):
 | --- | --- |
 | `card` | the card, by **key** (`card = book`) or 24-hex id. Matches the card **and its descendants** |
 | `id` | the item id |
-| `tags` | the item's tags: by **name**, alias, **path** (`"Health/Digestive"`) or id — `tags = urgent`, `tags in (urgent, "Genre/Sci-fi")`. Matches the tag **and every tag beneath it**, applied by hand or by a rule, and your own private tags. An **item used as a tag** goes by its id only (`tags = <24-hex>`; the search finds it). A name that is no tag matches nothing; one that names two tags matches either. `tags is empty` ignores your private tags. `=`, `!=`, `in`, `not in`, `is empty` only — `~` and `<` `>` are refused (400 `unsupported_operator`). Anything keepr stores (a saved filter) keeps ids: keepr rewrites the names when it saves. An access setting (who can see what) may name only *restricted* tags |
+| `tags` | the item's tags: by **name**, alias, **path** (`"Health/Digestive"`) or id — `tags = urgent`, `tags in (urgent, "Genre/Sci-fi")`. Matches the tag **and every tag beneath it**, applied by hand or by a rule, and your own private tags. An **item used as a tag** goes by its id only (`tags = <24-hex>`; the search finds it). A name that is no tag matches nothing; one that names two tags is refused (400 `ambiguous_tag`, listing each tag's path) — write the path or the id. `tags is empty` ignores your private tags. `=`, `!=`, `in`, `not in`, `is empty` only — `~` and `<` `>` are refused (400 `unsupported_operator`). Anything keepr stores (a saved filter) keeps ids: keepr rewrites the names when it saves. An access setting (who can see what) may name only *restricted* tags |
 | `notes` | the card-level Notes field |
 | `created`, `updated` | the item's timestamps |
 | `set` | the element set the item's card carries (by key or id) |
@@ -89,8 +89,10 @@ three days ago, and `spent-on = 2026-03-14` matches a datetime stored that day.
   is the whole value, `~` is a substring. `status ~ open` matches "reopened".
   A color is its stored `#rrggbb` — quote it, `trim = "#1f6feb"`; a color name
   in a filter is matched as text, not read as a color.
-- **choice**: compare against the choice **value** the schema lists, not its
-  label — `status = in-progress`, not `"In progress"`. A choice that allows
+- **choice**: compare against the choice **value** the schema lists —
+  `status = in-progress`. A label is read as its value too
+  (`status = "In progress"`), but the value is what keepr stores and never
+  changes when a label is renamed, so prefer it. A choice that allows
   multiple values (`allowMultiple` in the schema) holds a list, and a condition
   asks **any entry**: `skills = welding` matches an item holding welding among
   others, `skills in (welding, rigging)` any of them. A negation asks **no

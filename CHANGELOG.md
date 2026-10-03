@@ -3,6 +3,13 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.3.2 — 2026-10-03
+
+Skill 2.3.2, keepr-mcp 0.5.1.
+
+- **A tag name two tags share is refused in a search** (`ambiguous_tag`, listing each tag's path) instead of matching either: say which with the path or the id.
+- **A choice's label works in a filter** and is read as its value; the value is still the one to write.
+
 ## 2.3.1 — 2026-10-03
 
 Skill 2.3.1, keepr-mcp 0.5.1.
