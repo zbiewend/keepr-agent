@@ -3,6 +3,12 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.3.3 — 2026-10-03
+
+Skill 2.3.3, keepr-mcp 0.5.1.
+
+- **A new money field takes the right currency without being told.** When you ask for a card with a money field and don't name a currency, the assistant leaves it out, and keepr starts the field in the collection's currency, else your preferred currency (Preferences › Language & region), else US dollars. Name a currency and that one is used. A field that already exists keeps its currencies.
+
 ## 2.3.2 — 2026-10-03
 
 Skill 2.3.2, keepr-mcp 0.5.1.

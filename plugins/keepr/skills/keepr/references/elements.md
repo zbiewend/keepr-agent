@@ -124,7 +124,17 @@ is a worse economy than a smaller one.
 ## Currency
 
 The element declares `currencies` (ISO 4217 codes such as `["USD", "CAD"]`) and
-sometimes a `defaultCurrency`. It is stored as `{ "amount": 1250, "currency": "USD" }`
+sometimes a `defaultCurrency`.
+
+**Making one:** when the user names the currency, or several, put them in
+`currencies`. When they don't, leave `currencies` out and keepr picks one. It uses
+the collection's currency, else the person's preferred currency, else USD. Don't
+guess one, and don't ask just for this. An empty list (`[]`) is refused. This
+applies only to a NEW currency element. A stored one keeps its list, and a change
+that leaves the list out is refused (`invalid_options`). The card's schema then
+shows the currency keepr chose.
+
+A value is stored as `{ "amount": 1250, "currency": "USD" }`
 — `amount` is an integer of **minor units** (cents; a yen amount has none, a
 Bahraini dinar has three). Send what the user gave you:
 
