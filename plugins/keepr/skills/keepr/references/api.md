@@ -217,6 +217,53 @@ tags by their item's title** (`kind: "item"`, `tag.title`): that `tag._id` is
 what a row's `tags` sends to apply one. `collection_id` narrows it to that
 collection (its tags and the ones above it; its items and its sub-collections'); `limit` (max 50) and `skip` page it.
 
+## 2d. Totals, counts and averages — charts
+
+keepr works a total, a count, an average or a breakdown out over every item
+(docs/SCHEMA.md "Charts"); `charts.md` says when, and how to build the spec.
+A read key may ask (they are POSTs that only read). **Always send
+`"grade": "export"`**: an assistant's answer leaves keepr, so it counts only
+what the person may export, as an item export would.
+
+```bash
+# a question that is not saved
+curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" -H "Content-Type: application/json" \
+  https://api.keepr.cloud/api/collections/<collectionId>/charts/preview \
+  -d '{ "grade": "export", "spec": { "card_id": "<card id>",
+        "time": { "on": "filled-on", "range": { "preset": "thisYear" } },
+        "measures": [ { "key": "spent", "op": "sum", "element": "cost" } ],
+        "groupBy": { "on": "filled-on", "bucket": "month" },
+        "show": { "type": "table" } } }'
+
+# the saved charts, then one of them (range is optional: it replaces the chart's own)
+curl -s -H "Authorization: Bearer $KEEPR_API_KEY" \
+  https://api.keepr.cloud/api/collections/<collectionId>/charts
+curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" -H "Content-Type: application/json" \
+  https://api.keepr.cloud/api/charts/run \
+  -d '{ "runs": [ { "chart_id": "<chart id>", "collection_id": "<collectionId>", "grade": "export",
+                    "range": { "preset": "last90d" } } ] }'
+```
+
+The preview answers `{ spec, warnings, result }`; the batch `{ ranAt, results: [result] }`.
+A `result` carries `grade: "export"` (refuse one that does not), `axis.keys` /
+`axis.labels` (the rows; a null label is a time bucket, a range or an hour to
+spell yourself), `measures[]`, `values[measure][row][series]`, `totals` (the
+Overall row, keepr's own figure — never re-add the rows), `range`, `tz` and
+`notes` (`{ code, count, message }` — say them). The `card_id` is an id here:
+look it up in the schema. Values are raw: **money in minor units** (divide by
+10 to the currency's exponent — `currencies.exponents` in the contract, § 7:
+USD 2, JPY 0, BHD 3), a share 0–1, a measurement in the unit `measures[].unit`
+names (a two-part unit like `ft-in` as a decimal of its first part: 5.5 is
+5 ft 6 in — `units.twoPart` in the contract; `units.symbols` writes `C` as
+°C). A refused
+spec is a 400 with `code` and `path` (the part of the spec to fix); otherwise
+403 `email_unverified`, 429 `rate_limited` with `retryAfter` and `budget`, or
+503 `charts_busy`. What only a run can find — too many bars, a filter naming
+something gone, a formula too costly, the time limit — is a **200** whose
+`result` is `{ ok: false, error: { code, message } }`, on the preview as in a
+batch; a batch's runs carry the spec's refusals and `chart_unavailable` the
+same way.
+
 ## 3. Write rows
 
 ```bash
@@ -488,7 +535,7 @@ This bundle is a copy of the contract; the server publishes the current one.
 
 ```bash
 curl -s https://api.keepr.cloud/api/docs            # what documentation exists
-curl -s https://api.keepr.cloud/api/docs/contract   # element types, error codes, limits
+curl -s https://api.keepr.cloud/api/docs/contract   # element types, error codes, limits, currency exponents
 curl -s https://api.keepr.cloud/api/docs/skill      # this skill, every file inline
 ```
 
@@ -534,6 +581,9 @@ names the failing rule. Row errors arrive inside a 200.
 | `pattern` | a short text that does not fit the element's `pattern` (the schema gives it). The message is the card author's own sentence — "A plate looks like ABC-1234". Reshape the value, never guess one the user did not give |
 | `invalid_color` | not a color keepr reads: a hex with its `#` (`#1f6feb`, `#abc`), `rgb(31, 111, 235)`, or one of the 22 choice color names (`DodgerBlue`). A translucent color, a percentage or any other name is refused — ask for the hex, never guess one |
 | `user_not_found` | no active account with that id |
+| `too_many_dates` | a date or date-and-time list (`allowMultiple`) holds more than 1,000 different dates; `limit` says 1,000. Duplicates don't count. Send fewer, or ask the user which to keep — never drop dates silently. A longer list the item already holds, sent back unchanged, still saves |
+| `file_not_settable` | a file element's value in a row: rows may only send back the value the item already holds. Files are attached with an upload (`keepr_attach_file` / `POST …/attachments`) and bound with a PUT — leave the element out of the row |
+| `file_not_found` | an id under a file element that is not a file this write may use: unknown, deleted, someone else's, or on another item |
 
 ### Row — the row itself cannot be written
 

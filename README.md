@@ -5,7 +5,7 @@ Connect an AI assistant to the records you keep in [keepr](https://keepr.cloud).
 This repository is the **distribution** of two things that are built and tested
 in [`zbiewend/keepr-api`](https://github.com/zbiewend/keepr-api): the `keepr`
 skill (the judgement — how to read, add and change records without guessing)
-and `keepr-mcp` (the transport — nine tools over the keepr API). Nothing here
+and `keepr-mcp` (the transport — ten tools over the keepr API). Nothing here
 is edited by hand; `skills/publish.sh` in keepr-api regenerates it.
 
 The guided version of everything below is at

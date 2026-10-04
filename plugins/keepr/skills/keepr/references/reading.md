@@ -21,6 +21,7 @@ error — you would report "none" for a question that had an answer.
 | `keepr.py items --collection X [--q KQL] [--card KEY] [--sort F] [--desc] [--limit N] [--skip N]` | `keepr_get_items` with `collection` and `q` | a page of items, count first |
 | `keepr.py get --id ID [--id ID …]` | `keepr_get_items` with `ids` (or `item_id`) | one or more items in full, up to 100 |
 | `keepr.py search --q TEXT [--types …] [--limit N]` | `keepr_search` | free-text substring search across collections, cards, items and tags — tags by name and items used as tags by title; `--types` / `types` narrows it (`tags` for tags alone) |
+| — (`api.md` § 2d) | `keepr_chart` | a total, count, average, earliest/latest or share, by month or by category — worked out by keepr over every item; or a saved chart. `charts.md` |
 
 `--q` is KQL — `references/kql.md` has the grammar and worked examples. It is
 the difference between paging a collection into context and asking the server
@@ -76,9 +77,11 @@ it is untitled and give the id.
 
 **Report numbers as numbers.** Quote the count the server gave. Do not total,
 average or otherwise compute over element values unless the user asked; when
-they did, say which rows went into it — "the 12 items matching `status = paid
-and paid-on > -30d`; 2 had no amount and were left out". A number without its
-filter is a number nobody can check.
+they did, **ask keepr** — `keepr_chart` works the total, the average or the
+breakdown out over every item and says what it left out (`charts.md`) — rather
+than adding up a page. Say which items went into it — "the 12 items matching
+`status = paid and paid-on > -30d`; 2 had no amount and were left out". A
+number without its filter is a number nobody can check.
 
 **Keep their values as they are.** A date is reported as stored (`2026-03-14`,
 not "mid-March"); a measurement in the unit it was entered in; a choice by

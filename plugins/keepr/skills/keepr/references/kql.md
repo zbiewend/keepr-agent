@@ -35,6 +35,7 @@ slug the schema prints — `read-on`, not "Read on"):
 | `tags` | the item's tags: by **name**, alias, **path** (`"Health/Digestive"`) or id — `tags = urgent`, `tags in (urgent, "Genre/Sci-fi")`. Matches the tag **and every tag beneath it**, applied by hand or by a rule, and your own private tags. An **item used as a tag** goes by its id only (`tags = <24-hex>`; the search finds it). A name that is no tag matches nothing; one that names two tags is refused (400 `ambiguous_tag`, listing each tag's path) — write the path or the id. `tags is empty` ignores your private tags. `=`, `!=`, `in`, `not in`, `is empty` only — `~` and `<` `>` are refused (400 `unsupported_operator`). Anything keepr stores (a saved filter) keeps ids: keepr rewrites the names when it saves. An access setting (who can see what) may name only *restricted* tags |
 | `notes` | the card-level Notes field |
 | `created`, `updated` | the item's timestamps |
+| `created.by` | who added the item: a 24-hex account id or `me` (see "Who added an item" below) |
 | `set` | the element set the item's card carries (by key or id) |
 
 A name with spaces or punctuation is double-quoted: `"heart rate" > 100`. A
@@ -83,6 +84,40 @@ A bare run of exactly 24 hex digits is an id, not a number. The words `and`,
 Equality on a date is the **whole day**: `created = -3d` is the calendar day
 three days ago, and `spent-on = 2026-03-14` matches a datetime stored that day.
 
+## Parts of a date
+
+A date's day of the week, hour of the day or month, as a segment after it:
+
+| path | parts |
+| --- | --- |
+| `created.weekday`, `created.hour`, `created.month` — and the same on `updated` | all three |
+| `<date element>.weekday`, `<date element>.month` | a date has no hour |
+| `<date-time element>.weekday`, `.hour`, `.month` | all three |
+
+- **A weekday is a name**: `sun` … `sat` or the full word, any case — never a
+  number.
+- **An hour** is `0` to `23`.
+- **A month** is `1` to `12`, `jan` … `dec`, or the full word.
+- **Ranges run Sunday first**: `created.weekday <= wed` is Sunday to Wednesday.
+  A range bound is compared where it lies: `created.hour < 24` matches every
+  hour.
+- **In a list each member counts on its own**: `created.weekday not in (mon,
+  3)` is every day but Monday (`3` is no weekday, so it rules nothing out).
+- **Time zone**: `created`, `updated` and a date-time are read in the
+  collection's time zone; a date element is a calendar day with no zone.
+- **A date list** (an element allowing several dates) matches if any entry
+  does, reading its first 1,000 entries.
+
+`created.weekday in (sat, sun)`, `created.hour >= 9 and created.hour < 17`,
+`due.month = dec`.
+
+## Who added an item
+
+`created.by` takes a 24-hex account id or `me` — `created.by = me`. A name
+never resolves: `created.by = "Sam"` matches nothing. Items in a collection
+reached only through publishing or a link have no author, so
+`created.by is empty` matches them.
+
 ## Per-type behaviour worth knowing
 
 - **text** (`text-small`, `text-large`, `url`, `phone`, `email`, `color`): `=`
@@ -121,9 +156,12 @@ three days ago, and `spent-on = 2026-03-14` matches a datetime stored that day.
 
 An element name the collection does not have, a card key nobody uses, or a
 type-incompatible comparison compiles to a **no-match** — the query runs and
-answers zero. Only a **parse error** is a 400, and it names the character
-position. So a zero from a query you wrote from memory is not evidence of
-anything; check the element name against `schema` before you report "none".
+answers zero. So does a value a date part cannot read: `created.weekday =
+funday` and `created.hour = 24` match nothing (and `!=` them, everything).
+Only a **parse error** is a 400, and it names the character position — a
+number of about 309 digits is one (quote it to use it as text). So a zero
+from a query you wrote from memory is not evidence of anything; check the
+element name against `schema` before you report "none".
 
 Limits: 2000 characters, 50 conditions, three dot-walk hops.
 
@@ -147,6 +185,9 @@ Written against the showcase collections; the element names are theirs — read
 | Everything tagged Urgent that is still open | `tags = urgent and status != done` |
 | Notes about Mom (an item used as a tag), by its id | `card = note and tags = 66f1a2b3c4d5e6f708192a3b` |
 | Items with no tags at all | `tags is empty` |
+| Things I added at the weekend | `created.by = me and created.weekday in (sat, sun)` |
+| Expenses logged during working hours | `card = expense and created.hour >= 9 and created.hour < 17` |
+| Renewals due in December, any year | `card = policy and renews-on.month = dec` |
 
 Count without listing: `keepr.py items --collection X --q "…" --limit 1` and
 read the total on the first line (the MCP tool has `mode: count`).

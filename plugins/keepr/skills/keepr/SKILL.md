@@ -1,12 +1,12 @@
 ---
 name: keepr
-description: Read, add and change records in keepr — the user's collections of structured items — through its API or its MCP tools. Use whenever keepr is named or the user's data lives there. Reading ("what's in my keepr collection", "look up X in keepr", "find the items where…", "how many…", "show me the latest…"), adding ("add this to keepr", "log this in my collection", "import this CSV into keepr", "track these in keepr", or pasted data plus a collection name), and managing cards ("add an element to my Book card", "change the card", "create a card in keepr", "what fields does the card have"). Covers API-key handling, reading a collection's schema, KQL queries, dry-run validation, idempotent re-runs, linking records to each other, attaching files, and proposing card changes against a server-made diff.
+description: Read, add and change records in keepr — the user's collections of structured items — through its API or its MCP tools. Use whenever keepr is named or the user's data lives there. Reading ("what's in my keepr collection", "look up X in keepr", "find the items where…", "how many…", "how much did I spend…", "show me the latest…"), adding ("add this to keepr", "log this in my collection", "import this CSV into keepr", "track these in keepr", or pasted data plus a collection name), and managing cards ("add an element to my Book card", "change the card", "create a card in keepr", "what fields does the card have"). Covers API-key handling, reading a collection's schema, KQL queries, totals and averages worked out by keepr, dry-run validation, idempotent re-runs, linking records to each other, attaching files, and proposing card changes against a server-made diff.
 ---
 
 # keepr
 
 Read, add and change what a person keeps in keepr. This file is the part every
-job shares; the job itself is one of four chapters, loaded when you need it.
+job shares; the job itself is one of five chapters, loaded when you need it.
 
 keepr's vocabulary, because everything below uses it:
 
@@ -27,7 +27,8 @@ same for both. Only the commands differ; each chapter names both side by side.
 
 **If tools named `keepr_*` are available in this session, use them.** You will
 see `keepr_collections`, `keepr_schema`, `keepr_get_items`, `keepr_search`,
-`keepr_ingest`, `keepr_propose_card`, `keepr_apply_card` and the rest. They
+`keepr_chart`, `keepr_ingest`, `keepr_propose_card`, `keepr_apply_card` and the
+rest. They
 talk to the same API and take the same care. Nothing needs installing and you
 do not need a key — the server already holds it.
 
@@ -126,9 +127,10 @@ demand rather than up front.
 | the user wants to… | open |
 | --- | --- |
 | know what is there — list, look up, count, find, summarise | `references/reading.md` |
+| how much, how many, the average — totals by month or by category | `references/charts.md` |
 | put records in — a sentence, a list, a spreadsheet, a document, files | `references/adding.md` |
 | make or change a card — add an element, rename a field, create a card | `references/cards.md` |
-| filter with a query — the `--q` / `q` syntax, dates, operators | `references/kql.md` |
+| filter with a query — the `--q` / `q` syntax, dates and their weekday, hour or month, who added it, operators | `references/kql.md` |
 
 A job can cross chapters: "add these, then show me the total" is adding then
 reading; "add a field and fill it in for every book" is a card change then an
@@ -143,7 +145,7 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This is keepr skill **2.3.3**. keepr moves faster than any copy of it, so:
+This is keepr skill **2.4.0**. keepr moves faster than any copy of it, so:
 
 - Every command names this copy to keepr and, once a day, asks whether a newer
   release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
@@ -154,7 +156,7 @@ This is keepr skill **2.3.3**. keepr moves faster than any copy of it, so:
   then tell the person in one sentence. When it gives steps instead, pass them
   on in one short sentence. Once per conversation, never in place of an answer.
 - Working through the MCP tools, `keepr_collections` reports the latest keepr
-  skill. When it is newer than **2.3.3**, tell the person once that their keepr
+  skill. When it is newer than **2.4.0**, tell the person once that their keepr
   skill is out of date, with this link:
   https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this
@@ -181,6 +183,7 @@ script, drive the API directly — the contract is identical.
   `attach`, `create-card`, `change-card`, `contract`. Stdlib only.
 - `references/reading.md` · `adding.md` · `cards.md` — the three chapters.
 - `references/kql.md` — the query language, for reading.
+- `references/charts.md` — totals, counts and averages worked out by keepr (`keepr_chart`).
 - `references/api.md` — the HTTP contract, curl examples, every error code.
 - `references/elements.md` — the 22 element types and what each accepts.
 - `references/recipes.md` — worked card specs and end-to-end examples.

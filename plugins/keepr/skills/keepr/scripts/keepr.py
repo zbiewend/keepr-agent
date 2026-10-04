@@ -210,6 +210,8 @@ KNOWN_ERROR_CODES = {
     "file_too_large", "file_wrong_kind", "too_many_files",
     # A bound attachment's ✕ (409): the value is cleared with an item write.
     "attachment_in_use",
+    # A date or date-time list past 1,000 entries (keepr-api PR AK, review F2).
+    "too_many_dates",
     # Not a row status: the hint.code beside a card_not_allowed whose card
     # belongs to a sub-collection (the message names it and its ingest path).
     "card_in_sub_collection",

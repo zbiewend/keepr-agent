@@ -3,6 +3,13 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.4.0 — 2026-10-04
+
+Skill 2.4.0, keepr-mcp 0.6.0.
+
+- **Ask for totals, not pages.** Questions like "how much did I spend on fuel by month?" or "how many orders by status this year?" are answered by keepr itself. The new `keepr_chart` tool runs a chart you saved, or a question built from your collection's fields, and answers a table: money in its currency, measurements in their unit, an Overall row, and what keepr left out. It counts only what you may export from keepr, and says how many items it left out for that reason. A read-only key is enough.
+- **Filters can ask for part of a date and for who added an item.** `created.weekday in (sat, sun)`, `created.hour >= 9 and created.hour < 17`, `due.month = dec`, `created.by = me`. Days and hours are read in the collection's time zone; a plain date is its calendar day.
+
 ## 2.3.3 — 2026-10-03
 
 Skill 2.3.3, keepr-mcp 0.5.1.

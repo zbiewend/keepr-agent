@@ -4622,7 +4622,7 @@ var require_core = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text2, msg) => text2 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -13435,14 +13435,14 @@ function readStoredCredentials(env) {
   if (!home)
     return {};
   const file = join(home, ...CREDENTIALS_RELATIVE);
-  let text;
+  let text2;
   try {
-    text = readFileSync(file, "utf8");
+    text2 = readFileSync(file, "utf8");
   } catch {
     return {};
   }
   try {
-    const doc = JSON.parse(text);
+    const doc = JSON.parse(text2);
     if (!doc || typeof doc !== "object" || Array.isArray(doc))
       throw new Error("not an object");
     const { url, key } = doc;
@@ -13548,7 +13548,7 @@ var KeeprHttp = class {
     const method = (opts.method || "GET").toUpperCase();
     const url = this.buildUrl(opts.path, opts.query);
     if ((opts.attempts ?? RETRIES) > 1)
-      await this.paceIfNearLimit();
+      await this.paceIfNearLimit(opts.maxWaitMs);
     let lastError = null;
     const attempts = Math.max(1, opts.attempts ?? RETRIES);
     for (let attempt = 0; attempt < attempts; attempt++) {
@@ -13567,17 +13567,20 @@ var KeeprHttp = class {
       if (rate)
         this.lastRateLimit = rate;
       if (RETRY_STATUSES.has(res.status) && attempt < attempts - 1) {
-        await this.sleepImpl(this.backoffFor(res, attempt));
-        continue;
+        const wait = this.backoffFor(res, attempt);
+        if (opts.maxWaitMs === void 0 || wait <= opts.maxWaitMs) {
+          await this.sleepImpl(wait);
+          continue;
+        }
       }
-      const text = await res.text();
+      const text2 = await res.text();
       let parsed = null;
       let nonJson = false;
-      if (text.length) {
+      if (text2.length) {
         try {
-          parsed = JSON.parse(text);
+          parsed = JSON.parse(text2);
         } catch {
-          parsed = text;
+          parsed = text2;
           nonJson = true;
         }
       }
@@ -13628,12 +13631,14 @@ var KeeprHttp = class {
       return Math.min(retryAfter * 1e3, PACE_MAX_WAIT_MS);
     return 2 ** attempt * 1e3;
   }
-  /** Wait out a nearly-exhausted window instead of spending it on 429s. */
-  async paceIfNearLimit() {
+  /** Wait out a nearly-exhausted window instead of spending it on 429s — unless that is longer than the caller allows. */
+  async paceIfNearLimit(maxWaitMs) {
     const rl = this.lastRateLimit;
     if (!rl || rl.remaining === null || rl.remaining > PACE_BELOW_REMAINING)
       return;
     const waitMs = Math.min(((rl.resetSeconds ?? 1) + 1) * 1e3, PACE_MAX_WAIT_MS);
+    if (maxWaitMs !== void 0 && waitMs > maxWaitMs)
+      return;
     await this.sleepImpl(waitMs);
     this.lastRateLimit = null;
   }
@@ -13659,7 +13664,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "e2f2eb26b558",
+  version: "860ead46e883",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -13698,7 +13703,330 @@ var contract_snapshot_default = {
     blueprintPreview: "POST /api/collections/{id}/blueprints/preview",
     blueprintApply: "POST /api/collections/{id}/blueprints/apply",
     attach: "POST /api/items/{itemId}/attachments",
-    listAttachments: "GET /api/items/{itemId}/attachments"
+    listAttachments: "GET /api/items/{itemId}/attachments",
+    charts: "GET /api/collections/{id}/charts",
+    chartPreview: "POST /api/collections/{id}/charts/preview",
+    chartRun: "POST /api/charts/run"
+  },
+  currencies: {
+    minorUnits: 'An amount is an integer count of minor units: { amount: 1250, currency: "USD" } is 12.50 USD. Divide by 10 to the exponent to get the major amount.',
+    exponents: {
+      AED: 2,
+      AFN: 2,
+      ALL: 2,
+      AMD: 2,
+      AOA: 2,
+      ARS: 2,
+      AUD: 2,
+      AWG: 2,
+      AZN: 2,
+      BAM: 2,
+      BBD: 2,
+      BDT: 2,
+      BHD: 3,
+      BIF: 0,
+      BMD: 2,
+      BND: 2,
+      BOB: 2,
+      BRL: 2,
+      BSD: 2,
+      BTN: 2,
+      BWP: 2,
+      BYN: 2,
+      BZD: 2,
+      CAD: 2,
+      CDF: 2,
+      CHF: 2,
+      CLP: 0,
+      CNY: 2,
+      COP: 2,
+      CRC: 2,
+      CUP: 2,
+      CVE: 2,
+      CZK: 2,
+      DJF: 0,
+      DKK: 2,
+      DOP: 2,
+      DZD: 2,
+      EGP: 2,
+      ERN: 2,
+      ETB: 2,
+      EUR: 2,
+      FJD: 2,
+      FKP: 2,
+      GBP: 2,
+      GEL: 2,
+      GHS: 2,
+      GIP: 2,
+      GMD: 2,
+      GNF: 0,
+      GTQ: 2,
+      GYD: 2,
+      HKD: 2,
+      HNL: 2,
+      HTG: 2,
+      HUF: 2,
+      IDR: 2,
+      ILS: 2,
+      INR: 2,
+      IQD: 3,
+      IRR: 2,
+      ISK: 0,
+      JMD: 2,
+      JOD: 3,
+      JPY: 0,
+      KES: 2,
+      KGS: 2,
+      KHR: 2,
+      KMF: 0,
+      KPW: 2,
+      KRW: 0,
+      KWD: 3,
+      KYD: 2,
+      KZT: 2,
+      LAK: 2,
+      LBP: 2,
+      LKR: 2,
+      LRD: 2,
+      LSL: 2,
+      LYD: 3,
+      MAD: 2,
+      MDL: 2,
+      MGA: 2,
+      MKD: 2,
+      MMK: 2,
+      MNT: 2,
+      MOP: 2,
+      MRU: 2,
+      MUR: 2,
+      MVR: 2,
+      MWK: 2,
+      MXN: 2,
+      MYR: 2,
+      MZN: 2,
+      NAD: 2,
+      NGN: 2,
+      NIO: 2,
+      NOK: 2,
+      NPR: 2,
+      NZD: 2,
+      OMR: 3,
+      PAB: 2,
+      PEN: 2,
+      PGK: 2,
+      PHP: 2,
+      PKR: 2,
+      PLN: 2,
+      PYG: 0,
+      QAR: 2,
+      RON: 2,
+      RSD: 2,
+      RUB: 2,
+      RWF: 0,
+      SAR: 2,
+      SBD: 2,
+      SCR: 2,
+      SDG: 2,
+      SEK: 2,
+      SGD: 2,
+      SHP: 2,
+      SLE: 2,
+      SOS: 2,
+      SRD: 2,
+      SSP: 2,
+      STN: 2,
+      SVC: 2,
+      SYP: 2,
+      SZL: 2,
+      THB: 2,
+      TJS: 2,
+      TMT: 2,
+      TND: 3,
+      TOP: 2,
+      TRY: 2,
+      TTD: 2,
+      TWD: 2,
+      TZS: 2,
+      UAH: 2,
+      UGX: 0,
+      USD: 2,
+      UYU: 2,
+      UZS: 2,
+      VED: 2,
+      VES: 2,
+      VND: 0,
+      VUV: 0,
+      WST: 2,
+      XAF: 0,
+      XCD: 2,
+      XCG: 2,
+      XOF: 0,
+      XPF: 0,
+      YER: 2,
+      ZAR: 2,
+      ZMW: 2,
+      ZWG: 2,
+      BOV: 2,
+      CHE: 2,
+      CHW: 2,
+      CLF: 4,
+      COU: 2,
+      MXV: 2,
+      USN: 2,
+      UYI: 0,
+      UYW: 4
+    }
+  },
+  units: {
+    composite: "A number in a two-part unit is a decimal of its first part: 5.5 in ft-in is 5.5 ft, spelled 5 ft 6 in (the whole first part, then the rest times minorPerMajor in the second, rounded to a whole one).",
+    twoPart: {
+      "lb-oz": {
+        parts: [
+          "lb",
+          "oz"
+        ],
+        minorPerMajor: 16
+      },
+      "st-lb": {
+        parts: [
+          "st",
+          "lb"
+        ],
+        minorPerMajor: 14
+      },
+      "ft-in": {
+        parts: [
+          "ft",
+          "in"
+        ],
+        minorPerMajor: 12
+      },
+      "h-min": {
+        parts: [
+          "h",
+          "min"
+        ],
+        minorPerMajor: 60
+      },
+      "min-s": {
+        parts: [
+          "min",
+          "s"
+        ],
+        minorPerMajor: 60
+      }
+    },
+    symbols: {
+      longton: "long ton",
+      C: "\xB0C",
+      F: "\xB0F",
+      floz: "fl oz",
+      mm3: "mm\xB3",
+      cm3: "cm\xB3",
+      dm3: "dm\xB3",
+      m3: "m\xB3",
+      in3: "in\xB3",
+      ft3: "ft\xB3",
+      yd3: "yd\xB3",
+      drypt: "dry pt",
+      dryqt: "dry qt",
+      peck: "pk",
+      impfloz: "imp fl oz",
+      imppt: "imp pt",
+      impqt: "imp qt",
+      impgal: "imp gal",
+      cm2: "cm\xB2",
+      m2: "m\xB2",
+      km2: "km\xB2",
+      ft2: "ft\xB2",
+      yd2: "yd\xB2",
+      mi2: "mi\xB2",
+      mm2: "mm\xB2",
+      in2: "in\xB2",
+      "floz/s": "fl oz/s",
+      "mm3/s": "mm\xB3/s",
+      "cm3/s": "cm\xB3/s",
+      "dm3/s": "dm\xB3/s",
+      "m3/s": "m\xB3/s",
+      "in3/s": "in\xB3/s",
+      "ft3/s": "ft\xB3/s",
+      "yd3/s": "yd\xB3/s",
+      "drypt/s": "dry pt/s",
+      "dryqt/s": "dry qt/s",
+      "peck/s": "pk/s",
+      "impfloz/s": "imp fl oz/s",
+      "imppt/s": "imp pt/s",
+      "impqt/s": "imp qt/s",
+      "impgal/s": "imp gal/s",
+      "floz/min": "fl oz/min",
+      "mm3/min": "mm\xB3/min",
+      "cm3/min": "cm\xB3/min",
+      "dm3/min": "dm\xB3/min",
+      "m3/min": "m\xB3/min",
+      "in3/min": "in\xB3/min",
+      "ft3/min": "ft\xB3/min",
+      "yd3/min": "yd\xB3/min",
+      "drypt/min": "dry pt/min",
+      "dryqt/min": "dry qt/min",
+      "peck/min": "pk/min",
+      "impfloz/min": "imp fl oz/min",
+      "imppt/min": "imp pt/min",
+      "impqt/min": "imp qt/min",
+      "impgal/min": "imp gal/min",
+      "floz/h": "fl oz/h",
+      "mm3/h": "mm\xB3/h",
+      "cm3/h": "cm\xB3/h",
+      "dm3/h": "dm\xB3/h",
+      "m3/h": "m\xB3/h",
+      "in3/h": "in\xB3/h",
+      "ft3/h": "ft\xB3/h",
+      "yd3/h": "yd\xB3/h",
+      "drypt/h": "dry pt/h",
+      "dryqt/h": "dry qt/h",
+      "peck/h": "pk/h",
+      "impfloz/h": "imp fl oz/h",
+      "imppt/h": "imp pt/h",
+      "impqt/h": "imp qt/h",
+      "impgal/h": "imp gal/h",
+      "floz/d": "fl oz/d",
+      "mm3/d": "mm\xB3/d",
+      "cm3/d": "cm\xB3/d",
+      "dm3/d": "dm\xB3/d",
+      "m3/d": "m\xB3/d",
+      "in3/d": "in\xB3/d",
+      "ft3/d": "ft\xB3/d",
+      "yd3/d": "yd\xB3/d",
+      "drypt/d": "dry pt/d",
+      "dryqt/d": "dry qt/d",
+      "peck/d": "pk/d",
+      "impfloz/d": "imp fl oz/d",
+      "imppt/d": "imp pt/d",
+      "impqt/d": "imp qt/d",
+      "impgal/d": "imp gal/d",
+      "floz/wk": "fl oz/wk",
+      "mm3/wk": "mm\xB3/wk",
+      "cm3/wk": "cm\xB3/wk",
+      "dm3/wk": "dm\xB3/wk",
+      "m3/wk": "m\xB3/wk",
+      "in3/wk": "in\xB3/wk",
+      "ft3/wk": "ft\xB3/wk",
+      "yd3/wk": "yd\xB3/wk",
+      "drypt/wk": "dry pt/wk",
+      "dryqt/wk": "dry qt/wk",
+      "peck/wk": "pk/wk",
+      "impfloz/wk": "imp fl oz/wk",
+      "imppt/wk": "imp pt/wk",
+      "impqt/wk": "imp qt/wk",
+      "impgal/wk": "imp gal/wk",
+      "longton/s": "long ton/s",
+      "longton/min": "long ton/min",
+      "longton/h": "long ton/h",
+      "longton/d": "long ton/d",
+      "longton/wk": "long ton/wk",
+      "beat/min": "bpm",
+      deg: "\xB0",
+      "mpg-uk": "imp mpg"
+    }
   },
   imports: {
     importId: "OPTIONAL on the ingest envelope: 1-64 of [A-Za-z0-9._-]. Mint one per import and send the same one on every batch of it (dry runs included); keepr lists the batches as one import.",
@@ -13775,12 +14103,12 @@ var contract_snapshot_default = {
     {
       name: "date",
       send: '"YYYY-MM-DD"',
-      note: 'locale dates (12/05/2024) and epoch numbers are REFUSED as ambiguous; a precision element also takes "YYYY-MM" or "YYYY" and floors to it; allowMultiple takes an array'
+      note: 'locale dates (12/05/2024) and epoch numbers are REFUSED as ambiguous; a precision element also takes "YYYY-MM" or "YYYY" and floors to it; allowMultiple takes an array of at most 1,000 dates'
     },
     {
       name: "date-time",
       send: "an ISO-8601 timestamp",
-      note: "a bare YYYY-MM-DD becomes midnight UTC"
+      note: "a bare YYYY-MM-DD becomes midnight UTC; allowMultiple takes an array of at most 1,000"
     },
     {
       name: "time",
@@ -13933,6 +14261,10 @@ var contract_snapshot_default = {
       {
         code: "too_long",
         means: "longer than the element allows (limit carries it): the element's own maxLength, else 255 characters for a short text, 20,000 long (50,000 extended), 100,000 rich (250,000 extended), 2,048 for a url"
+      },
+      {
+        code: "too_many_dates",
+        means: "more than 1,000 distinct entries in a date or date-time list (limit carries it); a longer list stored before the cap, re-sent unchanged, still saves"
       },
       {
         code: "too_many_files",
@@ -14219,6 +14551,48 @@ var ContractCache = class {
    */
   get takesTagNames() {
     return Boolean(this.body.tags?.tags);
+  }
+  /**
+   * A currency's ISO 4217 minor-unit exponent (USD 2, JPY 0, BHD 3), from
+   * the deployment's own registry (`currencies.exponents`), or null when it
+   * names none. Never from Intl: Node's ICU disagrees with ISO for 16 codes
+   * keepr knows, and a wrong exponent misreads every amount by a power of ten.
+   */
+  currencyExponent(code) {
+    if (!code)
+      return null;
+    const table = this.body.currencies?.exponents;
+    const value = table && Object.prototype.hasOwnProperty.call(table, code) ? table[code] : void 0;
+    return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 6 ? value : null;
+  }
+  /**
+   * A two-part unit's parts and how many of the second make one of the
+   * first (`ft-in` → { parts: ['ft', 'in'], minorPerMajor: 12 },
+   * `units.twoPart`), or null for any other unit — or a deployment that
+   * does not say.
+   */
+  twoPartOf(unit) {
+    if (!unit)
+      return null;
+    const table = this.body.units?.twoPart;
+    const entry = table && Object.prototype.hasOwnProperty.call(table, unit) ? table[unit] : void 0;
+    const parts = entry?.parts;
+    const per = entry?.minorPerMajor;
+    if (!Array.isArray(parts) || parts.length !== 2 || !parts.every((p) => typeof p === "string" && p))
+      return null;
+    if (typeof per !== "number" || !Number.isInteger(per) || per < 2)
+      return null;
+    return { parts: [parts[0], parts[1]], minorPerMajor: per };
+  }
+  /** The unit a number in `unit` is a number of: a two-part unit's first part (a value in `ft-in` is a decimal of ft), else the unit itself. */
+  unitShownAs(unit) {
+    return this.twoPartOf(unit)?.parts[0] ?? unit;
+  }
+  /** How a unit is written for a reader: its symbol where it is not its id (`C` → °C, `m3` → m³, `units.symbols`), else the id. */
+  unitSymbol(unit) {
+    const table = this.body.units?.symbols;
+    const symbol = table && Object.prototype.hasOwnProperty.call(table, unit) ? table[unit] : void 0;
+    return typeof symbol === "string" && symbol ? symbol : unit;
   }
   knowsScope(name) {
     const scopes = this.body.auth?.scopes;
@@ -22460,11 +22834,11 @@ var EMPTY_COMPLETION_RESULT = {
 };
 
 // dist/src/format.js
-function ok(text, structured) {
-  return { content: [{ type: "text", text }], ...structured ? { structuredContent: structured } : {} };
+function ok(text2, structured) {
+  return { content: [{ type: "text", text: text2 }], ...structured ? { structuredContent: structured } : {} };
 }
-function fail(text, structured) {
-  return { content: [{ type: "text", text }], ...structured ? { structuredContent: structured } : {}, isError: true };
+function fail(text2, structured) {
+  return { content: [{ type: "text", text: text2 }], ...structured ? { structuredContent: structured } : {}, isError: true };
 }
 function failFromResponse(res, what) {
   const code = errorCode(res.body);
@@ -22592,7 +22966,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.5.1";
+var SERVER_VERSION = "0.6.0";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -22656,10 +23030,16 @@ function buildServer(ctx, tools) {
   for (const def of tools) {
     const needed = neededScope(def);
     const description = needed && ctx.hasScope(needed) === false ? `UNAVAILABLE (${needed === "cards" ? "this key cannot change cards \u2014 it needs Can change cards" : "this key is read-only"}). ${def.description}` : def.description;
-    server.registerTool(def.name, { description, inputSchema: def.inputSchema }, async (args) => {
-      const result = await guard(def, ctx, args ?? {}, () => def.handler(args ?? {}, ctx));
-      return result;
-    });
+    server.registerTool(
+      def.name,
+      // A strict tool's top level refuses unknown keys too; its nested
+      // objects are strict in their own definitions.
+      { description, inputSchema: def.strict ? external_exports.object(def.inputSchema).strict() : def.inputSchema },
+      async (args) => {
+        const result = await guard(def, ctx, args ?? {}, () => def.handler(args ?? {}, ctx));
+        return result;
+      }
+    );
   }
   return server;
 }
@@ -23463,7 +23843,7 @@ var IDS_NO_TAGS = "Fetching by ids returns elements only \u2014 no tags and no t
 var EXPORT_TAG_IDS = "Past 200 items the bulk path gives tag ids without their names; list 200 or fewer, or fetch an item_id, to see the names.";
 var getItemsTool = {
   name: "keepr_get_items",
-  description: "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id. Each item comes with its tags by name (and your own private tags). Filter by tag with q, e.g. `tags = Urgent`. Use this when you know which collection to look in; use keepr_search when you do not.",
+  description: "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id. Each item comes with its tags by name (and your own private tags). Filter by tag with q, e.g. `tags = Urgent`. Use this when you know which collection to look in; use keepr_search when you do not. To total, average or break items down by month or by category, ask keepr_chart instead of listing them.",
   inputSchema: {
     collection: external_exports.string().optional().describe("Collection id or name. Required unless you are fetching by item_id or ids."),
     card: external_exports.string().optional().describe("Narrow to one card type, by key or id."),
@@ -23719,6 +24099,858 @@ function truncate(s, n) {
   return s.length <= n ? s : `${s.slice(0, n - 1)}\u2026`;
 }
 
+// dist/src/chartTable.js
+var MAX_ROWS = 200;
+var MAX_CELLS = 4e3;
+var MAX_LABEL = 120;
+var isNum = (v) => typeof v === "number" && Number.isFinite(v);
+var text = (v) => typeof v === "string" ? v : typeof v === "number" || typeof v === "boolean" ? String(v) : "";
+function datedRank(raw, format) {
+  if (typeof raw !== "string")
+    return -Infinity;
+  if (format === "time") {
+    const m = /^(\d{1,2}):(\d{2})/.exec(raw);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : -Infinity;
+  }
+  const at = Date.parse(raw);
+  return Number.isNaN(at) ? -Infinity : at;
+}
+var own = (o, k) => o && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : void 0;
+var DATED = ["date", "datetime", "time"];
+var VALUE_TYPES = ["number", "money", "measure"];
+var AXIS_KINDS = ["time", "category", "ordinal", "bins"];
+function grouped(n, decimals) {
+  return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+var trimZeros = (s) => s.includes(".") ? s.replace(/\.?0+$/, "") : s;
+var decimalsFor = (v) => Number.isInteger(v) ? 0 : Math.abs(v) >= 100 ? 1 : 2;
+var countText = (n) => grouped(Math.max(0, Math.round(n)), 0);
+function majorAmount(minor, exponent) {
+  if (exponent === null)
+    return null;
+  return Number((Math.round(minor) / 10 ** exponent).toFixed(exponent));
+}
+function spellValue(measure, raw, spelling) {
+  if (measure.format && DATED.includes(measure.format)) {
+    const s = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    return { text: s ?? "", value: s };
+  }
+  if (!isNum(raw))
+    return { text: "", value: null };
+  if (measure.format === "percent") {
+    const pct = raw * 100;
+    return { text: `${trimZeros(grouped(pct, 1))}%`, value: Number(pct.toFixed(6)) };
+  }
+  if (measure.type === "money") {
+    const exponent = spelling.currencyExponent(measure.currency);
+    const major = majorAmount(raw, exponent);
+    if (major === null)
+      return { text: `${grouped(Math.round(raw), 0)} minor units`, value: null };
+    return { text: grouped(major, exponent ?? 0), value: major };
+  }
+  if (measure.type === "measure") {
+    const two = spelling.twoPartOf(measure.unit);
+    if (two)
+      return { text: twoPartText(raw, two, spelling), value: raw };
+    return { text: grouped(raw, Number.isInteger(raw) ? 0 : 1), value: raw };
+  }
+  return { text: trimZeros(grouped(raw, decimalsFor(raw))), value: raw };
+}
+var roundHalfAway = (n) => n < 0 ? -Math.round(-n) : Math.round(n);
+function twoPartText(value, two, spelling) {
+  const negative = value < 0;
+  const abs = Math.abs(value);
+  let major = Math.floor(abs);
+  let minor = roundHalfAway((abs - major) * two.minorPerMajor);
+  if (minor >= two.minorPerMajor) {
+    major += 1;
+    minor = 0;
+  }
+  const sign = negative && (major > 0 || minor > 0) ? "-" : "";
+  return `${sign}${grouped(major, 0)} ${spelling.unitSymbol(two.parts[0])} ${grouped(minor, 0)} ${spelling.unitSymbol(two.parts[1])}`;
+}
+function spellKey(axis, raw, spelling) {
+  if (axis.type === "measure" && isNum(raw))
+    return trimZeros(grouped(raw, decimalsFor(raw)));
+  return spellValue({ type: axis.type, currency: axis.currency, format: null }, raw, spelling).text || text(raw);
+}
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var pad = (n) => String(n).padStart(2, "0");
+function wallOf(key, tz) {
+  const k = text(key);
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k);
+  if (day)
+    return { y: Number(day[1]), mo: Number(day[2]), d: Number(day[3]), hh: 0, mm: 0 };
+  const at = new Date(k);
+  if (!k || Number.isNaN(at.getTime()))
+    return null;
+  let parts;
+  try {
+    parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz || "UTC",
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).formatToParts(at);
+  } catch {
+    return wallOf(at.toISOString(), "UTC");
+  }
+  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
+  return { y: Number(p.year), mo: Number(p.month), d: Number(p.day), hh: Number(p.hour) % 24, mm: Number(p.minute) };
+}
+var isoDay = (w) => `${w.y}-${pad(w.mo)}-${pad(w.d)}`;
+function bucketLabel(key, bucket, tz) {
+  const w = wallOf(key, tz);
+  if (!w)
+    return text(key);
+  switch (bucket) {
+    case "year":
+      return String(w.y);
+    case "quarter":
+      return `Q${Math.floor((w.mo - 1) / 3) + 1} ${w.y}`;
+    case "month":
+      return `${MONTHS[w.mo - 1] ?? pad(w.mo)} ${w.y}`;
+    case "week":
+      return `Week of ${isoDay(w)}`;
+    case "hour":
+      return `${isoDay(w)} ${pad(w.hh)}:${pad(w.mm)}`;
+    default:
+      return isoDay(w);
+  }
+}
+function rangeText(range, tz) {
+  const from = wallOf(own(range, "from"), tz);
+  const toAt = new Date(text(own(range, "to")));
+  if (!from || Number.isNaN(toAt.getTime()))
+    return "";
+  const to = wallOf(new Date(toAt.getTime() - 1).toISOString(), tz);
+  return to ? `${isoDay(from)} to ${isoDay(to)}` : "";
+}
+function readType(source) {
+  const t = own(source, "type");
+  if (t !== "money" && t !== "measure")
+    return { type: "number", currency: null, unit: null };
+  return {
+    type: t,
+    currency: t === "money" && typeof own(source, "currency") === "string" ? String(own(source, "currency")) : null,
+    unit: t === "measure" && typeof own(source, "unit") === "string" ? String(own(source, "unit")) : null
+  };
+}
+function readMeasures(result) {
+  const list = Array.isArray(result.measures) ? result.measures : [];
+  return list.map((m, index) => ({
+    index,
+    key: text(own(m, "key")) || `m${index + 1}`,
+    label: typeof own(m, "label") === "string" ? String(own(m, "label")) : "",
+    type: VALUE_TYPES.includes(own(m, "type")) ? own(m, "type") : "number",
+    currency: typeof own(m, "currency") === "string" ? String(own(m, "currency")) : null,
+    unit: typeof own(m, "unit") === "string" ? String(own(m, "unit")) : null,
+    format: typeof own(m, "format") === "string" ? String(own(m, "format")) : null,
+    hidden: own(m, "hidden") === true,
+    estimate: typeof own(m, "estimate") === "string" ? String(own(m, "estimate")) : null
+  }));
+}
+var estimated = (result, m) => Boolean(result.sample) && m.estimate !== "exact";
+var BUCKET_TITLES = {
+  hour: "Hour",
+  day: "Day",
+  week: "Week",
+  month: "Month",
+  quarter: "Quarter",
+  year: "Year",
+  hourOfDay: "Hour of day",
+  halfHour: "Half hour",
+  weekday: "Day of week",
+  monthOfYear: "Month of year"
+};
+var SYSTEM_TITLES = { created: "Created", updated: "Updated", "created.by": "Created by" };
+var hasOwn = (o, k) => k !== null && Object.prototype.hasOwnProperty.call(o, k);
+function axisUnits(axis, spelling) {
+  if (!axis || axis.kind !== "bins")
+    return { unit: null, currency: null, suffix: "" };
+  if (axis.type === "money" && axis.currency)
+    return { unit: null, currency: axis.currency.toUpperCase(), suffix: ` (${axis.currency.toUpperCase()})` };
+  if (axis.type === "measure" && axis.unit) {
+    const unit = spelling.unitShownAs(axis.unit);
+    return { unit, currency: null, suffix: ` (${spelling.unitSymbol(unit)})` };
+  }
+  return { unit: null, currency: null, suffix: "" };
+}
+function groupTitleOf(axis, spec) {
+  if (!axis)
+    return "";
+  if (axis.kind === "time" && hasOwn(BUCKET_TITLES, axis.bucket))
+    return BUCKET_TITLES[axis.bucket];
+  const on = text(own(own(spec, "groupBy"), "on"));
+  if (on === "card")
+    return "Card";
+  if (on === "collection")
+    return "Collection";
+  if (on === "created.by")
+    return SYSTEM_TITLES[on];
+  if (hasOwn(BUCKET_TITLES, axis.bucket))
+    return `${hasOwn(SYSTEM_TITLES, on) ? SYSTEM_TITLES[on] : on || "Group"} (${BUCKET_TITLES[axis.bucket].toLowerCase()})`;
+  return on && on !== "created" && on !== "updated" ? on : "Group";
+}
+var INVISIBLE_RANGES = [
+  [0, 8],
+  [11, 12],
+  [14, 31],
+  [127, 159],
+  [173, 173],
+  [1564, 1564],
+  [6158, 6158],
+  [8203, 8207],
+  [8234, 8238],
+  [8288, 8297],
+  [65279, 65279],
+  [917504, 917631]
+];
+var INVISIBLE = new RegExp(`[${INVISIBLE_RANGES.map(([a, b]) => a === b ? `\\u{${a.toString(16)}}` : `\\u{${a.toString(16)}}-\\u{${b.toString(16)}}`).join("")}]`, "gu");
+function cleanText(raw, max = MAX_LABEL) {
+  const one = raw.replace(/[\t\n\r\v\f\u0085]/g, " ").replace(INVISIBLE, "").replace(/\s+/g, " ").trim();
+  const chars = Array.from(one);
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}\u2026` : one;
+}
+function cleanLabel(raw, max = MAX_LABEL) {
+  return cleanText(raw, max).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+}
+function entryLabel(entry, axis, tz, spelling) {
+  if (entry.label)
+    return entry.label;
+  if (entry.other)
+    return "Other";
+  if (entry.notSet)
+    return "Not set";
+  if (axis.kind === "time")
+    return bucketLabel(entry.key, axis.bucket, tz);
+  if (axis.kind === "bins" && Array.isArray(entry.key) && entry.key.length === 2) {
+    return `${spellKey(axis, entry.key[0], spelling)}\u2013${spellKey(axis, entry.key[1], spelling)}`;
+  }
+  return text(entry.key);
+}
+function readAxis(source) {
+  if (!source || typeof source !== "object" || !Array.isArray(own(source, "keys")))
+    return null;
+  const keys = own(source, "keys");
+  const labels = Array.isArray(own(source, "labels")) ? own(source, "labels") : [];
+  const other = Number.isInteger(own(source, "other")) ? Number(own(source, "other")) : -1;
+  return {
+    kind: AXIS_KINDS.includes(text(own(source, "kind"))) ? text(own(source, "kind")) : "category",
+    bucket: typeof own(source, "bucket") === "string" ? String(own(source, "bucket")) : null,
+    ...readType(source),
+    entries: keys.map((key, index) => ({
+      index,
+      key,
+      label: typeof labels[index] === "string" && labels[index] ? String(labels[index]) : null,
+      other: index === other,
+      notSet: index !== other && key === null
+    }))
+  };
+}
+function buildChartTable(result, { spec, spelling }) {
+  if (!result || result.ok !== true)
+    return null;
+  const measures = readMeasures(result);
+  const axis = readAxis(result.axis);
+  const tz = typeof result.tz === "string" ? result.tz : null;
+  const rawSeries = Array.isArray(result.series) && result.series.length ? result.series : [{ key: "all", label: "" }];
+  const split = spec ? Boolean(own(spec, "splitBy")) : rawSeries.length > 1;
+  const seriesAxis = split && result.seriesAxis ? readAxis({ ...result.seriesAxis, keys: [] }) : null;
+  const series = rawSeries.map((s, index) => {
+    const other = own(s, "other") === true;
+    const key = own(s, "key") === void 0 ? null : own(s, "key");
+    const entry = { index, key, label: typeof own(s, "label") === "string" && own(s, "label") ? String(own(s, "label")) : null, other, notSet: !other && key === null };
+    return { index, name: seriesAxis ? entryLabel(entry, seriesAxis, tz, spelling) : entry.label ?? (other ? "Other" : entry.notSet ? "Not set" : text(key)) };
+  });
+  const values = Array.isArray(result.values) ? result.values : [];
+  const totals = result.totals && typeof result.totals === "object" ? result.totals : {};
+  const compare = result.compare && typeof result.compare === "object" ? result.compare : null;
+  const cellOf = (source, m, a, s) => {
+    const rows2 = Array.isArray(source) ? source[m] : null;
+    const row = Array.isArray(rows2) ? rows2[a] : null;
+    return Array.isArray(row) ? row[s] : null;
+  };
+  const totalOf = (source, m, s) => {
+    const list = own(source, measures[m].key);
+    const given = Array.isArray(list) ? list[s] : null;
+    if ((given === null || given === void 0) && !axis)
+      return cellOf(source === totals ? values : compare?.values, m, 0, s);
+    return given;
+  };
+  const order = [...measures.filter((m) => !m.hidden), ...measures.filter((m) => m.hidden)].map((m) => m.index);
+  const withPrevious = Boolean(compare) && !split;
+  const columns = [];
+  const heading = (m, title, previous) => {
+    const parts = [];
+    if (m.type === "money" && m.currency)
+      parts.push(m.currency.toUpperCase());
+    else if (m.type === "measure" && m.unit)
+      parts.push(spelling.twoPartOf(m.unit) ? m.unit : spelling.unitSymbol(m.unit));
+    else if (m.format === "percent")
+      parts.push("%");
+    if (estimated(result, m))
+      parts.push("estimated");
+    return `${title}${previous ? " (previous period)" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}`;
+  };
+  const column = (m, s, seriesName, previous) => {
+    const title = seriesName === null ? m.label || m.key : `${m.label || m.key} \xB7 ${seriesName}`;
+    return {
+      key: `m${m.index}s${s}${previous ? "p" : ""}`,
+      m: m.index,
+      s,
+      title,
+      heading: heading(m, title, previous),
+      measure: m.key,
+      series: seriesName,
+      type: m.type,
+      currency: m.currency,
+      unit: m.unit ? spelling.unitShownAs(m.unit) : null,
+      displayUnit: m.unit && spelling.twoPartOf(m.unit) ? m.unit : null,
+      percent: m.format === "percent",
+      dated: m.format && DATED.includes(m.format) ? m.format : null,
+      estimated: estimated(result, m),
+      hidden: m.hidden,
+      previous
+    };
+  };
+  for (const m of order) {
+    const measure = measures[m];
+    if (split)
+      series.forEach((s) => columns.push(column(measure, s.index, s.name, false)));
+    else {
+      columns.push(column(measure, 0, null, false));
+      if (withPrevious)
+        columns.push(column(measure, 0, null, true));
+    }
+  }
+  const cell = (c, a) => {
+    const measure = measures[c.m];
+    const source = c.previous ? compare?.values : values;
+    const raw = a === null ? totalOf(c.previous ? compare?.totals : totals, c.m, c.s) : cellOf(source, c.m, a, c.s);
+    return spellValue(measure, raw, spelling);
+  };
+  let entries = axis ? axis.entries.slice() : [];
+  if (axis && own(own(spec, "show"), "sort") === "value" && axis.kind !== "time" && axis.kind !== "bins" && columns.length) {
+    const first = columns[0];
+    const dated = first.dated;
+    const rank = (e) => {
+      const raws = series.map((s) => cellOf(values, first.m, e.index, s.index));
+      if (dated)
+        return Math.max(...raws.map((r) => datedRank(r, dated)));
+      return raws.reduce((sum, r) => sum + (isNum(r) ? r : 0), 0);
+    };
+    const kept = entries.filter((e) => !e.other && !e.notSet).sort((x, y) => rank(y) - rank(x) || x.index - y.index);
+    entries = [...kept, ...entries.filter((e) => e.other), ...entries.filter((e) => e.notSet)];
+  }
+  const rows = axis ? entries.map((e) => ({ label: cleanLabel(entryLabel(e, axis, tz, spelling)), cells: columns.map((c) => cell(c, e.index)) })) : [{ label: "All items", cells: columns.map((c) => cell(c, null)) }];
+  let overall = null;
+  if (axis) {
+    const cells = columns.map((c) => cell(c, null));
+    if (cells.some((x) => x.text))
+      overall = { label: "Overall", cells };
+  }
+  const keyUnits = axisUnits(axis, spelling);
+  return {
+    groupTitle: cleanLabel(`${groupTitleOf(axis, spec)}${keyUnits.suffix}`),
+    groupUnit: keyUnits.unit,
+    groupCurrency: keyUnits.currency,
+    newestLast: axis?.kind === "time",
+    // A heading names a measure (at most 80 characters) and a series: room for both.
+    columns: columns.map((c) => ({ ...c, title: cleanLabel(c.title, 2 * MAX_LABEL), heading: cleanLabel(c.heading, 2 * MAX_LABEL) })),
+    rows,
+    overall,
+    measures
+  };
+}
+var plural2 = (n, one, many) => Math.round(n) === 1 ? one : many;
+var NOTE_MAX = 600;
+function noteSentence(note, { measures, spec, sampled }) {
+  const code = text(note.code);
+  if (!code || code === "no_door" || code === "no_door_other")
+    return null;
+  const about = sampled ? "About " : "";
+  if (code === "blank_skipped") {
+    const n = isNum(note.count) ? note.count : 0;
+    if (n <= 0)
+      return null;
+    const measure = measures.find((m) => m.key === note.measure);
+    const specMeasures = Array.isArray(own(spec, "measures")) ? own(spec, "measures") : [];
+    const sm = specMeasures.find((x) => own(x, "key") === note.measure);
+    const label = measure?.label || text(note.measure) || "this measure";
+    const what = typeof own(sm, "perItem") === "string" ? `no value for ${label}` : `no ${text(own(sm, "element")) || label}`;
+    return cleanText(`${about}${countText(n)} ${plural2(n, "item has", "items have")} ${what}, so ${plural2(n, "it isn't", "they aren't")} counted in ${label}.`, NOTE_MAX);
+  }
+  if (typeof note.message === "string" && note.message.trim())
+    return cleanText(note.message, NOTE_MAX) || null;
+  if (code === "folded") {
+    const n = isNum(note.count) ? note.count : 0;
+    if (n <= 0)
+      return null;
+    return cleanText(`${countText(n)} more ${plural2(n, "value is", "values are")} grouped as ${text(note.into) || "Other"}.`, NOTE_MAX);
+  }
+  return null;
+}
+function sampleSentence(result) {
+  const s = result.sample;
+  if (!s || !isNum(s.read) || !isNum(s.total))
+    return null;
+  return `Estimated from a sample of ${countText(s.read)} of ${countText(s.total)} items: counts and totals are scaled up, averages are approximate.`;
+}
+function tableText(table) {
+  const width = Math.max(1, table.columns.length);
+  const cap = Math.max(1, Math.min(MAX_ROWS, Math.floor(MAX_CELLS / width)));
+  const shown = Math.min(table.rows.length, cap);
+  const from = table.newestLast ? table.rows.length - shown : 0;
+  const blank = (t) => t || "\u2014";
+  const header = [table.groupTitle, ...table.columns.map((c) => c.heading)];
+  const lines = [
+    `| ${header.join(" | ")} |`,
+    `|${header.map((_, i) => i === 0 ? "---" : "---:").join("|")}|`
+  ];
+  const line = (r) => `| ${[r.label || " ", ...r.cells.map((c) => blank(c.text))].join(" | ")} |`;
+  table.rows.slice(from, from + shown).forEach((r) => lines.push(line(r)));
+  if (table.overall)
+    lines.push(line(table.overall));
+  return { lines, shown, total: table.rows.length, from };
+}
+
+// dist/src/tools/chart.js
+var HEX243 = /^[0-9a-fA-F]{24}$/;
+var LIST_MAX = 100;
+var SHORT_WAIT_MS = 5e3;
+var GRADE = "export";
+var rangeShape = external_exports.union([
+  external_exports.object({ preset: external_exports.string().describe("today, last7d, last30d, last90d, last12m, thisWeek, thisMonth, thisQuarter, thisYear, lastMonth, lastYear or all") }).strict(),
+  external_exports.object({ from: external_exports.string().describe("YYYY-MM-DD"), to: external_exports.string().describe("YYYY-MM-DD, inclusive") }).strict()
+]);
+var groupShape = external_exports.object({
+  on: external_exports.string().describe("An element name from keepr_schema, or created, updated, created.by (who added each item), card, collection."),
+  bucket: external_exports.string().nullish().describe("For a date: day, week, month, quarter or year (a date-time adds hour); or a part that repeats: weekday, monthOfYear, and for created, updated or a date-time hourOfDay (in the collection's time zone). For a time element: hourOfDay or halfHour."),
+  bins: external_exports.object({ size: external_exports.number().optional(), count: external_exports.number().optional() }).strict().nullish().describe("Ranges, REQUIRED when grouping by a number, money or a measurement: { size: 10 } or { count: 8 }."),
+  top: external_exports.number().nullish().describe("Categories kept before the rest fold into Other (default 10)."),
+  multi: external_exports.string().nullish().describe("An element holding several dates: earliest, latest or each."),
+  blanks: external_exports.string().nullish().describe("show (default) or hide the Not set row.")
+}).strict();
+var measureShape = external_exports.object({
+  key: external_exports.string().describe("Your name for it: a letter, then letters, digits or _ (m1, spent)."),
+  op: external_exports.string().optional().describe("count (takes no element), countNonBlank, distinct, sum, avg, median, min, max, latest, countYes, shareYes. Which an element allows depends on its type; keepr refuses the rest by name."),
+  element: external_exports.string().nullish().describe("The element measured, by name from keepr_schema."),
+  perItem: external_exports.string().nullish().describe('Instead of element: a formula worked out per item, e.g. "{{minutes}} / {{miles}}".'),
+  formula: external_exports.string().optional().describe('A formula across the measures ABOVE it, e.g. "{{m1}} / {{m2}}" (takes no op).'),
+  unit: external_exports.string().optional().describe("A measurement shown in this unit (an id keepr_schema lists)."),
+  currency: external_exports.string().optional().describe("An amount shown in this currency (ISO 4217); other currencies are left out and said."),
+  blanks: external_exports.string().optional().describe("omit (default) or zero."),
+  label: external_exports.string().nullish(),
+  hidden: external_exports.boolean().nullish().describe("Computed for a formula to read, not shown on its own.")
+}).strict();
+var chartSpecShape = external_exports.object({
+  v: external_exports.number().optional(),
+  card_id: external_exports.string().nullable().describe("The card whose items it counts: its id, key or name from keepr_schema (descendant cards included). null counts every card, with system fields only."),
+  subCollections: external_exports.boolean().optional().describe("Count the sub-collections' items too (default true)."),
+  filter: external_exports.string().nullish().describe("A KQL filter, as keepr_get_items takes in q."),
+  time: external_exports.object({
+    on: external_exports.string().describe("created, updated, or a date or date-time element."),
+    multi: external_exports.string().nullish(),
+    range: rangeShape.nullable().optional(),
+    compare: external_exports.string().nullable().optional().describe("previous: also count the period before (a number or line chart only).")
+  }).strict().nullable().optional().describe("The date the chart reads and the range it counts."),
+  measures: external_exports.array(measureShape).describe("1\u20134 measures, plus up to 2 formulas across them."),
+  groupBy: groupShape.nullable().optional().describe("The rows: one per bucket, choice, item or value."),
+  splitBy: groupShape.nullable().optional().describe("Columns within each row (needs groupBy; at most 6 kept)."),
+  show: external_exports.object({
+    type: external_exports.string().describe("table (always allowed), number, progress, bar, line, area, donut, heatmap, calendar."),
+    goal: external_exports.number().nullish(),
+    lowerIsBetter: external_exports.boolean().nullish(),
+    sparkline: external_exports.boolean().nullish(),
+    orientation: external_exports.string().nullish(),
+    stack: external_exports.string().nullish(),
+    sort: external_exports.string().nullish().describe("group (default) or value: rows by their value, largest first."),
+    cumulative: external_exports.boolean().nullish(),
+    markers: external_exports.boolean().nullish()
+  }).strict().optional().describe('Leave out for a table. Comparing with the previous period needs { type: "number" } or { type: "line" }.')
+}).strict();
+var inputShape = {
+  collection: external_exports.string().describe("Collection id or name."),
+  chart: external_exports.string().optional().describe("Run a saved chart, by name or id (list: true lists them)."),
+  range: rangeShape.nullable().optional().describe("With chart: count this range instead of the chart's own; null for all time."),
+  spec: chartSpecShape.optional().describe("Ask a question that is not saved: the card, the measures, the grouping, the range. Element names come from keepr_schema."),
+  list: external_exports.boolean().optional().describe("true lists the collection's saved charts.")
+};
+var chartInput = external_exports.object(inputShape).strict();
+function nextFor(code, p) {
+  const wait = typeof p.retryAfter === "number" && p.retryAfter > 0 ? `${Math.ceil(p.retryAfter)} seconds` : "a minute";
+  switch (code) {
+    case "chart_unavailable":
+      return `no chart by that id is available to this key in "${p.collection}" \u2014 keepr gives one answer for gone, someone else's personal chart, and a collection outside the key's reach. List the charts here with list: true; do not look in other collections.`;
+    case "email_unverified":
+      return "the person's email address is not confirmed yet, and a chart an assistant asks for counts as data leaving keepr, which needs a confirmed address. Ask them to confirm it (the link in their inbox, or resend it from their profile in keepr), then ask again.";
+    case "not_offered_yet":
+      return `keepr cannot work this out yet${p.needs ? ` (needs: ${p.needs})` : ""}${p.path ? `, at ${p.path}` : ""}. Leave that part out, or tell the person keepr can't chart it yet. Do not work it out yourself from a page of items.`;
+    case "rate_limited":
+      if (p.budget === "formulas")
+        return `charts with per-item formulas have used this minute's share of work for this person (every key and session together). Wait ${wait} and ask again, or ask without the formula.`;
+      if (p.budget === "inFlight")
+        return `another chart request from this person is still running. Wait ${wait} and ask again \u2014 one at a time.`;
+      if (p.budget === "items" || p.budget === "personItems")
+        return `charts have read too many items in the last minute. Wait ${wait} and ask again, or narrow the filter or range.`;
+      return `too many chart requests in the last minute. Wait ${wait} and ask again.`;
+    case "charts_busy":
+      return "keepr is running a lot of charts right now. Wait a few seconds and ask once more; if it is still busy, tell the person.";
+    case "too_many_buckets":
+      return "choose a shorter range, a coarser bucket (week, month, quarter, year) or larger bins, and ask again.";
+    case "filter_unresolved":
+      return p.saved ? "the saved chart's filter names something the collection no longer has. Its owner (or a manager, for a chart for everyone) fixes it in keepr; meanwhile ask the same question as a spec." : "the filter names an element the collection no longer has. Fix spec.filter from keepr_schema and ask again.";
+    case "budget_exceeded":
+      return p.budget === "output" ? "the answer was too large to send. Group by a coarser bucket, keep fewer categories (top), or drop the split." : "this needs more work than one run allows. Choose a shorter range or a narrower filter.";
+    case "formula_too_costly":
+      return "its per-item formulas cost more work than one run allows. Simplify the formula, or narrow the filter or range.";
+    case "deadline":
+      return "keepr stopped at its time limit. Narrow the range or the filter and ask again.";
+    case "chart_failed":
+      return "keepr could not work this chart out. Ask once more; if it fails again, tell the person.";
+    default:
+      break;
+  }
+  if (p.path !== void 0) {
+    const where = `spec.${p.path}`.replace(/\.$/, "");
+    if (p.saved)
+      return `this saved chart no longer fits the collection (${where}). Its owner (or a manager, for a chart for everyone) fixes it in keepr; meanwhile you can ask the same question as a spec built from keepr_schema.`;
+    if (code === "form_not_allowed" && p.allowed?.length)
+      return `set spec.show.type to one of: ${p.allowed.join(", ")} \u2014 or leave show out for a table, which is always allowed.`;
+    return `fix ${where} and ask again. Element names, choices and units come from keepr_schema for this collection \u2014 never from memory.`;
+  }
+  return "read the message above; nothing about this question will change by asking it again unchanged.";
+}
+function statusClass(code, httpStatus) {
+  if (httpStatus !== 200)
+    return httpStatus;
+  switch (code) {
+    case "chart_unavailable":
+      return 404;
+    case "email_unverified":
+      return 403;
+    case "rate_limited":
+      return 429;
+    case "deadline":
+    case "chart_failed":
+      return 503;
+    default:
+      return 400;
+  }
+}
+function refusalOf(body, fallback) {
+  const b = body && typeof body === "object" ? body : {};
+  return {
+    code: errorCode(body),
+    // keepr's sentence names elements and charts — someone else's text — so on one line.
+    message: cleanText(errorMessage(body, fallback), NOTE_MAX),
+    ...typeof b.path === "string" ? { path: b.path } : {},
+    ...typeof b.needs === "string" ? { needs: b.needs } : {},
+    ...Array.isArray(b.allowed) ? { allowed: b.allowed.map(String) } : {},
+    ...typeof b.budget === "string" ? { budget: b.budget } : {},
+    ...typeof b.retryAfter === "number" ? { retryAfter: b.retryAfter } : {},
+    ...typeof b.cause === "string" ? { cause: cleanText(b.cause, MAX_LABEL) } : {}
+  };
+}
+function chartFail(what, r, { httpStatus, requestId, saved, collection }) {
+  const where = r.path !== void 0 ? ` at spec.${r.path}` : "";
+  const lines = [
+    `FAILED \u2014 ${what}.`,
+    "",
+    `keepr answered${httpStatus === 200 ? "" : ` HTTP ${httpStatus}`}${r.code ? ` (${r.code})` : ""}${where}: ${r.message}`
+  ];
+  if (r.cause)
+    lines.push(`Cause: ${r.cause}.`);
+  const hint = httpStatus !== 200 && !r.code ? STATUS_HINTS[httpStatus] : void 0;
+  if (hint)
+    lines.push("", hint);
+  lines.push("", `NEXT: ${nextFor(r.code, { ...r, saved, collection })}`);
+  return fail(lines.join("\n"), {
+    ok: false,
+    // `status` is what the breaker reads (server.ts): a slot's refusal rides
+    // on an HTTP 200, so it carries the status its kind of refusal would have.
+    status: statusClass(r.code, httpStatus),
+    httpStatus,
+    code: r.code,
+    message: r.message,
+    ...r.path !== void 0 ? { path: r.path } : {},
+    ...r.needs ? { needs: r.needs } : {},
+    ...r.allowed ? { allowed: r.allowed } : {},
+    ...r.budget ? { budget: r.budget } : {},
+    ...r.retryAfter !== void 0 ? { retryAfter: r.retryAfter } : {},
+    requestId
+  });
+}
+function failFromHttp(res, what, ctx) {
+  const r = refusalOf(res.body, `HTTP ${res.status}`);
+  const out = chartFail(what, r, { httpStatus: res.status, requestId: res.requestId, ...ctx });
+  if (res.nonJson)
+    out.content[0].text += "\n\nThe response body was not JSON, so this may not be keepr answering at all \u2014 an intercepting proxy is the usual cause.";
+  return out;
+}
+function render(result, shown, ctx) {
+  const table = buildChartTable(result, { spec: shown.spec, spelling: ctx.contract });
+  if (!table)
+    return fail("keepr-mcp could not read keepr's answer as a chart.\n\nThis is a bug in keepr-mcp, not something the user did.");
+  const tz = typeof result.tz === "string" ? result.tz : null;
+  const read = typeof result.read === "number" ? result.read : null;
+  const what = shown.chart ? `"${shown.chart.name}"${shown.chart.partial ? " (matched by part of its name)" : ""}` : "(a question, not saved)";
+  const card = shown.card ? `, card "${shown.card.name}"` : "";
+  const sample = result.sample;
+  const counted = sample && typeof sample.read === "number" && typeof sample.total === "number" ? `keepr estimated from ${countText(sample.read)} of ${countText(sample.total)} items` : `keepr counted ${read === null ? "the" : countText(read)} item${read === 1 ? "" : "s"}`;
+  const lines = [
+    `CHART ${what} in "${shown.collection.name}"${card} \u2014 ${counted}, only what this key may export.`
+  ];
+  const rawFilter = shown.spec ? shown.spec.filter : void 0;
+  const filter = typeof rawFilter === "string" ? cleanText(rawFilter, 4 * MAX_LABEL) : "";
+  if (filter)
+    lines.push(`Filter: ${filter}`);
+  const applied = result.applied;
+  if (result.range) {
+    const r = rangeText(result.range, tz);
+    if (r)
+      lines.push(`Range: ${r}.`);
+  } else if (applied && applied.range === false) {
+    lines.push("Not filtered by date: this chart has no date, so the range was not used.");
+  }
+  const axisKind = result.axis?.kind;
+  if (tz && (axisKind === "time" || result.range))
+    lines.push(`Days are counted in ${tz}.`);
+  const sampleLine = sampleSentence(result);
+  if (sampleLine)
+    lines.push(sampleLine);
+  const t = tableText(table);
+  lines.push("", ...t.lines);
+  const truncated = t.shown < t.total;
+  if (truncated) {
+    lines.push("", `TRUNCATED: ${table.newestLast ? "the newest " : ""}${t.shown} of ${t.total} rows shown${table.overall ? " (the Overall row counts every row)" : ""}. Ask with a shorter range, a coarser bucket or fewer categories for the rest.`);
+  }
+  if (result.compare && table.columns.length && !table.columns.some((c) => c.previous)) {
+    lines.push("", "This chart also counts the previous period; a split chart's previous period is not shown here. Ask without the split to compare.");
+  }
+  const sampled = Boolean(result.sample);
+  const notes = (Array.isArray(result.notes) ? result.notes : []).map((n) => ({ code: String(n.code ?? ""), sentence: noteSentence(n, { measures: table.measures, spec: shown.spec, sampled }), ...typeof n.count === "number" ? { count: n.count } : {} })).filter((n) => n.sentence);
+  if (notes.length)
+    lines.push("", "NOTES \u2014 what keepr left out or could not read:", ...notes.map((n) => `  - ${n.sentence}`));
+  const said = new Set(notes.map((n) => n.sentence));
+  const warnings = shown.warnings.filter((w) => w && w.code !== "no_door" && w.code !== "no_door_other" && typeof w.message === "string" && cleanText(w.message, NOTE_MAX) && !said.has(cleanText(w.message, NOTE_MAX))).map((w) => ({ code: String(w.code ?? ""), sentence: cleanText(String(w.message), NOTE_MAX) }));
+  if (warnings.length)
+    lines.push("", "ABOUT THIS QUESTION:", ...warnings.map((w) => `  - ${w.sentence}`));
+  lines.push("", "NEXT: answer from these numbers as keepr counted them. Say the range and any filter, and repeat each note that changes the answer (items left out, other currencies, an estimate). The Overall row is keepr's own figure over every item \u2014 not the rows added up (an average's Overall is the average of all the items) \u2014 so never re-add the rows yourself.");
+  const columnOut = table.columns.map((c) => ({
+    title: c.title,
+    measure: c.measure,
+    series: c.series,
+    type: c.type,
+    ...c.currency ? { currency: c.currency } : {},
+    ...c.unit ? { unit: c.unit } : {},
+    ...c.displayUnit ? { displayUnit: c.displayUnit } : {},
+    ...c.percent ? { percent: true } : {},
+    ...c.dated ? { format: c.dated } : {},
+    ...c.estimated ? { estimated: true } : {},
+    ...c.hidden ? { hidden: true } : {},
+    ...c.previous ? { previousPeriod: true } : {}
+  }));
+  const rowOut = (r) => ({ label: r.label, values: r.cells.map((x) => x.value) });
+  return ok(lines.join("\n"), {
+    mode: shown.chart ? "saved" : "spec",
+    grade: GRADE,
+    collectionId: shown.collection.id,
+    collectionName: shown.collection.name,
+    chart: shown.chart,
+    card: shown.card,
+    ...shown.chart ? {} : { spec: shown.spec },
+    tz,
+    read,
+    range: result.range ?? null,
+    ...result.sample ? { sample: result.sample } : {},
+    groupTitle: table.groupTitle,
+    ...table.groupUnit ? { groupUnit: table.groupUnit } : {},
+    ...table.groupCurrency ? { groupCurrency: table.groupCurrency } : {},
+    columns: columnOut,
+    rows: table.rows.slice(t.from, t.from + t.shown).map(rowOut),
+    overall: table.overall ? rowOut(table.overall) : null,
+    rowsTotal: t.total,
+    rowsShown: t.shown,
+    truncated,
+    notes,
+    warnings
+  });
+}
+function answer(result, shown, ctx, what, saved) {
+  const r = result && typeof result === "object" ? result : {};
+  if (r.ok !== true) {
+    const error2 = r.error && typeof r.error === "object" ? r.error : {};
+    return chartFail(what, refusalOf(error2, "keepr could not run this chart."), { httpStatus: 200, requestId: null, saved, collection: shown.collection.name });
+  }
+  if (r.grade !== GRADE) {
+    return fail(`FAILED \u2014 ${what}.
+
+keepr answered at the screen grade, not the export grade this tool asked for, so the answer is not shown: an assistant's chart counts only what the person may export. This keepr may be older than charts for assistants. Tell the person the chart could not be run here.`, { ok: false, status: 502, code: "not_export_grade" });
+  }
+  return render(r, shown, ctx);
+}
+var tierOf = (c) => c.inherited ? `from ${cleanText(String(c.inheritedFrom?.name ?? "the collection above"))}` : c.scope === "collection" ? "for everyone" : "personal";
+function summaryOf(spec) {
+  if (!spec)
+    return "";
+  const measures = (Array.isArray(spec.measures) ? spec.measures : []).filter((m) => m.hidden !== true).map((m) => typeof m.label === "string" && m.label ? m.label : m.formula ? "a formula" : `${m.op ?? "?"}${m.element ? ` of ${m.element}` : m.perItem ? " of a calculation" : ""}`);
+  const g = spec.groupBy;
+  const s = spec.splitBy;
+  const by = g ? ` by ${g.on}${g.bucket ? ` (${g.bucket})` : ""}` : "";
+  const split = s ? `, split by ${s.on}` : "";
+  return `${measures.join(", ")}${by}${split}`;
+}
+async function listCharts(ctx, target) {
+  const what = `listing the charts of "${target.name}"`;
+  const res = await ctx.http.request({ path: `/api/collections/${target.id}/charts` });
+  if (!res.ok)
+    return failFromHttp(res, what, { saved: false, collection: target.name });
+  const all = [...res.body?.charts ?? [], ...res.body?.inherited ?? []];
+  if (!all.length) {
+    return ok(`No saved charts in "${target.name}" that this key can see. Ask with spec instead \u2014 build it from keepr_schema's element names.`, { collectionId: target.id, total: 0, charts: [] });
+  }
+  const shown = all.slice(0, LIST_MAX);
+  const lines = [`${all.length} saved chart${all.length === 1 ? "" : "s"} in "${target.name}"${shown.length < all.length ? ` (the first ${shown.length})` : ""}:`];
+  for (const c of shown) {
+    const desc = c.description ? ` \u2014 ${cleanText(c.description, MAX_LABEL)}` : "";
+    lines.push(`  ${c._id}  "${cleanText(String(c.name ?? ""), MAX_LABEL)}"  [${tierOf(c)}]  ${cleanText(summaryOf(c.spec), 2 * MAX_LABEL)}${desc}`);
+  }
+  if (shown.length < all.length)
+    lines.push("", `${all.length - shown.length} more are not listed. Ask for one by name with chart: "<name>".`);
+  lines.push("", 'NEXT: run one with chart: "<name or id>" (add range to count another period). A chart answers the same question every time; ask with spec for anything else.');
+  return ok(lines.join("\n"), {
+    collectionId: target.id,
+    total: all.length,
+    truncated: shown.length < all.length,
+    charts: shown.map((c) => ({ id: c._id, name: c.name, tier: c.inherited ? "inherited" : c.scope === "collection" ? "collection" : "personal", ...c.inherited ? { inheritedFrom: c.inheritedFrom?.name ?? null } : {}, description: c.description || "", summary: summaryOf(c.spec) }))
+  });
+}
+var PARTIAL_MIN = 3;
+async function findChart(ctx, target, rawRef) {
+  const ref = rawRef.trim();
+  if (!ref)
+    return { ok: false, result: fail("chart is empty. Give a saved chart's name or id \u2014 list them with list: true. Nothing was sent to keepr.", { ok: false, status: 400, code: "invalid_arguments" }) };
+  if (HEX243.test(ref)) {
+    const res2 = await ctx.http.request({ path: `/api/collections/${target.id}/charts/${ref}` });
+    if (res2.ok && res2.body)
+      return { ok: true, chart: res2.body, partial: false };
+    if (res2.status === 404) {
+      return { ok: false, result: chartFail(`running chart ${ref} in "${target.name}"`, { code: "chart_unavailable", message: "This chart is no longer available." }, { httpStatus: 200, requestId: res2.requestId, saved: true, collection: target.name }) };
+    }
+    return { ok: false, result: failFromHttp(res2, `reading chart ${ref} in "${target.name}"`, { saved: true, collection: target.name }) };
+  }
+  const res = await ctx.http.request({ path: `/api/collections/${target.id}/charts` });
+  if (!res.ok)
+    return { ok: false, result: failFromHttp(res, `finding the chart "${ref}" in "${target.name}"`, { saved: true, collection: target.name }) };
+  const all = [...res.body?.charts ?? [], ...res.body?.inherited ?? []];
+  const low = ref.toLowerCase();
+  const exact = all.filter((c) => String(c.name ?? "").trim().toLowerCase() === low);
+  const partial2 = !exact.length;
+  const hits = exact.length ? exact : ref.length >= PARTIAL_MIN ? all.filter((c) => String(c.name ?? "").toLowerCase().includes(low)) : [];
+  if (hits.length === 1)
+    return { ok: true, chart: hits[0], partial: partial2 };
+  if (hits.length > 1) {
+    const list = hits.slice(0, 20).map((c) => `"${cleanText(String(c.name), MAX_LABEL)}" (${c._id}, ${tierOf(c)})`).join(", ");
+    return { ok: false, result: fail(`"${ref}" matches ${hits.length} charts in "${target.name}": ${list}. Ask the user which one, then pass its id as chart \u2014 do not pick.`, { ok: false, status: 400, code: "ambiguous_chart" }) };
+  }
+  const names = all.slice(0, 30).map((c) => `"${cleanText(String(c.name), MAX_LABEL)}"`).join(", ");
+  return { ok: false, result: fail(`No saved chart "${ref}" in "${target.name}" that this key can see. ${all.length ? `Charts here: ${names}${all.length > 30 ? ", \u2026" : ""}.` : "It has none."} Ask with spec instead, or list them with list: true.`, { ok: false, status: 404, code: "chart_not_found" }) };
+}
+async function runSaved(ctx, target, args) {
+  const found = await findChart(ctx, target, String(args.chart));
+  if (!found.ok)
+    return found.result;
+  const chart = found.chart;
+  const name = cleanText(String(chart.name ?? ""));
+  const partial2 = found.partial;
+  const what = `running the chart "${name}" in "${target.name}"`;
+  const run = { chart_id: String(chart._id), collection_id: target.id, grade: GRADE };
+  if (args.range !== void 0)
+    run.range = args.range;
+  const res = await ctx.http.request({ method: "POST", path: "/api/charts/run", body: { runs: [run] }, maxWaitMs: SHORT_WAIT_MS });
+  if (!res.ok)
+    return failFromHttp(res, what, { saved: true, collection: target.name });
+  const slot = Array.isArray(res.body?.results) ? res.body.results[0] : void 0;
+  return answer(slot, { collection: target, chart: { id: String(chart._id), name, ...partial2 ? { partial: true } : {} }, card: null, spec: chart.spec ?? null, warnings: [] }, ctx, what, true);
+}
+async function runSpec(ctx, target, args) {
+  const spec = { ...args.spec };
+  const what = `asking keepr a chart question in "${target.name}"`;
+  if (spec.show === void 0)
+    spec.show = { type: "table" };
+  let card = null;
+  if (typeof spec.card_id === "string" && !HEX243.test(spec.card_id.trim())) {
+    const ref = spec.card_id.trim();
+    if (!ref)
+      return fail("spec.card_id is empty. Give the card's key, name or id from keepr_schema \u2014 or null to count every card. Nothing was sent to keepr.", { ok: false, status: 400, code: "invalid_arguments" });
+    const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
+    if (!schema.ok)
+      return failFromHttp(schema, `reading the schema of "${target.name}" to find card "${ref}"`, { saved: false, collection: target.name });
+    const cards = [...schema.body?.cards ?? [], ...schema.body?.familyCards ?? []];
+    const low = ref.toLowerCase();
+    const byKey = cards.filter((c) => typeof c.key === "string" && c.key.toLowerCase() === low);
+    const hits = byKey.length ? byKey : cards.filter((c) => typeof c.name === "string" && c.name.trim().toLowerCase() === low);
+    const said = (c) => `"${cleanText(String(c.name ?? ""))}" (${c.key ? `key ${cleanText(c.key)}, ` : ""}${c.id}${c.collection?.name ? `, in ${cleanText(c.collection.name)}` : ""})`;
+    if (hits.length > 1) {
+      return fail(`"${ref}" names ${hits.length} cards here: ${hits.slice(0, 10).map(said).join(", ")}. Ask the user which one, then pass its id as spec.card_id \u2014 do not pick. Nothing was counted.`, { ok: false, status: 400, code: "ambiguous_card" });
+    }
+    if (!hits.length) {
+      return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.slice(0, 40).map((c) => cleanText(String(c.key ?? c.id))).join(", ") || "(none)"}. Nothing was counted.`, { ok: false, status: 400, code: "card_not_found" });
+    }
+    spec.card_id = hits[0].id;
+    card = { id: hits[0].id, name: cleanText(String(hits[0].name ?? hits[0].key ?? hits[0].id)) };
+  }
+  const res = await ctx.http.request({
+    method: "POST",
+    path: `/api/collections/${target.id}/charts/preview`,
+    body: { spec, grade: GRADE },
+    maxWaitMs: SHORT_WAIT_MS
+  });
+  if (!res.ok)
+    return failFromHttp(res, what, { saved: false, collection: target.name });
+  const body = res.body ?? {};
+  return answer(body.result, { collection: target, chart: null, card, spec: body.spec ?? spec, warnings: Array.isArray(body.warnings) ? body.warnings : [] }, ctx, what, false);
+}
+var chartTool = {
+  name: "keepr_chart",
+  description: `Ask keepr for totals, counts and averages over a collection's items, answered as a table. Use it instead of paging keepr_get_items whenever the question is "how much", "how many", "what is the average" or "by month / by category": keepr works the answer out over every item this key may export \u2014 earliest and latest, shares of yes, money per currency, measurements in one unit \u2014 and says what it left out as notes. Run a saved chart by name (list: true lists them), or ask with spec, built from keepr_schema's element names.`,
+  inputSchema: inputShape,
+  strict: true,
+  handler: async (rawArgs, ctx) => {
+    const parsed = chartInput.safeParse(rawArgs);
+    if (!parsed.success) {
+      const issues = parsed.error.issues.slice(0, 8).map((i) => `  ${i.path.length ? i.path.join(".") : "(top level)"}: ${i.message}`);
+      return fail(["FAILED \u2014 the arguments do not fit keepr_chart.", "", ...issues, "", "NEXT: fix those and call again. Nothing was sent to keepr."].join("\n"), { ok: false, status: 400, code: "invalid_arguments" });
+    }
+    const args = parsed.data;
+    const ways = [args.chart !== void 0, args.spec !== void 0, args.list === true].filter(Boolean).length;
+    if (ways !== 1) {
+      return fail("Give exactly one of: chart (a saved chart's name or id), spec (a question to ask), or list: true (the saved charts). Nothing was sent to keepr.", { ok: false, status: 400, code: "invalid_arguments" });
+    }
+    if (args.range !== void 0 && args.chart === void 0) {
+      return fail("range goes with chart, replacing a saved chart's own. For a spec, put the range in spec.time.range. Nothing was sent to keepr.", { ok: false, status: 400, code: "invalid_arguments" });
+    }
+    const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+    if (!resolved.ok)
+      return fail(cleanText(resolved.message, 4 * NOTE_MAX));
+    const target = { ...resolved.row, name: cleanText(resolved.row.name) };
+    const need = args.list === true ? "charts" : args.chart !== void 0 ? "chartRun" : "chartPreview";
+    if (!ctx.contract.hasEndpoint(need)) {
+      return fail(`This keepr (${ctx.config.baseUrl}) does not offer charts to assistants yet: its contract names no ${need} endpoint. For a plain count, keepr_get_items with mode: "count" answers exactly; anything else, tell the person it needs a newer keepr.`, { ok: false, status: 400, code: "charts_not_offered" });
+    }
+    if (args.list === true)
+      return listCharts(ctx, target);
+    if (args.chart !== void 0)
+      return runSaved(ctx, target, args);
+    return runSpec(ctx, target, args);
+  }
+};
+
 // dist/src/tools/ingest.js
 var PLACEHOLDER = /^<[^<>]{1,60}>$/;
 var IMPORT_ID = /^[A-Za-z0-9._-]{1,64}$/;
@@ -23955,7 +25187,7 @@ function mintImportId() {
 }
 
 // dist/src/tools/updateItem.js
-var HEX243 = /^[0-9a-fA-F]{24}$/;
+var HEX244 = /^[0-9a-fA-F]{24}$/;
 var updateItemTool = {
   name: "keepr_update_item",
   description: 'Change specific elements on ONE existing keepr item, or add and take off its tags, addressed by its id. Elements you do not mention are left alone. Name tags as keepr_schema lists them (a name, or a path like Health/Digestive) or by id; an item used as a tag goes by its id. keepr never creates a tag here: if the tag the person wants does not exist, ask them. A restricted tag (it decides who can see what) is added or taken off only by the person in keepr, never from here. For bulk changes, or anything with an external_id, use keepr_ingest with mode: "upsert" instead.',
@@ -23969,7 +25201,7 @@ var updateItemTool = {
   },
   handler: async (args, ctx) => {
     const itemId = String(args.item_id ?? "");
-    if (!HEX243.test(itemId))
+    if (!HEX244.test(itemId))
       return fail(`"${itemId}" is not an item id. An id is 24 hex characters \u2014 get one from keepr_get_items.`);
     const elements = args.elements ?? {};
     const toAdd = Array.isArray(args.tags_add) ? args.tags_add : [];
@@ -24288,8 +25520,8 @@ function buildBlueprint(cards, filters = [], layouts = [], tags = []) {
       const idx = indexOf(l.card);
       if (idx < 0)
         problems.push(`layout for "${l.card}": a table layout here is for a card in this proposal.`);
-      const own = new Set((idx >= 0 ? cards[idx].elements ?? [] : []).map((el) => el.name));
-      const columns = (Array.isArray(l.columns) ? l.columns : []).map((col) => typeof col === "string" ? !own.has(col) && SYSTEM_COLUMNS.includes(col) ? { system: col } : { element: col } : col);
+      const own2 = new Set((idx >= 0 ? cards[idx].elements ?? [] : []).map((el) => el.name));
+      const columns = (Array.isArray(l.columns) ? l.columns : []).map((col) => typeof col === "string" ? !own2.has(col) && SYSTEM_COLUMNS.includes(col) ? { system: col } : { element: col } : col);
       return { kind: "table", scope: "card", cardRef: { ref: idx >= 0 ? localIds[idx] : localIdOf(l.card) }, body: { columns, ...l.sort ? { sort: l.sort } : {} } };
     });
   }
@@ -24362,8 +25594,8 @@ function isServerAssigned(el) {
 }
 function buildChangePayload(current, change, knownTypes, inherited = /* @__PURE__ */ new Set()) {
   const problems = [];
-  const own = Array.isArray(current.elements) ? current.elements.filter((e) => e && typeof e === "object" && e.name) : [];
-  const ownByName = new Map(own.map((e) => [e.name, e]));
+  const own2 = Array.isArray(current.elements) ? current.elements.filter((e) => e && typeof e === "object" && e.name) : [];
+  const ownByName = new Map(own2.map((e) => [e.name, e]));
   const removals = Array.isArray(change.remove_elements) ? change.remove_elements.map(String) : [];
   const removeSet = /* @__PURE__ */ new Set();
   for (const name of removals) {
@@ -24434,7 +25666,7 @@ function buildChangePayload(current, change, knownTypes, inherited = /* @__PURE_
   if (problems.length)
     return { ok: false, problems };
   const elements = [];
-  for (const el of own) {
+  for (const el of own2) {
     if (removeSet.has(el.name))
       continue;
     elements.push(merged.get(el.name) ?? el);
@@ -25078,7 +26310,7 @@ async function applyChange(proposal, args, ctx) {
 // dist/src/tools/attach.js
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
-var HEX244 = /^[0-9a-fA-F]{24}$/;
+var HEX245 = /^[0-9a-fA-F]{24}$/;
 var MAX_INLINE_BYTES = 1e6;
 var REFUSED_EXT = /* @__PURE__ */ new Set([
   "exe",
@@ -25125,7 +26357,7 @@ var attachFileTool = {
       }
       itemId = found.itemId;
     }
-    if (!HEX244.test(itemId)) {
+    if (!HEX245.test(itemId)) {
       return fail("No item given. Pass item_id (24 hex characters), or external_id from a committed keepr_ingest run in this session.");
     }
     const files = args.files ?? [];
@@ -25344,6 +26576,7 @@ var ALL_TOOLS = [
   schemaTool,
   getItemsTool,
   searchTool,
+  chartTool,
   ingestTool,
   updateItemTool,
   proposeCardTool,

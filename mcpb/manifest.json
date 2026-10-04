@@ -2,7 +2,7 @@
 	"manifest_version": "0.3",
 	"name": "keepr",
 	"display_name": "keepr",
-	"version": "0.5.1",
+	"version": "0.6.0",
 	"description": "Read, add and change the records you keep in keepr, from Claude.",
 	"long_description": "Connects Claude to your keepr account through its API. Read your collections, add records from a sentence, a list or a spreadsheet, and propose changes to cards — each write is dry-run first and shown to you before anything is committed. Paste an API key from keepr (My Profile → API keys); it is stored by Claude, never in a file.",
 	"author": {
@@ -64,6 +64,10 @@
 		{
 			"name": "keepr_search",
 			"description": "Find something by text across every keepr collection this key can reach — collections, card types, items, and tags (tags by name, and items used as tags by title, with the id to apply them by)."
+		},
+		{
+			"name": "keepr_chart",
+			"description": "Ask keepr for totals, counts and averages over a collection's items, answered as a table."
 		},
 		{
 			"name": "keepr_ingest",
