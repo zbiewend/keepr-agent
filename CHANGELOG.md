@@ -3,6 +3,14 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.7.1 — 2026-10-05
+
+Skill 2.7.1, keepr-mcp 0.9.1.
+
+- **New cards in a setup can be written the way the card chapter shows.** An element's options beside its name (`"isTitle": true`, `"choices": [...]`) and a lookup by card key (`"lookupCard": "release"`) are moved into keepr's shape before anything is sent. keepr refused them before.
+- **A change says exactly what changes.** A changed rule or quick add lists each value that differs, as it was and as it becomes (`actions[0].title: Waiting on you → Work is waiting on you`), not only "actions". A changed tile, form or table is drawn as it is now and as it becomes.
+- Plainer wording in keepr's previews: "reaches 1 person", and a reminder's window in days or hours with the condition it counts.
+
 ## 2.7.0 — 2026-10-05
 
 Skill 2.7.0, keepr-mcp 0.9.0.

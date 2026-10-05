@@ -52,7 +52,9 @@ def steps_from(bp):
     return out
 
 
-class ReviewTest(unittest.TestCase):
+class _Harness(unittest.TestCase):
+    """The stub and its helpers, with no tests of its own (so a subclass runs only its own)."""
+
     def setUp(self):
         tk.CALLS.clear()
         tk.EXTRA.clear()
@@ -82,6 +84,9 @@ class ReviewTest(unittest.TestCase):
 
     def applied(self):
         return [c for c in tk.CALLS if c[0] == "POST" and c[1].endswith("/blueprints/apply")]
+
+
+class ReviewTest(_Harness):
 
     # ================================================================ FINDINGS (fail today)
 
@@ -375,6 +380,53 @@ class ReviewTest(unittest.TestCase):
         self.assertIn("automation: Tell me when work waits on me", done.stdout)
         self.assertIn("Settings › Automations", done.stdout)
         self.assertEqual(len(self.applied()), 1)
+
+
+class LivePassTest(_Harness):
+    """What the KPR-197 live pass found, on production: a setup's new card in
+    cards.md's shape was refused, a changed rule said only "actions", a changed
+    tile showed only what it becomes, "reaches 1 people", and the usage text
+    did not list setup / automations / history."""
+
+    def test_a_new_card_in_cards_md_shape_is_sent_with_its_options_under_options(self):
+        sent = []
+        self.stub(lambda bp: (sent.append(bp), {"wouldApply": True, "problems": [], "steps": [], "summary": []})[1])
+        tk.run("setup", "--collection", COLLECTION, "--spec", self.spec({"cards": [
+            {"localId": "release", "key": "release", "name": "Release",
+             "elements": [{"name": "title", "dataType": "text-small", "isTitle": True, "required": True}]},
+            {"localId": "work", "key": "work-item", "name": "Work item", "elements": [
+                {"name": "status", "dataType": "choice", "choices": [{"value": "open"}], "options": {"help": "kept"}},
+                {"name": "release", "dataType": "card-lookup", "lookupCard": "release"},
+                {"name": "person", "dataType": "card-lookup", "lookupCard": "person"}]}]}))
+        cards = sent[0]["cards"]
+        self.assertEqual(cards[0]["elements"][0], {"name": "title", "dataType": "text-small", "options": {"isTitle": True, "required": True}})
+        status, release, person = cards[1]["elements"]
+        self.assertEqual(status["options"], {"help": "kept", "choices": [{"value": "open"}]})
+        self.assertNotIn("choices", status)
+        self.assertEqual(release["options"], {"lookupCardId": {"ref": "release"}})
+        self.assertEqual(person["options"], {"lookupCardId": {"key": "person"}})
+
+    def test_a_changed_rule_says_the_values_and_a_changed_tile_is_drawn_twice(self):
+        steps = [{"kind": "automation", "name": "Tell me", "change": "changed", "state": "paused", "willPause": True,
+                  "arrives": {"state": "paused", "reasons": [{"code": "notifies", "message": "It sends notifications to people."}]},
+                  "before": {"actions": [{"type": "notify", "title": "Waiting on you"}]},
+                  "after": {"actions": [{"type": "notify", "title": "Work is waiting on you"}]},
+                  "preview": {"summary": "When…", "actions": [{"type": "notify", "recipientCount": 1, "title": "Work is waiting on you"}]}},
+                 {"kind": "layout", "layoutKind": "tile", "card": {"key": "book"}, "tier": "collection", "change": "changed",
+                  "before": {"body": {"rows": [[{"element": "due", "span": 1}]]}},
+                  "after": {"body": {"rows": [[{"element": "due", "span": 2}]]}}}]
+        self.stub(lambda bp: {"wouldApply": True, "problems": [], "steps": steps, "summary": []})
+        out = tk.run("setup", "--collection", COLLECTION, "--spec", self.spec({"collection": {}})).stdout
+        self.assertIn("actions[0].title: Waiting on you → Work is waiting on you", out, out)
+        self.assertIn("reaches 1 person;", out, out)
+        self.assertRegex(out, r"now:\n +\| due \(1\) \|\n +becomes:\n +\| due \(2\) \|")
+
+    def test_the_module_usage_lists_setup_automations_and_history(self):
+        """The script's own docstring is the command list a model reads first."""
+        with open(os.path.join(HERE, "..", "scripts", "keepr.py"), encoding="utf-8") as fh:
+            doc = ast.get_docstring(ast.parse(fh.read()))
+        for command in ("setup", "automations", "history"):
+            self.assertRegex(doc, rf"\n  {command} +--", command)
 
 
 if __name__ == "__main__":

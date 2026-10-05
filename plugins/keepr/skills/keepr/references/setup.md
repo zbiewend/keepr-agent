@@ -61,6 +61,11 @@ blueprint — so there is nothing to translate. Every section is optional:
 }
 ```
 
+**New cards** are written as `references/cards.md` teaches — an element's
+`isTitle`, `required`, `choices` and other options beside its name, a lookup as
+`"lookupCard": "<key>"` — or in keepr's own shape with them under `options`;
+the tool and `keepr.py` move them into place before anything is sent.
+
 **Naming a card.** `{ "ref": "bug" }` is a card this setup makes (its
 `localId`); `{ "key": "task" }` is one the collection has (from `schema`);
 `{ "globalKey": "person" }` a global card. A rule's `card_id` takes the same.
@@ -146,17 +151,19 @@ A rule says **when** (its trigger) and **what** (its actions):
   "actions": [ { "type": "notify", "channels": ["inApp"], "audience": { "type": "role", "minRole": "manage" },
                  "title": "Waiting on you" } ] }
 
-// The stale-work nudge — runs on a schedule, so it arrives paused
-{ "name": "Stale work nudge", "kind": "expected-item",
+// Nothing started this week — runs on a schedule, so it arrives paused
+{ "name": "Nothing started this week", "kind": "expected-item",
   "trigger": { "type": "schedule", "schedule": { "every": 1, "unit": "day", "time": "09:00", "timezone": "America/Los_Angeles" } },
   "check": { "card_id": { "key": "work-item" }, "window": { "type": "rolling", "minutes": 10080 },
              "condition": { "kql": "status = in-progress" } },
   "actions": [ { "type": "notify", "channels": ["inApp"], "audience": { "type": "role", "minRole": "manage" },
-                 "title": "Nothing moved this week" } ] }
+                 "title": "No work started this week" } ] }
 ```
 
 Kinds: `rule` (the default), `threshold` (a value crossing a bound),
-`expected-item` (something that should have happened by a time) and
+`expected-item` (a record that should have been **added** by a time: it
+notifies when no record of its card, matching its condition, was created in
+the window — it does not notice a record that stopped changing) and
 `generate-items` (make a record per source record, on a schedule). Never send
 `enabled` — keepr decides it.
 

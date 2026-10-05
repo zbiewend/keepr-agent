@@ -31,6 +31,14 @@ Commands
                                          propose a change to an existing card (server-made diff + token)
   change-card --apply TOKEN [--confirm "Card name"]
                                          apply a proposal the user has seen
+  setup       --collection X --spec F    preview a setup (layouts, filters, quick adds, rules,
+                                         notifications) and print its fingerprint; nothing changes
+  setup       --collection X --spec F --apply --expect FINGERPRINT
+                                         apply exactly what the person saw
+  automations --collection X [--runs RULE] [--pause RULE]
+                                         the collection's rules: state, maker, runs; pause one
+  history     --item ID | --card KEY --collection X | --collection X
+                                         who changed what, newest first (reads only)
   runs        --collection X             recent ingest runs, for audit
   request-upload --collection X --entries F
                                          ask the person for files through a link (they upload them)
@@ -2339,18 +2347,39 @@ def _setup_fingerprint(setup, steps):
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
+_MAX_CHANGES = 12
+
+
 def _changes(before, after):
+    """Each path that differs, was → now — `actions[0].title: Waiting on you →
+    Work is waiting on you`, never only "actions" (KPR-197 live pass). A part
+    added or taken away whole is named so. At most _MAX_CHANGES, then a count."""
     if not isinstance(before, dict) or not isinstance(after, dict):
         return []
     scalar = lambda v: v is None or isinstance(v, (str, int, float, bool))
+    same = lambda x, y: json.dumps(x, sort_keys=True, default=str) == json.dumps(y, sort_keys=True, default=str)
     out = []
-    for k in sorted(set(before) | set(after)):
-        b, a = before.get(k), after.get(k)
-        if json.dumps(b, sort_keys=True, default=str) == json.dumps(a, sort_keys=True, default=str):
-            continue
-        out.append(f"{k}: {_one_line('(none)' if b is None else b, 4000)} → {_one_line('(none)' if a is None else a, 4000)}"
-                   if scalar(b) and scalar(a) else k)
-    return out
+
+    def walk(b, a, path):
+        if same(b, a):
+            return
+        if scalar(b) and scalar(a):
+            out.append(f"{path}: {_one_line('(none)' if b is None else b, 4000)} → {_one_line('(none)' if a is None else a, 4000)}")
+        elif b is None:
+            out.append(f"{path}: added")
+        elif a is None:
+            out.append(f"{path}: removed")
+        elif isinstance(b, list) and isinstance(a, list):
+            for i in range(max(len(b), len(a))):
+                walk(b[i] if i < len(b) else None, a[i] if i < len(a) else None, f"{path}[{i}]")
+        elif isinstance(b, dict) and isinstance(a, dict):
+            for k in sorted(set(b) | set(a)):
+                walk(b.get(k), a.get(k), f"{path}.{k}" if path else k)
+        else:
+            out.append(f"{path}: replaced")
+
+    walk(before, after, "")
+    return out[:_MAX_CHANGES] + ([f"and {len(out) - _MAX_CHANGES} more"] if len(out) > _MAX_CHANGES else [])
 
 
 def _draw_layout(kind, body):
@@ -2402,7 +2431,7 @@ def _print_setup_steps(steps, setup):
                 elif act.get("message"):
                     bits.append(_one_line(act["message"]))
                 if isinstance(act.get("recipientCount"), int):
-                    bits.append(f"reaches {act['recipientCount']} people")
+                    bits.append(f"reaches {act['recipientCount']} {'person' if act['recipientCount'] == 1 else 'people'}")
                 if act.get("title"):
                     bits.append(f"says \"{_one_line(act['title'], 120)}\"")
                 if bits:
@@ -2428,7 +2457,16 @@ def _print_setup_steps(steps, setup):
             if body is None and layout_i < len(sent_layouts):
                 body = (sent_layouts[layout_i] or {}).get("body")
             layout_i += 1
-            if s.get("change") != "unchanged":
+            before = (s.get("before") or {}).get("body") if isinstance(s.get("before"), dict) else None
+            if s.get("change") == "changed" and before is not None and s.get("layoutKind") in ("tile", "form", "table"):
+                # Drawn as it is and as it will be: the person agrees to the difference.
+                print("    now:")
+                for line in _draw_layout(s.get("layoutKind"), before):
+                    print(line)
+                print("    becomes:")
+                for line in _draw_layout(s.get("layoutKind"), body):
+                    print(line)
+            elif s.get("change") != "unchanged":
                 for line in _draw_layout(s.get("layoutKind"), body):
                     print(line)
         elif kind == "tagRule":
@@ -2450,6 +2488,33 @@ def _setup_refusal(status, res, what):
         print(f"  {_one_line(p.get('path'), 120)}: {_one_line(p.get('message'), 400)} ({_one_line(p.get('code'), 60)})", file=sys.stderr)
 
 
+def lift_element_options(setup):
+    """New cards in a setup may be written the way references/cards.md teaches —
+    `"isTitle": true`, `"choices": [...]`, `"lookupCard": "release"` beside the
+    element's name. A blueprint takes those under `options` (and a lookup as a
+    reference), so they are moved there before anything is sent; a key already
+    under `options` wins. (KPR-197 live pass: the setup refused them.)"""
+    local = {}
+    for card in setup.get("cards") or []:
+        if isinstance(card, dict) and isinstance(card.get("localId"), str):
+            local[card["localId"]] = card["localId"]
+            if isinstance(card.get("key"), str):
+                local[card["key"]] = card["localId"]
+    for group in ("cards", "elementSets"):
+        for card in setup.get(group) or []:
+            for el in (card.get("elements") or []) if isinstance(card, dict) else []:
+                if not isinstance(el, dict):
+                    continue
+                options = el.get("options") if isinstance(el.get("options"), dict) else {}
+                if isinstance(el.get("lookupCard"), str):
+                    name = el.pop("lookupCard")
+                    options.setdefault("lookupCardId", {"ref": local[name]} if name in local else {"key": name})
+                for key in [k for k in el if k in ELEMENT_OPTION_KEYS]:
+                    options.setdefault(key, el.pop(key))
+                if options:
+                    el["options"] = options
+
+
 def cmd_setup(a):
     collection = resolve_collection(a.collection)
     try:
@@ -2461,6 +2526,7 @@ def cmd_setup(a):
         die("a setup is one JSON object: {\"cards\"?: [...], \"collection\"?: {...}} — see references/setup.md")
     if a.apply and not a.expect:
         die("--apply needs --expect FINGERPRINT: run the preview first, show the person, then apply with the fingerprint it printed.")
+    lift_element_options(setup)
 
     status, res = request("POST", f"/api/collections/{collection}/blueprints/preview", {"blueprint": setup})
     res = res if isinstance(res, dict) else {}

@@ -23747,7 +23747,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.9.0";
+var SERVER_VERSION = "0.9.1";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -27445,16 +27445,40 @@ function stable(value) {
   }
   return JSON.stringify(value === void 0 ? null : value);
 }
+var MAX_CHANGES = 12;
+var isScalar = (v) => v === void 0 || v === null || ["string", "number", "boolean"].includes(typeof v);
+var isNode = (v) => !!v && typeof v === "object";
 function changesOf(before, after) {
   if (!before || !after)
     return [];
-  const keys = [.../* @__PURE__ */ new Set([...Object.keys(before), ...Object.keys(after)])].filter((k) => stable(before[k]) !== stable(after[k])).sort();
-  return keys.map((k) => {
-    const b = before[k];
-    const a = after[k];
-    const scalar = (v) => v === void 0 || v === null || ["string", "number", "boolean"].includes(typeof v);
-    return scalar(b) && scalar(a) ? `${k}: ${t2(b ?? "(none)", 4e3)} \u2192 ${t2(a ?? "(none)", 4e3)}` : k;
-  });
+  const out = [];
+  const walk = (b, a, path) => {
+    if (stable(b) === stable(a))
+      return;
+    if (isScalar(b) && isScalar(a)) {
+      out.push(`${path}: ${t2(b ?? "(none)", 4e3)} \u2192 ${t2(a ?? "(none)", 4e3)}`);
+      return;
+    }
+    if (b === void 0 || b === null) {
+      out.push(`${path}: added`);
+      return;
+    }
+    if (a === void 0 || a === null) {
+      out.push(`${path}: removed`);
+      return;
+    }
+    if (!isNode(b) || !isNode(a) || Array.isArray(b) !== Array.isArray(a)) {
+      out.push(`${path}: replaced`);
+      return;
+    }
+    const keys = Array.isArray(b) ? [...Array(Math.max(b.length, a.length)).keys()].map(String) : [.../* @__PURE__ */ new Set([...Object.keys(b), ...Object.keys(a)])].sort();
+    for (const k of keys) {
+      const sub = Array.isArray(b) ? `${path}[${k}]` : path ? `${path}.${k}` : k;
+      walk(b[k], a[k], sub);
+    }
+  };
+  walk(before, after, "");
+  return out.length > MAX_CHANGES ? [...out.slice(0, MAX_CHANGES), `and ${out.length - MAX_CHANGES} more`] : out;
 }
 function drawTile(body) {
   const rows = body && typeof body === "object" && Array.isArray(body.rows) ? body.rows : [];
@@ -27592,6 +27616,12 @@ function describeSetup(body, setup, collectionName) {
       lines.push(`  ${changeWord(s)} the ${t2(s.layoutKind, 20)}${s.name ? ` "${t2(s.name)}"` : ""}${oldName && oldName !== s.name ? ` (was "${t2(oldName)}")` : ""} of ${refText(s.card)}${s.tier ? ` (${t2(s.tier, 20)} tier)` : ""}`);
       if (s.change === "unchanged")
         return;
+      const beforeBody = s.change === "changed" ? s.before?.body : void 0;
+      if (beforeBody !== void 0 && ["tile", "form", "table"].includes(String(s.layoutKind))) {
+        const draw = s.layoutKind === "tile" ? drawTile : s.layoutKind === "form" ? drawForm : drawTable;
+        lines.push("    now:", ...draw(beforeBody), "    becomes:", ...draw(sentBody));
+        return;
+      }
       if (s.layoutKind === "tile")
         lines.push(...drawTile(sentBody));
       else if (s.layoutKind === "form")
@@ -27642,8 +27672,84 @@ function needsWrite(setup) {
   const c2 = setup.collection ?? {};
   return ["savedFilters", "quickAddTemplates", "tags", "automations", "notifications", "charts", "dashboards"].some((k) => Array.isArray(c2[k]) && c2[k].length > 0) || Boolean(c2.overview);
 }
+var ELEMENT_OPTION_KEYS = /* @__PURE__ */ new Set([
+  "isTitle",
+  "required",
+  "requiredWhen",
+  "help",
+  "choices",
+  "allowMultiple",
+  "lookupCardId",
+  "measure",
+  "defaultUnit",
+  "units",
+  "decimals",
+  "leadingZeros",
+  "nonNegative",
+  "min",
+  "max",
+  "trueLabel",
+  "falseLabel",
+  "country",
+  "accept",
+  "percent",
+  "thousands",
+  "step",
+  "control",
+  "rangeEnd",
+  "minuteStep",
+  "weekdays",
+  "precision",
+  "identity",
+  "drivenFrom",
+  "currencies",
+  "defaultCurrency",
+  "display",
+  "maxSizeMb"
+]);
+function liftElementOptions(setup) {
+  const sets = [setup.cards, setup.elementSets].filter(Array.isArray);
+  const local = /* @__PURE__ */ new Map();
+  for (const card of Array.isArray(setup.cards) ? setup.cards : []) {
+    if (!card || typeof card !== "object" || typeof card.localId !== "string")
+      continue;
+    local.set(card.localId, card.localId);
+    if (typeof card.key === "string")
+      local.set(card.key, card.localId);
+  }
+  for (const list of sets) {
+    for (const card of list) {
+      const elements = card && typeof card === "object" ? card.elements : void 0;
+      if (!Array.isArray(elements))
+        continue;
+      for (const el of elements) {
+        if (!el || typeof el !== "object" || Array.isArray(el))
+          continue;
+        const e = el;
+        if (typeof e.lookupCard === "string") {
+          const options2 = e.options && typeof e.options === "object" && !Array.isArray(e.options) ? e.options : {};
+          if (!("lookupCardId" in options2))
+            options2.lookupCardId = local.has(e.lookupCard) ? { ref: local.get(e.lookupCard) } : { key: e.lookupCard };
+          delete e.lookupCard;
+          e.options = options2;
+        }
+        const lifted = Object.keys(e).filter((k) => ELEMENT_OPTION_KEYS.has(k));
+        if (!lifted.length)
+          continue;
+        const options = e.options && typeof e.options === "object" && !Array.isArray(e.options) ? e.options : {};
+        for (const k of lifted) {
+          if (!(k in options))
+            options[k] = e[k];
+          delete e[k];
+        }
+        e.options = options;
+      }
+    }
+  }
+}
 function asSent(setup) {
   const copy = structuredClone(setup);
+  liftElementOptions(copy);
   const c2 = copy.collection;
   if (c2 && typeof c2 === "object") {
     for (const k of ["automations", "notifications"])
