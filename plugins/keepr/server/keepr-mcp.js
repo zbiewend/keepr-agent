@@ -13445,10 +13445,11 @@ function readStoredCredentials(env) {
     const doc = JSON.parse(text2);
     if (!doc || typeof doc !== "object" || Array.isArray(doc))
       throw new Error("not an object");
-    const { url, key } = doc;
+    const { url, key, oauth } = doc;
     return {
       url: typeof url === "string" ? url : void 0,
-      key: typeof key === "string" ? key : void 0
+      key: typeof key === "string" ? key : void 0,
+      oauth: oauth && typeof oauth === "object" && !Array.isArray(oauth) ? oauth : void 0
     };
   } catch {
     return { problem: `${file} exists but is not what \`keepr.py login\` writes (a JSON object with "url" and "key"). Run \`keepr.py logout\` then \`keepr.py login\` to rewrite it.` };
@@ -13458,7 +13459,7 @@ function loadConfig(env = process.env) {
   return { ...loadKeyConfig(env), channel: channelFromEnv(env.KEEPR_CLIENT_CHANNEL) };
 }
 function loadKeyConfig(env) {
-  const fromEnv = (env.KEEPR_API_KEY || env.KEEPR_KEY || "").trim();
+  const fromEnv = [env.KEEPR_API_KEY, env.KEEPR_KEY].map((v) => (v ?? "").trim()).find((v) => v && !/^\$\{user_config\./.test(v)) ?? "";
   const stored = fromEnv ? {} : readStoredCredentials(env);
   const baseUrl = (env.KEEPR_URL || stored.url || "https://api.keepr.cloud").trim().replace(/\/+$/, "");
   const raw = fromEnv || (stored.key ?? "").trim();
@@ -13468,7 +13469,8 @@ function loadKeyConfig(env) {
     return { baseUrl, apiKey: null, keyProblem: stored.problem, keySource: null };
   }
   if (!raw) {
-    return { baseUrl, apiKey: null, keyProblem: null, keySource: null };
+    const connected = typeof stored.oauth?.refreshToken === "string" && stored.oauth.apiUrl === baseUrl;
+    return { baseUrl, apiKey: null, keyProblem: null, keySource: connected ? "oauth" : null };
   }
   if (!KEY_PATTERN.test(raw)) {
     return {
@@ -13533,18 +13535,30 @@ var KeeprHttp = class {
   fetchImpl;
   sleepImpl;
   client;
+  bearer;
   lastRateLimit = null;
-  constructor(baseUrl, apiKey, fetchImpl = fetch, sleepImpl = sleep, client = null) {
+  constructor(baseUrl, apiKey, fetchImpl = fetch, sleepImpl = sleep, client = null, bearer = null) {
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
     this.fetchImpl = fetchImpl;
     this.sleepImpl = sleepImpl;
     this.client = client;
+    this.bearer = bearer;
   }
   rateLimit() {
     return this.lastRateLimit;
   }
   async request(opts) {
+    if (!this.bearer || opts.anonymous)
+      return this.send(opts, opts.anonymous ? null : this.apiKey);
+    const auth = await this.bearer.token();
+    const res = await this.send(opts, auth);
+    if (res.status !== 401 || !auth)
+      return res;
+    const next = await this.bearer.afterUnauthorized(auth);
+    return next && next !== auth ? this.send(opts, next) : res;
+  }
+  async send(opts, auth) {
     const method = (opts.method || "GET").toUpperCase();
     const url = this.buildUrl(opts.path, opts.query);
     if ((opts.attempts ?? RETRIES) > 1)
@@ -13554,7 +13568,7 @@ var KeeprHttp = class {
     for (let attempt = 0; attempt < attempts; attempt++) {
       let res;
       try {
-        res = await this.fetchImpl(url, this.init(method, opts));
+        res = await this.fetchImpl(url, this.init(method, opts, auth));
       } catch (err) {
         lastError = err;
         if (attempt < attempts - 1) {
@@ -13596,10 +13610,10 @@ var KeeprHttp = class {
     }
     throw new KeeprTransportError(`Cannot reach ${this.baseUrl}.`, url, lastError);
   }
-  init(method, opts) {
+  init(method, opts, auth) {
     const headers = { Accept: "application/json" };
-    if (this.apiKey && !opts.anonymous)
-      headers.Authorization = `Bearer ${this.apiKey}`;
+    if (auth && !opts.anonymous)
+      headers.Authorization = `Bearer ${auth}`;
     if (this.client)
       headers["X-Keepr-Client"] = this.client;
     let body;
@@ -13660,6 +13674,706 @@ function errorMessage(body, fallback) {
   if (typeof body === "string" && body.length)
     return body.slice(0, 400);
   return fallback;
+}
+
+// dist/src/oauthLocal.js
+import { spawn } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync as readFileSync2, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { hostname as hostname2 } from "node:os";
+import { dirname, join as join2 } from "node:path";
+import { setTimeout as sleep2 } from "node:timers/promises";
+var CONNECT_SCOPES = ["read", "write", "cards"];
+var CALLBACK_PATH = "/callback";
+var REGISTERED_REDIRECT = `http://127.0.0.1${CALLBACK_PATH}`;
+var REFRESH_EARLY_MS = 6e4;
+var FLOW_TTL_MS = 5 * 6e4;
+var CLIENT_UNUSED_MAX_AGE_MS = 20 * 36e5;
+var HTTP_TIMEOUT_MS = 15e3;
+var LOCK_STALE_MS = 4 * 2 * HTTP_TIMEOUT_MS;
+var LOCK_WAIT_MS = 2 * HTTP_TIMEOUT_MS + 5e3;
+var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]"]);
+function credentialsFileFor(env) {
+  const home = (env.HOME || env.USERPROFILE || "").trim();
+  return home ? join2(home, ...CREDENTIALS_RELATIVE) : null;
+}
+function storedConnectionFor(file, baseUrl) {
+  const doc = readDoc(file);
+  return doc.ok ? pickStored(doc.value, baseUrl) : null;
+}
+function pickStored(doc, baseUrl) {
+  const o = doc.oauth;
+  if (!o || typeof o !== "object" || Array.isArray(o))
+    return null;
+  const s = o;
+  if (s.apiUrl !== baseUrl || typeof s.clientId !== "string" || typeof s.issuer !== "string")
+    return null;
+  return {
+    apiUrl: s.apiUrl,
+    issuer: s.issuer,
+    clientId: s.clientId,
+    clientRegisteredAt: typeof s.clientRegisteredAt === "number" ? s.clientRegisteredAt : 0,
+    clientUsed: s.clientUsed === true,
+    accessToken: typeof s.accessToken === "string" ? s.accessToken : void 0,
+    accessExpiresAt: typeof s.accessExpiresAt === "number" ? s.accessExpiresAt : void 0,
+    refreshToken: typeof s.refreshToken === "string" ? s.refreshToken : void 0,
+    scopes: Array.isArray(s.scopes) ? s.scopes.map(String) : void 0,
+    connectedAt: typeof s.connectedAt === "string" ? s.connectedAt : void 0
+  };
+}
+function readDoc(file) {
+  if (!file)
+    return { ok: true, value: {} };
+  let text2;
+  try {
+    text2 = readFileSync2(file, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT")
+      return { ok: true, value: {} };
+    return { ok: false, reason: `${file} cannot be read (${err.code ?? "error"}).` };
+  }
+  try {
+    const doc = JSON.parse(text2);
+    if (!doc || typeof doc !== "object" || Array.isArray(doc))
+      throw new Error("not an object");
+    return { ok: true, value: doc };
+  } catch {
+    return { ok: false, reason: `${file} is not the JSON keepr writes, so it was left alone. Fix or delete it, then connect again.` };
+  }
+}
+function writeDoc(file, doc) {
+  if (!Object.keys(doc).length) {
+    try {
+      unlinkSync(file);
+    } catch {
+    }
+    return;
+  }
+  mkdirSync(dirname(file), { recursive: true, mode: 448 });
+  const tmp = `${file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(doc, null, 2)}
+`, { mode: 384, flag: "wx" });
+  renameSync(tmp, file);
+}
+function base64url2(buf) {
+  return buf.toString("base64url");
+}
+function pkcePair() {
+  const verifier = base64url2(randomBytes(32));
+  return { verifier, challenge: base64url2(createHash("sha256").update(verifier).digest()) };
+}
+function openInBrowser(url) {
+  const [cmd, args] = process.platform === "darwin" ? ["open", [url]] : process.platform === "win32" ? ["rundll32", ["url.dll,FileProtocolHandler", url]] : ["xdg-open", [url]];
+  try {
+    const child = spawn(cmd, args, { detached: true, stdio: "ignore" });
+    child.on("error", () => {
+    });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+function defaultClientName() {
+  const host = hostname2().replace(/\.(local|lan|home)$/i, "").slice(0, 60) || "this computer";
+  return `keepr plugin on ${host}`;
+}
+function landingPage(ok2, text2) {
+  const title = ok2 ? "Connected to keepr" : "keepr was not connected";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#1f2328;background:#fff}@media(prefers-color-scheme:dark){body{color:#e6edf3;background:#0d1117}}h1{font-size:1.25rem;margin:0 0 .5rem}</style></head><body><h1>${title}</h1><p>${text2}</p></body></html>`;
+}
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+function originOf(url) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+var LocalConnection = class {
+  opts;
+  stored;
+  flow = null;
+  starting = null;
+  refreshing = null;
+  meta = null;
+  /** Set when the server refused the refresh token: the person must connect again. */
+  revoked = false;
+  /** When this process last gave up waiting for another's refresh. */
+  lockBusyAt = 0;
+  fetchImpl;
+  openBrowser;
+  now;
+  flowTtlMs;
+  lockWaitMs;
+  clientName;
+  constructor(opts) {
+    this.opts = opts;
+    this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.openBrowser = opts.openBrowser ?? openInBrowser;
+    this.now = opts.now ?? Date.now;
+    this.flowTtlMs = opts.flowTtlMs ?? FLOW_TTL_MS;
+    this.lockWaitMs = opts.lockWaitMs ?? LOCK_WAIT_MS;
+    this.clientName = opts.clientName ?? defaultClientName();
+    this.stored = storedConnectionFor(opts.credentialsFile, opts.baseUrl);
+  }
+  /** Holds a refresh token for this API — what "connected" means before the first request proves it. */
+  get connected() {
+    return Boolean(this.stored?.refreshToken);
+  }
+  get scopes() {
+    return this.stored?.scopes ?? [];
+  }
+  /** True while a flow is open and waiting for the person. */
+  get waiting() {
+    return Boolean(this.flow && !this.flow.outcome);
+  }
+  /**
+   * Another process held the refresh lock past our wait just now. A 401 in
+   * this state means "renewal in progress elsewhere", not "disconnected".
+   */
+  get busyElsewhere() {
+    return this.lockBusyAt > 0 && Date.now() - this.lockBusyAt < this.lockWaitMs * 2;
+  }
+  // lock waits are wall-clock, like the lock's mtime
+  // ------------------------------------------------------------ BearerSource
+  async token() {
+    const s = this.stored;
+    if (!s?.refreshToken)
+      return null;
+    if (s.accessToken && (s.accessExpiresAt ?? 0) - this.now() > REFRESH_EARLY_MS)
+      return s.accessToken;
+    return this.refresh(null);
+  }
+  async afterUnauthorized(rejected) {
+    if (!this.stored?.refreshToken)
+      return null;
+    if (this.busyElsewhere)
+      return null;
+    return this.refresh(rejected);
+  }
+  /** One refresh at a time in this process; the lock does the same across processes. */
+  refresh(rejected) {
+    if (!this.refreshing) {
+      this.refreshing = this.withLock(
+        () => this.refreshLocked(rejected),
+        // No lock, no refresh: spending the refresh token without it is
+        // exactly how a replay happens. The token in hand goes out; if it
+        // is dead, the 401 says so and the next call tries again.
+        () => this.stored?.accessToken ?? null
+      ).finally(() => {
+        this.refreshing = null;
+      });
+    }
+    return this.refreshing;
+  }
+  async refreshLocked(rejected) {
+    const doc = readDoc(this.opts.credentialsFile);
+    if (this.opts.credentialsFile && doc.ok) {
+      const onDisk = pickStored(doc.value, this.opts.baseUrl);
+      if (!onDisk?.refreshToken) {
+        this.stored = onDisk;
+        return null;
+      }
+      if (onDisk.refreshToken !== this.stored?.refreshToken) {
+        this.stored = onDisk;
+        const fresh = onDisk.accessToken && onDisk.accessToken !== rejected && (onDisk.accessExpiresAt ?? 0) - this.now() > REFRESH_EARLY_MS;
+        if (fresh)
+          return onDisk.accessToken;
+      }
+    }
+    const s = this.stored;
+    if (!s?.refreshToken)
+      return null;
+    let meta;
+    try {
+      meta = await this.metadata();
+    } catch {
+      return s.accessToken ?? null;
+    }
+    if (meta.issuer !== s.issuer)
+      return s.accessToken ?? null;
+    const res = await this.post(meta.token_endpoint, {
+      grant_type: "refresh_token",
+      refresh_token: s.refreshToken,
+      client_id: s.clientId
+    }).catch(() => null);
+    if (!res)
+      return s.accessToken ?? null;
+    if (res.status === 400 && res.json?.error === "invalid_grant") {
+      this.revoked = true;
+      this.stored = null;
+      this.write(doc);
+      return null;
+    }
+    const body = res.json;
+    if (!res.ok || typeof body?.access_token !== "string" || typeof body?.refresh_token !== "string") {
+      return s.accessToken ?? null;
+    }
+    this.stored = {
+      ...s,
+      accessToken: body.access_token,
+      accessExpiresAt: this.now() + Number(body.expires_in ?? 3600) * 1e3,
+      refreshToken: body.refresh_token,
+      scopes: typeof body.scope === "string" ? body.scope.split(/\s+/).filter(Boolean) : s.scopes
+    };
+    this.write(readDoc(this.opts.credentialsFile));
+    return body.access_token;
+  }
+  /**
+   * Run `fn` holding `credentials.lock`, or `onTimeout` when another holder
+   * keeps it past lockWaitMs. The lock holds its holder's id, so a holder
+   * removes only its own; a lock is broken only past LOCK_STALE_MS.
+   */
+  async withLock(fn, onTimeout) {
+    const file = this.opts.credentialsFile;
+    if (!file)
+      return fn();
+    const lock = `${file}.lock`;
+    const owner = `${hostname2()}:${process.pid}:${randomBytes(12).toString("hex")}`;
+    const deadline = Date.now() + this.lockWaitMs;
+    for (; ; ) {
+      try {
+        writeFileSync(lock, owner, { flag: "wx", mode: 384 });
+        break;
+      } catch (err) {
+        const code = err.code;
+        if (code === "ENOENT") {
+          mkdirSync(dirname(lock), { recursive: true, mode: 448 });
+          continue;
+        }
+        if (code !== "EEXIST")
+          throw err;
+        try {
+          const holder = readFileSync2(lock, "utf8");
+          if (holderIsDead(holder)) {
+            if (readFileSync2(lock, "utf8") === holder)
+              unlinkSync(lock);
+            continue;
+          }
+          if (Date.now() - statSync(lock).mtimeMs > LOCK_STALE_MS) {
+            const holder2 = readFileSync2(lock, "utf8");
+            if (Date.now() - statSync(lock).mtimeMs > LOCK_STALE_MS && readFileSync2(lock, "utf8") === holder2)
+              unlinkSync(lock);
+            continue;
+          }
+        } catch {
+          continue;
+        }
+        if (Date.now() > deadline) {
+          this.lockBusyAt = Date.now();
+          return onTimeout();
+        }
+        await sleep2(50);
+      }
+    }
+    this.lockBusyAt = 0;
+    try {
+      return await fn();
+    } finally {
+      try {
+        if (readFileSync2(lock, "utf8") === owner)
+          unlinkSync(lock);
+      } catch {
+      }
+    }
+  }
+  // ------------------------------------------------------------ connecting
+  /**
+   * Start the flow, or wait on the one already open. Resolves within
+   * `waitMs` with connected, failed, or waiting (the flow keeps listening).
+   */
+  async connect(waitMs) {
+    const doc = readDoc(this.opts.credentialsFile);
+    if (!doc.ok)
+      return { state: "failed", message: doc.reason };
+    const onDisk = pickStored(doc.value, this.opts.baseUrl);
+    if (onDisk?.refreshToken) {
+      this.stored = onDisk;
+      this.revoked = false;
+      if (this.flow && !this.flow.outcome)
+        this.flow.finish({ state: "connected", scopes: onDisk.scopes ?? [] });
+      if (this.flow)
+        this.flow.reported = true;
+      return { state: "connected", scopes: onDisk.scopes ?? [] };
+    }
+    if (!this.opts.credentialsFile && this.stored?.refreshToken)
+      return { state: "connected", scopes: this.stored.scopes ?? [] };
+    if (this.flow?.outcome && !this.flow.reported) {
+      this.flow.reported = true;
+      return this.flow.outcome;
+    }
+    let flow = this.flow && !this.flow.outcome ? this.flow : null;
+    let reused = Boolean(flow);
+    if (!flow) {
+      if (!this.starting)
+        this.starting = this.startFlow().finally(() => {
+          this.starting = null;
+        });
+      else
+        reused = true;
+      const started = await this.starting;
+      if (!("done" in started))
+        return started;
+      flow = started;
+    }
+    const settled = await within(flow.done, waitMs);
+    if (settled) {
+      flow.reported = true;
+      return settled;
+    }
+    return { state: "waiting", url: flow.url, browserOpened: flow.browserOpened, reused };
+  }
+  async startFlow() {
+    let meta;
+    try {
+      meta = await this.metadata();
+    } catch (err) {
+      return { state: "failed", message: `keepr's sign-in service could not be used at ${this.opts.baseUrl}: ${err.message}` };
+    }
+    let clientId;
+    try {
+      clientId = await this.ensureClient(meta);
+    } catch (err) {
+      return { state: "failed", message: err.message };
+    }
+    const flow = await this.openFlow(meta, clientId);
+    this.flow = flow;
+    flow.browserOpened = this.openBrowser(flow.url);
+    return flow;
+  }
+  /**
+   * Revoke the grant on the server and forget it here. Under the lock, with
+   * the refresh token re-read from the file: a process holding a rotated-away
+   * token would otherwise revoke nothing (the API answers 200 to an unknown
+   * token) and still forget the live one.
+   */
+  async disconnect() {
+    if (this.flow && !this.flow.outcome) {
+      this.flow.finish({ state: "failed", message: "Disconnected before the connection was approved." });
+      this.flow.reported = true;
+    }
+    return this.withLock(async () => {
+      const doc = readDoc(this.opts.credentialsFile);
+      const s = (doc.ok ? pickStored(doc.value, this.opts.baseUrl) : null) ?? this.stored;
+      let revokedOnServer = false;
+      if (s?.refreshToken) {
+        try {
+          const meta = await this.metadata();
+          if (meta.issuer === s.issuer && meta.revocation_endpoint) {
+            const res = await this.post(meta.revocation_endpoint, {
+              token: s.refreshToken,
+              token_type_hint: "refresh_token",
+              client_id: s.clientId
+            });
+            revokedOnServer = res.ok;
+          }
+        } catch {
+        }
+      }
+      this.stored = null;
+      this.revoked = false;
+      this.write(doc);
+      return { revokedOnServer, busy: false };
+    }, () => ({ revokedOnServer: false, busy: true }));
+  }
+  /** Adopt the file's connection when this process holds none — another process may have made it. */
+  refreshFromDisk() {
+    if (this.stored?.refreshToken)
+      return;
+    const onDisk = storedConnectionFor(this.opts.credentialsFile, this.opts.baseUrl);
+    if (onDisk?.refreshToken) {
+      this.stored = onDisk;
+      this.revoked = false;
+    }
+  }
+  /** Close a waiting flow's listener — process exit, and tests. */
+  close() {
+    if (this.flow && !this.flow.outcome)
+      this.flow.finish({ state: "failed", message: "The keepr plugin stopped." });
+  }
+  /** The authorization server's metadata, checked once and kept for the process. */
+  async metadata() {
+    if (this.meta)
+      return this.meta;
+    const res = await this.fetchImpl(`${this.opts.baseUrl}/.well-known/oauth-authorization-server`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS)
+    });
+    if (!res.ok)
+      throw new Error(`HTTP ${res.status} from the authorization server metadata`);
+    const meta = await res.json();
+    this.meta = checkedMetadata(meta, this.opts.baseUrl);
+    return this.meta;
+  }
+  /** A client_id the server will still recognise: one registered recently and never used, else a fresh one. */
+  async ensureClient(meta) {
+    const s = this.stored;
+    const usable = s && s.issuer === meta.issuer && !s.clientUsed && this.now() - s.clientRegisteredAt < CLIENT_UNUSED_MAX_AGE_MS;
+    if (usable)
+      return s.clientId;
+    if (!meta.registration_endpoint)
+      throw new Error("keepr does not offer client registration here, so this plugin cannot connect itself. Use an API key instead.");
+    const res = await this.fetchImpl(meta.registration_endpoint, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_name: this.clientName,
+        redirect_uris: [REGISTERED_REDIRECT],
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"]
+      }),
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS)
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || typeof body?.client_id !== "string") {
+      throw new Error(`keepr refused to register this plugin (HTTP ${res.status}${body?.error_description ? `: ${body.error_description}` : ""}). Try again later, or use an API key.`);
+    }
+    this.stored = {
+      apiUrl: this.opts.baseUrl,
+      issuer: meta.issuer,
+      clientId: body.client_id,
+      clientRegisteredAt: this.now(),
+      clientUsed: false
+    };
+    await this.writeLocked();
+    return body.client_id;
+  }
+  async openFlow(meta, clientId) {
+    const { verifier, challenge } = pkcePair();
+    const state = base64url2(randomBytes(24));
+    let finish;
+    const done = new Promise((resolve) => {
+      finish = resolve;
+    });
+    let flow = null;
+    const server = createServer((req, res) => {
+      if (!flow) {
+        res.writeHead(503).end();
+        return;
+      }
+      void this.onCallback(flow, req, res);
+    });
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const addr = server.address();
+    const port = addr && typeof addr === "object" ? addr.port : 0;
+    const redirectUri = `http://127.0.0.1:${port}${CALLBACK_PATH}`;
+    const url = new URL(meta.authorization_endpoint);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("code_challenge", challenge);
+    url.searchParams.set("code_challenge_method", "S256");
+    url.searchParams.set("state", state);
+    url.searchParams.set("scope", CONNECT_SCOPES.join(" "));
+    const f = {
+      url: url.toString(),
+      state,
+      verifier,
+      redirectUri,
+      hostHeader: `127.0.0.1:${port}`,
+      meta,
+      clientId,
+      timer: setTimeout(() => f.finish({
+        state: "failed",
+        message: `Nobody approved the connection within ${Math.round(this.flowTtlMs / 6e4) || 1} minute(s), so the link has stopped working. Call keepr_connect again for a new one.`
+      }), this.flowTtlMs),
+      browserOpened: false,
+      done,
+      outcome: null,
+      reported: false,
+      exchanging: false,
+      finish: (o) => {
+        if (f.outcome)
+          return;
+        f.outcome = o;
+        clearTimeout(f.timer);
+        server.close();
+        server.closeAllConnections();
+        finish(o);
+      }
+    };
+    f.timer.unref();
+    flow = f;
+    return f;
+  }
+  async onCallback(flow, req, res) {
+    const send = (status, ok2, text2) => {
+      res.writeHead(status, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", Connection: "close" });
+      res.end(landingPage(ok2, text2));
+    };
+    if (req.headers.host !== flow.hostHeader) {
+      send(400, false, "This address only answers keepr's own redirect.");
+      return;
+    }
+    const url = new URL(req.url ?? "/", "http://127.0.0.1");
+    if (flow.outcome || url.pathname !== CALLBACK_PATH) {
+      send(404, false, "There is nothing here.");
+      return;
+    }
+    const p = url.searchParams;
+    if (p.get("state") !== flow.state) {
+      send(400, false, "This link does not match the connection keepr is waiting for.");
+      return;
+    }
+    if (flow.exchanging) {
+      send(409, false, "This connection is already being finished. Go back to Claude.");
+      return;
+    }
+    const iss = p.get("iss");
+    const issRequired = flow.meta.authorization_response_iss_parameter_supported === true;
+    if ((iss || issRequired) && iss !== flow.meta.issuer) {
+      send(400, false, "The answer came from a different server than the one asked. Go back to Claude and try again.");
+      flow.finish({ state: "failed", message: `The answer named issuer ${iss ?? "(none)"}, not ${flow.meta.issuer} (RFC 9207), so it was refused.` });
+      return;
+    }
+    const error2 = p.get("error");
+    if (error2) {
+      const declined = error2 === "access_denied";
+      send(200, false, declined ? "You chose not to connect. You can close this tab." : `keepr answered: ${escapeHtml(error2)}. You can close this tab and try again from Claude.`);
+      flow.finish({ state: "failed", message: declined ? "The person chose not to connect (they clicked Deny on keepr's page)." : `keepr answered ${error2} instead of connecting.` });
+      return;
+    }
+    const code = p.get("code");
+    if (!code) {
+      send(400, false, "The answer had no code in it. Go back to Claude and try again.");
+      flow.finish({ state: "failed", message: "The browser came back without an authorization code." });
+      return;
+    }
+    flow.exchanging = true;
+    const exchanged = await this.post(flow.meta.token_endpoint, {
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: flow.redirectUri,
+      client_id: flow.clientId,
+      code_verifier: flow.verifier
+    }).catch((err) => ({ ok: false, status: 0, json: { error_description: err.message } }));
+    const body = exchanged.json;
+    if (!exchanged.ok || typeof body?.access_token !== "string" || typeof body?.refresh_token !== "string") {
+      const why = typeof body?.error_description === "string" ? body.error_description : `HTTP ${exchanged.status}`;
+      send(502, false, "keepr approved the connection, but this plugin could not finish it. Go back to Claude and try again.");
+      flow.finish({ state: "failed", message: `The approval could not be exchanged for a connection: ${why}` });
+      return;
+    }
+    const scopes = typeof body.scope === "string" ? body.scope.split(/\s+/).filter(Boolean) : [];
+    this.stored = {
+      apiUrl: this.opts.baseUrl,
+      issuer: flow.meta.issuer,
+      clientId: flow.clientId,
+      clientRegisteredAt: this.stored?.clientRegisteredAt ?? this.now(),
+      clientUsed: true,
+      accessToken: body.access_token,
+      accessExpiresAt: this.now() + Number(body.expires_in ?? 3600) * 1e3,
+      refreshToken: body.refresh_token,
+      scopes,
+      connectedAt: new Date(this.now()).toISOString()
+    };
+    this.revoked = false;
+    await this.writeLocked();
+    send(200, true, "You can close this tab and go back to Claude.");
+    flow.finish({ state: "connected", scopes });
+  }
+  /** Form-encoded, which is what the token and revocation endpoints are written for. */
+  async post(endpoint, fields) {
+    const res = await this.fetchImpl(endpoint, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(fields).toString(),
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS)
+    });
+    const text2 = await res.text();
+    let json = null;
+    try {
+      json = text2 ? JSON.parse(text2) : null;
+    } catch {
+      json = null;
+    }
+    return { ok: res.ok, status: res.status, json };
+  }
+  /**
+   * Merge the `oauth` block into a document read under the lock, keeping
+   * everything else in it. A file that cannot be read is never written; a
+   * write that fails leaves the connection working in memory, and says so on
+   * stderr (never a token).
+   */
+  write(doc) {
+    const file = this.opts.credentialsFile;
+    if (!file || !doc.ok)
+      return;
+    if (this.stored)
+      doc.value.oauth = this.stored;
+    else
+      delete doc.value.oauth;
+    try {
+      writeDoc(file, doc.value);
+    } catch (err) {
+      process.stderr.write(`keepr-mcp: could not save the keepr connection to ${file}: ${err.code ?? err.message}
+`);
+    }
+  }
+  /** write(), outside a refresh: takes the lock so it cannot land between another process's read and write. */
+  async writeLocked() {
+    await this.withLock(async () => {
+      this.write(readDoc(this.opts.credentialsFile));
+    }, () => {
+      this.write(readDoc(this.opts.credentialsFile));
+    });
+  }
+};
+function checkedMetadata(meta, baseUrl) {
+  if (!meta || typeof meta.issuer !== "string" || typeof meta.authorization_endpoint !== "string" || typeof meta.token_endpoint !== "string") {
+    throw new Error("the authorization server metadata is incomplete");
+  }
+  const base = new URL(baseUrl);
+  const issuerOrigin = originOf(meta.issuer);
+  if (issuerOrigin !== base.origin)
+    throw new Error(`the authorization server names issuer ${meta.issuer}, not ${base.origin}`);
+  for (const field of ["token_endpoint", "registration_endpoint", "revocation_endpoint"]) {
+    const v = meta[field];
+    if (v !== void 0 && originOf(v) !== issuerOrigin)
+      throw new Error(`the authorization server's ${field} is not on ${issuerOrigin}`);
+  }
+  let consent;
+  try {
+    consent = new URL(meta.authorization_endpoint);
+  } catch {
+    throw new Error("the authorization endpoint is not a URL");
+  }
+  const localApi = base.protocol === "http:" && LOOPBACK_HOSTS.has(base.hostname);
+  if (!(consent.protocol === "https:" || consent.protocol === "http:" && localApi)) {
+    throw new Error(`the consent page must be https, not ${consent.protocol}`);
+  }
+  return meta;
+}
+function holderIsDead(holder) {
+  const [host, pidText] = holder.split(":");
+  const pid = Number(pidText);
+  if (host !== hostname2() || !Number.isInteger(pid) || pid <= 0 || pid === process.pid)
+    return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (err) {
+    return err.code === "ESRCH";
+  }
+}
+async function within(promise, ms) {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(null), Math.max(0, ms));
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // dist/src/contract.snapshot.json
@@ -14686,7 +15400,7 @@ var RunLedger = class {
 };
 
 // dist/src/proposals.js
-import { randomBytes } from "node:crypto";
+import { randomBytes as randomBytes2 } from "node:crypto";
 var TTL_MS2 = 30 * 6e4;
 var MAX_OPEN = 20;
 var ProposalStore = class {
@@ -14706,7 +15420,7 @@ var ProposalStore = class {
     }
     const proposal = {
       ...spec,
-      token: `prop_${randomBytes(9).toString("hex")}`,
+      token: `prop_${randomBytes2(9).toString("hex")}`,
       createdAt: Date.now()
     };
     this.open.set(proposal.token, proposal);
@@ -22966,7 +23680,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.6.0";
+var SERVER_VERSION = "0.7.0";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -22997,6 +23711,10 @@ This is a transport problem, not a keepr outage. If the keepr skill is loaded, r
   return run().then((result) => {
     if (result.isError) {
       const status = Number(result.structuredContent?.status ?? 0);
+      if (status === 401 && ctx.usesConnection) {
+        result.content.push({ type: "text", text: ctx.noteConnectionLost() });
+        return result;
+      }
       if (status >= 400 && status < 500 && status !== 429)
         ctx.breaker.record(signature, status);
     } else {
@@ -23036,7 +23754,9 @@ function buildServer(ctx, tools) {
       // objects are strict in their own definitions.
       { description, inputSchema: def.strict ? external_exports.object(def.inputSchema).strict() : def.inputSchema },
       async (args) => {
-        const result = await guard(def, ctx, args ?? {}, () => def.handler(args ?? {}, ctx));
+        const result = def.unguarded ? await def.handler(args ?? {}, ctx).catch((err) => fail(`keepr-mcp failed internally: ${err.message}
+
+This is a bug in keepr-mcp, not something the user did.`)) : await guard(def, ctx, args ?? {}, () => def.handler(args ?? {}, ctx));
         return result;
       }
     );
@@ -23072,8 +23792,11 @@ var KeeprContext = class {
   config;
   http;
   contract;
+  /** Replaced by restart(): a refusal learned as one account must not trip calls made as the next. */
   breaker = new RefusalBreaker();
+  /** Replaced by restart(): an ingest run's external ids belong to the account that wrote them. */
   ledger = new RunLedger();
+  /** Replaced by restart(): a card proposal belongs to the account that previewed it. */
   proposals = new ProposalStore();
   collections = [];
   collectionsLoaded = false;
@@ -23100,16 +23823,62 @@ var KeeprContext = class {
   /** The update notice rides on ONE tool result per context, then stays quiet. */
   updateNoticeGiven = false;
   /**
+   * keepr_connect's connection (src/oauthLocal.ts). Stdio only: a context
+   * built from an environment has one, so it can connect when no key is set;
+   * a remote context (built from a Config) never does — its bearer arrived
+   * on the request and is the client's to manage.
+   */
+  connection;
+  /**
    * Built from an environment (stdio: one process, one key, read at start)
    * or from a ready Config (remote: one context per bearer, src/remote.ts).
    * The contract cache may be shared: it is the deployment's vocabulary, the
    * same for every credential, and one anonymous fetch per version is enough
    * for a whole process.
    */
-  constructor(envOrConfig = process.env, http, contract) {
+  constructor(envOrConfig = process.env, http, contract, connection) {
     this.config = isConfig(envOrConfig) ? envOrConfig : loadConfig(envOrConfig);
-    this.http = http ?? new KeeprHttp(this.config.baseUrl, this.config.apiKey, void 0, void 0, clientHeader(SERVER_VERSION, this.config.channel));
+    this.connection = connection !== void 0 ? connection : isConfig(envOrConfig) ? null : new LocalConnection({ baseUrl: this.config.baseUrl, credentialsFile: credentialsFileFor(envOrConfig) });
+    const bearer = this.config.apiKey ? null : this.connection;
+    this.http = http ?? new KeeprHttp(this.config.baseUrl, this.config.apiKey, void 0, void 0, clientHeader(SERVER_VERSION, this.config.channel), bearer);
     this.contract = contract ?? new ContractCache(this.http);
+  }
+  /** Requests go out on keepr_connect's connection rather than a key. */
+  get usesConnection() {
+    return !this.config.apiKey && Boolean(this.connection);
+  }
+  /**
+   * Forget what startup learned and learn it again — after keepr_connect or
+   * keepr_disconnect changed who this server acts as.
+   */
+  async restart() {
+    this.startup = { reachable: false, keyValid: false, keyRefused: false, accountEmail: null, accountName: null, problem: null };
+    this.scopeFacts.clear();
+    this.scopesReported = null;
+    this.keyScopeKnownAtStartup = false;
+    this.keyCollectionIds = null;
+    this.collections = [];
+    this.collectionsLoaded = false;
+    this.cardsScopeSeen = false;
+    this.deleteScopeSeen = false;
+    this.breaker = new RefusalBreaker();
+    this.proposals = new ProposalStore();
+    this.ledger = new RunLedger();
+    await this.start();
+  }
+  /**
+   * A 401 mid-session on a connection: http.ts already tried one refresh,
+   * so the grant is gone. Every later call refuses with the reconnect
+   * sentence instead of each tool's own 401 ("create a new key").
+   */
+  noteConnectionLost() {
+    if (this.connection?.busyElsewhere) {
+      return "keepr is renewing this connection in another window right now. Try the same call again in a moment.";
+    }
+    const sentence = "The keepr connection was disconnected or has expired. Call keepr_connect to connect again \u2014 the person approves it in their browser. Do not retry other tools first.";
+    this.startup.keyValid = false;
+    this.startup.problem = sentence;
+    return sentence;
   }
   /**
    * Three independent steps, each degrading on its own. The server NEVER
@@ -23127,8 +23896,8 @@ var KeeprContext = class {
       this.startup.problem = this.config.keyProblem;
       return;
     }
-    if (!this.config.apiKey) {
-      this.startup.problem = "No keepr API key: KEEPR_API_KEY is not set and ~/.config/keepr/credentials does not exist. Every tool will refuse. The user creates a key in the web app under My Profile -> API keys, then either runs `keepr.py login` in their own terminal or sets KEEPR_API_KEY where this server is launched.";
+    if (!this.config.apiKey && !this.connection?.connected) {
+      this.startup.problem = this.connection ? `${this.connection.revoked ? "The keepr connection was disconnected or has expired." : "Not connected to keepr yet."} Call keepr_connect: it opens keepr in the person's browser, where they sign in if needed and click Allow \u2014 nothing to copy or paste. Every other tool refuses until then. (An API key also works: KEEPR_API_KEY, or \`keepr.py login\` in their own terminal.)` : "No keepr API key: KEEPR_API_KEY is not set and ~/.config/keepr/credentials does not exist. Every tool will refuse. The user creates a key in the web app under My Profile -> API keys, then either runs `keepr.py login` in their own terminal or sets KEEPR_API_KEY where this server is launched.";
       return;
     }
     try {
@@ -23153,7 +23922,7 @@ var KeeprContext = class {
       } else if (who.status === 401) {
         this.startup.reachable = true;
         this.startup.keyRefused = true;
-        this.startup.problem = "The API key was refused (401): unknown, revoked, expired, or its owner is inactive. The user must create a new one. Do not retry.";
+        this.startup.problem = this.usesConnection && this.connection?.busyElsewhere ? "keepr is renewing this connection in another window right now. Call keepr_connect in a moment to pick it up." : this.usesConnection ? "The keepr connection was disconnected or has expired (401 after a refresh). Call keepr_connect to connect again \u2014 the person approves it in their browser. Do not retry other tools first." : "The API key was refused (401): unknown, revoked, expired, or its owner is inactive. The user must create a new one. Do not retry.";
       } else {
         this.startup.reachable = true;
         this.startup.problem = `Unexpected ${who.status} from /api/user-info: ${errorMessage(who.body, "no message")}`;
@@ -23351,7 +24120,7 @@ var KeeprContext = class {
       return lines.join(" ");
     }
     const who = this.startup.accountEmail ?? this.startup.accountName ?? "an account";
-    lines.push(`Acting as ${who} at ${this.config.baseUrl}${this.config.apiKey ? ` with key ${keyDisplayPrefix(this.config.apiKey)}\u2026` : ""}.`, `${this.collections.length} collection${this.collections.length === 1 ? "" : "s"} reachable.`, `Contract ${this.contract.version}${this.contract.isLive ? "" : " (from a build-time snapshot; the live contract could not be fetched)"}.`, this.keyScopeKnownAtStartup ? this.scopeSentence() : "Write scope is unknown until the first write is attempted \u2014 this deployment does not report it.", "Always dry-run an ingest before committing it, and never invent a value the user did not give you.");
+    lines.push(`Acting as ${who} at ${this.config.baseUrl}${this.config.apiKey ? ` with key ${keyDisplayPrefix(this.config.apiKey)}\u2026` : this.usesConnection ? " through a connection made with keepr_connect" : ""}.`, `${this.collections.length} collection${this.collections.length === 1 ? "" : "s"} reachable.`, `Contract ${this.contract.version}${this.contract.isLive ? "" : " (from a build-time snapshot; the live contract could not be fetched)"}.`, this.keyScopeKnownAtStartup ? this.scopeSentence() : "Write scope is unknown until the first write is attempted \u2014 this deployment does not report it.", "Always dry-run an ingest before committing it, and never invent a value the user did not give you.");
     const notice = updateNotice(this.updates);
     if (notice)
       lines.push(`
@@ -26570,6 +27339,80 @@ async function loadBytes(spec, allowPath) {
   return { ok: false, filename: spec.filename || "attachment", message: "neither content_base64 nor path was given." };
 }
 
+// dist/src/tools/connect.js
+var CONNECT_WAIT_MS = 45e3;
+function scopeWords(scopes) {
+  const can = [];
+  if (scopes.includes("read"))
+    can.push("read");
+  if (scopes.includes("write"))
+    can.push("add and change items");
+  if (scopes.includes("cards"))
+    can.push("change cards");
+  if (scopes.includes("delete"))
+    can.push("delete records");
+  if (!can.length)
+    return "do nothing yet (no scopes were granted)";
+  return can.length === 1 ? can[0] : `${can.slice(0, -1).join(", ")} and ${can.at(-1)}`;
+}
+var connectTool = {
+  name: "keepr_connect",
+  description: "Connect this keepr plugin to the person's keepr account. It opens keepr in their browser, where they sign in if needed and click Allow; nothing to copy or paste, no terminal. Call it when the other keepr tools say keepr is not connected. If it answers that it is waiting, tell the person to finish in the browser (and give them the link it returns if no tab opened), then call it again \u2014 it will not open a second tab.",
+  inputSchema: {},
+  unguarded: true,
+  handler: async (_args, ctx) => {
+    const connection = ctx.connection;
+    if (!connection)
+      return fail("This keepr server cannot connect itself: it is reached through a connector that is connected already.");
+    if (ctx.config.apiKey) {
+      const where = ctx.config.keySource === "env" ? "KEEPR_API_KEY" : `~/${CREDENTIALS_RELATIVE.join("/")}`;
+      return ok(`keepr is already connected with an API key (from ${where})${ctx.startup.accountEmail ? `, as ${ctx.startup.accountEmail}` : ""}. keepr_connect is for connecting without a key, and a key always wins over it. Nothing to do.`, { state: "key", account: ctx.startup.accountEmail });
+    }
+    if (connection.connected && ctx.startup.keyValid) {
+      return ok(`Already connected to keepr as ${ctx.startup.accountEmail ?? "an account"}: this connection can ${scopeWords(ctx.knownScopes())}. To connect as someone else, call keepr_disconnect first.`, { state: "connected", account: ctx.startup.accountEmail, scopes: ctx.knownScopes() });
+    }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const outcome = await connection.connect(CONNECT_WAIT_MS);
+      if (outcome.state === "failed")
+        return fail(outcome.message, { state: "failed" });
+      if (outcome.state === "waiting") {
+        return ok("Waiting for the person to approve the connection in their browser. " + (outcome.reused ? "The keepr page is still open from before. " : outcome.browserOpened ? "keepr has opened in their browser. " : "Their browser could not be opened from here. ") + `If they do not see it, give them this link: ${outcome.url}
+
+Once they have clicked Allow, call keepr_connect again to finish. The link works for 5 minutes.`, { state: "waiting", url: outcome.url });
+      }
+      await ctx.restart();
+      if (ctx.startup.keyValid) {
+        const scopes = ctx.knownScopes();
+        const n = ctx.knownCollections().length;
+        return ok(`Connected to keepr as ${ctx.startup.accountEmail ?? "the person's account"}. This connection can ${scopeWords(scopes)}, in ${n} collection${n === 1 ? "" : "s"}. It is listed under Connected assistants on their keepr profile, where they can rename or disconnect it. Every keepr tool works now.`, { state: "connected", account: ctx.startup.accountEmail, scopes });
+      }
+      if (connection.connected) {
+        return fail(`keepr is connected, but could not be reached to confirm it: ${ctx.startup.problem ?? "no answer"} Try again in a moment.`, { state: "unconfirmed" });
+      }
+    }
+    return fail(`The connection was approved, but keepr then refused it: ${ctx.startup.problem ?? "no reason given"}`, { state: "failed" });
+  }
+};
+var disconnectTool = {
+  name: "keepr_disconnect",
+  description: "Disconnect this keepr plugin from the account keepr_connect connected it to: the connection is revoked in keepr and forgotten on this computer. Only when the person asks to disconnect, sign out, or switch accounts.",
+  inputSchema: {},
+  unguarded: true,
+  handler: async (_args, ctx) => {
+    const connection = ctx.connection;
+    connection?.refreshFromDisk();
+    if (!connection || !connection.connected && !connection.waiting) {
+      return ok(ctx.config.apiKey ? "There is no keepr_connect connection to disconnect: this plugin uses an API key. To stop using it, the person removes KEEPR_API_KEY or runs `keepr.py logout` in their own terminal." : "This plugin is not connected to keepr. Nothing to disconnect.", { state: "not-connected" });
+    }
+    const account = ctx.config.apiKey ? null : ctx.startup.accountEmail;
+    const { revokedOnServer, busy } = await connection.disconnect();
+    if (busy)
+      return fail("keepr is renewing this connection in another window right now. Try again in a moment.", { state: "busy" });
+    await ctx.restart();
+    return ok(`Disconnected${account ? ` from ${account}` : ""}${ctx.config.apiKey ? " the browser connection; this plugin keeps using its API key" : ""}. ` + (revokedOnServer ? "keepr no longer accepts this connection, and it is gone from Connected assistants." : "It is forgotten on this computer; keepr could not be reached to revoke it, so the person can remove it under Connected assistants on their profile."), { state: "disconnected", revokedOnServer });
+  }
+};
+
 // dist/src/tools/index.js
 var ALL_TOOLS = [
   collectionsTool,
@@ -26583,6 +27426,11 @@ var ALL_TOOLS = [
   applyCardTool,
   attachFileTool
 ];
+var LOCAL_TOOLS = [
+  ...ALL_TOOLS,
+  connectTool,
+  disconnectTool
+];
 
 // dist/src/index.js
 async function main() {
@@ -26590,8 +27438,11 @@ async function main() {
   await ctx.start();
   process.stderr.write(`keepr-mcp ${ctx.config.baseUrl} [key: ${ctx.config.keySource ?? "none"}] \u2014 ${ctx.instructions()}
 `);
-  const server = buildServer(ctx, ALL_TOOLS);
+  const server = buildServer(ctx, LOCAL_TOOLS);
   await server.connect(new StdioServerTransport());
+  const closeConnection = () => ctx.connection?.close();
+  process.on("exit", closeConnection);
+  process.stdin.on("end", closeConnection);
 }
 main().catch((err) => {
   process.stderr.write(`keepr-mcp failed to start: ${err?.stack ?? String(err)}

@@ -3,6 +3,13 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.5.0 — 2026-10-04
+
+Skill 2.5.0, keepr-mcp 0.7.0.
+
+- **Connect without a key.** In the Claude desktop extension (Cowork included) and the Claude Code plugin, you no longer need to create and paste an API key. The first time you ask for something in keepr, Claude opens keepr in your browser; sign in if you need to, choose what it may do, and click **Allow**. The connection is listed under **Connected assistants** on your keepr profile, where you can rename or disconnect it. Ask Claude to disconnect, or to connect again, at any time.
+- **A key still works**, and wins when you set one. The extension's key field is now optional.
+
 ## 2.4.0 — 2026-10-04
 
 Skill 2.4.0, keepr-mcp 0.6.0.

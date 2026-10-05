@@ -105,6 +105,12 @@ claude plugin install keepr@keepr-agent
 The plugin carries the skill and keepr's MCP server together, so Claude Code
 gets both the instructions and the tools in one step.
 
+With the plugin (or the Claude desktop extension) you don't need a key at all:
+the first time you ask for something in keepr, Claude opens keepr in your
+browser. Sign in if you need to, choose what it may do, and click **Allow**.
+The connection is listed under **Connected assistants** on your profile, where
+you can rename or disconnect it. A key still works, and wins if you set one.
+
 ### The zip
 
 Download `keepr-<version>.zip` and unzip it. The folder contains `SKILL.md`,
@@ -349,6 +355,8 @@ that prints your account, the skill will work there.
 | What you see | What it means |
 | --- | --- |
 | *No keepr API key is set* | Run `python3 scripts/keepr.py login` yourself, or export `KEEPR_API_KEY` in the shell the tool runs in. |
+| *Not connected to keepr yet* (the plugin or extension) | Ask Claude to connect to keepr: it opens keepr in your browser, and you click **Allow**. |
+| *The keepr connection was disconnected or has expired* | Someone disconnected it under Connected assistants, or it went unused for 90 days. Ask Claude to connect again. |
 | *Run this yourself in a terminal* | `login` was started by something other than you. Open a terminal and run it there. |
 | **401** invalid API key | Revoked, expired, mistyped, or truncated on copy. Create a new one. |
 | **403** on a write | The key is read-only, or the collection is archived (archived collections are read-only for everyone). |

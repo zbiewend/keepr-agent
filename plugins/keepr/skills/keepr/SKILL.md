@@ -30,7 +30,16 @@ see `keepr_collections`, `keepr_schema`, `keepr_get_items`, `keepr_search`,
 `keepr_chart`, `keepr_ingest`, `keepr_propose_card`, `keepr_apply_card` and the
 rest. They
 talk to the same API and take the same care. Nothing needs installing and you
-do not need a key — the server already holds it.
+do not need a key — the server holds it, or connects itself.
+
+**If the `keepr_*` tools say keepr is not connected, call `keepr_connect`.** It
+opens keepr in the person's browser, where they sign in if needed and click
+**Allow** — no key to copy, no terminal. If it answers that it is waiting, tell
+the person to finish in the browser (give them the link it returns if no tab
+opened), then call it again; it does not open a second tab. Never ask the
+person for a key or for `keepr.py login` when `keepr_connect` is there.
+`keepr_disconnect` undoes it, only when they ask to disconnect or switch
+accounts.
 
 **Otherwise run `python3 scripts/keepr.py`** (Python 3.8+, standard library
 only), as described throughout.
@@ -145,7 +154,7 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This is keepr skill **2.4.0**. keepr moves faster than any copy of it, so:
+This is keepr skill **2.5.0**. keepr moves faster than any copy of it, so:
 
 - Every command names this copy to keepr and, once a day, asks whether a newer
   release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
@@ -156,7 +165,7 @@ This is keepr skill **2.4.0**. keepr moves faster than any copy of it, so:
   then tell the person in one sentence. When it gives steps instead, pass them
   on in one short sentence. Once per conversation, never in place of an answer.
 - Working through the MCP tools, `keepr_collections` reports the latest keepr
-  skill. When it is newer than **2.4.0**, tell the person once that their keepr
+  skill. When it is newer than **2.5.0**, tell the person once that their keepr
   skill is out of date, with this link:
   https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this

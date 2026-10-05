@@ -2,9 +2,9 @@
 	"manifest_version": "0.3",
 	"name": "keepr",
 	"display_name": "keepr",
-	"version": "0.6.0",
+	"version": "0.7.0",
 	"description": "Read, add and change the records you keep in keepr, from Claude.",
-	"long_description": "Connects Claude to your keepr account through its API. Read your collections, add records from a sentence, a list or a spreadsheet, and propose changes to cards — each write is dry-run first and shown to you before anything is committed. Paste an API key from keepr (My Profile → API keys); it is stored by Claude, never in a file.",
+	"long_description": "Connects Claude to your keepr account through its API. Read your collections, add records from a sentence, a list or a spreadsheet, and propose changes to cards — each write is dry-run first and shown to you before anything is committed. No key needed: the first time, Claude opens keepr in your browser and you click Allow. Or paste an API key from keepr (My Profile → API keys); it is stored by Claude, never in a file.",
 	"author": {
 		"name": "Zachary Biewend",
 		"url": "https://keepr.cloud"
@@ -43,9 +43,10 @@
 		"api_key": {
 			"type": "string",
 			"title": "keepr API key",
-			"description": "Create one in keepr under My Profile → API keys. Read-only keys can only read; tick Can write and Can change cards for the rest.",
+			"description": "Optional. Leave it empty and Claude connects through your browser instead — you click Allow on keepr's page. A key, if you set one, is used instead: create it in keepr under My Profile → API keys.",
 			"sensitive": true,
-			"required": true
+			"required": false,
+			"default": ""
 		}
 	},
 	"tools": [
@@ -88,6 +89,14 @@
 		{
 			"name": "keepr_attach_file",
 			"description": "Attach files to a keepr item."
+		},
+		{
+			"name": "keepr_connect",
+			"description": "Connect this keepr plugin to the person's keepr account."
+		},
+		{
+			"name": "keepr_disconnect",
+			"description": "Disconnect this keepr plugin from the account keepr_connect connected it to: the connection is revoked in keepr and forgotten on this computer."
 		}
 	],
 	"compatibility": {
