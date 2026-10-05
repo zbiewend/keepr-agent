@@ -156,7 +156,11 @@ tag is on the collection rather than the item).
 A `measurement` element's value is `{ "value": 8.4375, "unit": "lb-oz", "base": 3.8272 }`;
 a `currency`'s is `{ "amount": 1250, "currency": "USD" }` — amount in **minor
 units** ($12.50); a `location`'s is an address string or `{ "address", "lat", "lng" }`. The web
-address of an item is `https://keepr.cloud/collections/<collection_id>/items/<_id>`.
+address of an item is `https://keepr.cloud/i/<code>` — its short address, from the
+item's `code` (`/c/`, `/d/`, `/t/`, `/e/` and `/f/` do the same for a collection, card,
+tag, element set and multi add). An item without a `code` yet keeps its long address,
+`https://keepr.cloud/collections/<collection_id>/items/<_id>`, which always works.
+`GET /api/codes/{kind}/{code}` turns a code back into an id.
 
 `GET /api/items/count` takes the same filter params and returns `{ "count": n }`.
 

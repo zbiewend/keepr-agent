@@ -63,14 +63,17 @@ the key's allowlist. Say so and stop; do not go looking through other
 collections for one with a similar name.
 
 **Name items by their display title and give the link.** Every item has a
-title (the card's title element; `displayValue` on the wire) and a web
-address:
+title (the card's title element; `displayValue` on the wire) and a short web
+address made from its `code`:
 
 ```
-https://keepr.cloud/collections/<collectionId>/items/<itemId>
+https://keepr.cloud/i/<code>
 ```
 
-`items`, `get` and `search` print both. Use the title when you talk about a
+The MCP tools hand it to you as `url`; `items`, `get` and `search` print it.
+Give that link exactly as it comes — never build one from ids. (An item keepr
+has not given a code yet has `url: null`; its long address,
+`https://keepr.cloud/collections/<collectionId>/items/<itemId>`, still works.) Use the title when you talk about a
 record and give the link when the user might want to open it. Never refer to
 an item by its id alone, and never invent a title for an untitled item — say
 it is untitled and give the id.
@@ -116,7 +119,7 @@ A good read answer has four parts, in this order:
 
 ```
 12 of 12 expenses in "Household" matching merchant ~ "blue bottle" and spent-on > -90d
-  2026-03-14  Blue Bottle Coffee   $18.50   https://keepr.cloud/collections/65a1…/items/66b2…
+  2026-03-14  Blue Bottle Coffee   $18.50   https://keepr.cloud/i/7k3qx9m
   …
 Two of them have no receipt attached.
 ```

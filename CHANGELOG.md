@@ -3,6 +3,13 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.6.0 — 2026-10-04
+
+Skill 2.6.0, keepr-mcp 0.8.0.
+
+- **Short links to your records.** Every item now has a short address, such as `keepr.cloud/i/7k3qx9m`. `keepr_get_items` gives each item its `url`, and the assistant hands you that link instead of building a long one from ids. The links keep working when an item moves to another collection.
+- **Filters in a card proposal are saved by id.** A filter that names a record by its title is refused, so a filter you approve keeps meaning the same thing after a rename.
+
 ## 2.5.0 — 2026-10-04
 
 Skill 2.5.0, keepr-mcp 0.7.0.

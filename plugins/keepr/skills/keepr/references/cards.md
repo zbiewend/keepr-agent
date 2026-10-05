@@ -54,7 +54,12 @@ use.
 A spec is one card, a list of them, or `{ "cards": [...], "filters": [...],
 "layouts": [...] }` — filters saved for the whole collection
 (`{ "name": "Ready", "query": "card = task and status = ready" }`, the key needs
-write as well) and table layouts for cards in the spec
+write as well) and table layouts for cards in the spec. Write a filter's cards
+by key and its choices by value or label, as a person types them: keepr saves
+each one by id and value once the spec's cards exist. A record goes in by its
+id, never its title — `owner = Jane` is refused (`lookup_needs_item`, with the
+matching records) and the whole apply is undone; so is a key nothing in the
+collection has. Table layouts are for cards in the spec
 (`{ "card": "task", "columns": ["kpr", "title", "status"] }`). A card may also
 carry `icon`, `color`, `displayTemplate` (`"{{kpr}} {{title}}"`),
 `elementSets` (set keys) and `options` (`primaryDate`…).

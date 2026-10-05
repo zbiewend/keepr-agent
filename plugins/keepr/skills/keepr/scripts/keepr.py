@@ -2421,7 +2421,15 @@ def tags_suffix(item):
     return ("  · " + " · ".join(parts)) if parts else ""
 
 
+CODE_RE = re.compile(r"^[0-9a-hjkmnp-tv-z]{7,16}$")
+
+
 def item_link(item):
+    # An item's short address, /i/<code> (keepr-api docs/SCHEMA.md § Record
+    # codes); the long one only for an item keepr has not given a code yet.
+    code = item.get("code")
+    if isinstance(code, str) and CODE_RE.match(code):
+        return f"{WEB_URL}/i/{code}"
     return f"{WEB_URL}/collections/{item.get('collection_id')}/items/{item.get('_id')}"
 
 
