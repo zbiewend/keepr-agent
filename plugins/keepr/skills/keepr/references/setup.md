@@ -71,9 +71,11 @@ the tool and `keepr.py` move them into place before anything is sent.
 `{ "globalKey": "person" }` a global card. A rule's `card_id` takes the same.
 
 **Changing what is there.** An entry that matches something the collection
-has — a tile or table or form at its tier, or a page layout, filter, quick add
-or rule by `id` or exact name (a notification by `key`) — **changes** it rather
-than adding a second. The preview marks every entry `adds`, `CHANGES` (with
+has — a tile or table or form at its tier, or a page layout, filter, quick add,
+rule, chart or dashboard by `id` or exact name (a notification by `key`) —
+**changes** it rather than adding a second. A dashboard's tile names one of the
+setup's charts by `chartRef` (its `localId`) or a chart the collection already
+shows by `chartId`. The preview marks every entry `adds`, `CHANGES` (with
 what changes, before and after) or `unchanged`; an unchanged one is not
 written. An entry says the whole of what it sets: give every key you mean to
 keep.

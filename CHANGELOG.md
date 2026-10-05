@@ -3,6 +3,12 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.7.2 — 2026-10-05
+
+Skill 2.7.2, keepr-mcp 0.9.2.
+
+- **A setup can change the charts and dashboards a collection already has.** A chart or dashboard in the setup that matches one shown to everyone (by its id, or by name) is shown as it is and as it becomes, and changed in place, so it stays pinned for everyone. A dashboard's tile can name a chart the collection already shows. If anything in the apply fails, each one is put back as it was.
+
 ## 2.7.1 — 2026-10-05
 
 Skill 2.7.1, keepr-mcp 0.9.1.

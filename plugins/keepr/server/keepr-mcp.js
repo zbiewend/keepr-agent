@@ -14378,7 +14378,7 @@ async function within(promise, ms) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "aaa8faf8e9d0",
+  version: "f46a89e19a60",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -14789,7 +14789,8 @@ var contract_snapshot_default = {
     layouts: 'collection.cardLayouts may name an existing card by { key }. tile and table: scope "collection" (the default) or "card" (only on a card this collection owns); form: the card tier only, on an owned card; page: either tier. A card tier the collection may not set is layout_tier.',
     changes: "An entry that matches what is there CHANGES it rather than adding one: tile, table and form by their tier, a page layout, saved filter or quick add (pinned for everyone) by id or exact name. The preview marks each step change: added | changed | unchanged, with before and after; unchanged entries are skipped; a failed apply puts every change back.",
     judged: "The preview runs layout bodies through the apply's validators when the card and everything its elements come from exist, and filter queries when the setup creates no cards, element sets or tags.",
-    rules: "collection.automations: rules of kind rule | threshold | expected-item | generate-items, as POST \u2026/automations takes them (no enabled), naming cards by { ref } (one the setup makes), { key }, { globalKey } or id. collection.notifications: collection-tier notification definitions, matched by key. An entry matches an existing rule by id or exact name (a notification by id or key) and changes it; managed rules (driven fields, automatic tags) are rule_managed. The preview carries each rule's rule preview and state on | paused. A rule that notifies, changes other records, creates records or runs on a clock, and every notification, arrives PAUSED with awaitingPerson: true, whoever applies; a change to what a running one does pauses it (willPause). Only a person turns one on (403 person_must_enable to a key). A key needs write."
+    rules: "collection.automations: rules of kind rule | threshold | expected-item | generate-items, as POST \u2026/automations takes them (no enabled), naming cards by { ref } (one the setup makes), { key }, { globalKey } or id. collection.notifications: collection-tier notification definitions, matched by key. An entry matches an existing rule by id or exact name (a notification by id or key) and changes it; managed rules (driven fields, automatic tags) are rule_managed. The preview carries each rule's rule preview and state on | paused. A rule that notifies, changes other records, creates records or runs on a clock, and every notification, arrives PAUSED with awaitingPerson: true, whoever applies; a change to what a running one does pauses it (willPause). Only a person turns one on (403 person_must_enable to a key). A key needs write.",
+    charts: "collection.charts and collection.dashboards entries take an optional id; one that matches a chart or dashboard for everyone (by id, else exact name) CHANGES it in place (its pin stays) rather than being chart_name_taken / dashboard_name_taken. A dashboard tile names a chart by chartRef (the setup's) or chartId (one for everyone in the collection). Steps carry change, id, before and after; a failed apply puts each back."
   },
   writeContract: {
     maxBatch: 200,
@@ -15276,6 +15277,10 @@ var ContractCache = class {
   /** Whether the deployment takes a SETUP of existing cards (the contract's `setups`, KPR-190). */
   get takesSetup() {
     return Boolean(this.body.setups);
+  }
+  /** Whether a setup may change the charts and dashboards a collection has (`setups.charts`, KPR-215). */
+  get takesSetupChartChanges() {
+    return Boolean(this.body.setups?.charts);
   }
   /** Whether a setup may carry automations and notifications (`setups.rules`, KPR-191). */
   get takesSetupRules() {
@@ -23747,7 +23752,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.9.1";
+var SERVER_VERSION = "0.9.2";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -27656,12 +27661,21 @@ function describeSetup(body, setup, collectionName) {
   const tagRules = of("tagRule");
   if (tagRules.length)
     lines.push("", `APPLIED BY A RULE (arrives PAUSED): ${tagRules.map((s) => `"${t2(s.name)}" on ${refText(s.card)}${s.strict ? ", only the rule applies it" : ""}`).join("; ")}`);
-  const charts = of("chart");
-  if (charts.length)
-    lines.push("", `CHARTS (pinned for everyone): ${charts.map((s) => `"${t2(s.name)}"`).join(", ")}`);
-  const boards = of("dashboard");
-  if (boards.length)
-    lines.push("", `DASHBOARDS: ${boards.map((s) => `"${t2(s.name)}"`).join(", ")}`);
+  for (const [kind, heading] of [["chart", "CHARTS (pinned for everyone):"], ["dashboard", "DASHBOARDS (for everyone):"]]) {
+    const list = of(kind);
+    if (!list.length)
+      continue;
+    lines.push("", heading);
+    for (const s of list) {
+      const was = s.change === "changed" ? s.before?.name : void 0;
+      lines.push(`  ${changeWord(s)} "${t2(s.name)}"${was && was !== s.name ? ` (was "${t2(was)}")` : ""}`);
+      if (s.change === "changed") {
+        const changes = changesOf(s.before, s.after);
+        if (changes.length)
+          lines.push(`    changes: ${changes.join("; ")}`);
+      }
+    }
+  }
   for (const s of of("overview"))
     lines.push("", `the collection's Overview shows dashboard "${t2(boardNames.get(s.dashboard ?? "") ?? s.dashboard)}"`);
   for (const s of steps.filter((x) => !KNOWN.has(x.kind)))
@@ -27758,6 +27772,11 @@ function asSent(setup) {
   }
   return copy;
 }
+var namesStoredCharts = (setup) => {
+  const c2 = setup.collection ?? {};
+  const list = (v) => Array.isArray(v) ? v : [];
+  return list(c2.charts).some((x) => x && x.id !== void 0) || list(c2.dashboards).some((d) => d && (d.id !== void 0 || list(d.tiles).some((tile) => tile && tile.chartId !== void 0)));
+};
 var carriesRules = (setup) => {
   const c2 = setup.collection ?? {};
   return ["automations", "notifications"].some((k) => c2[k] !== void 0);
@@ -27786,6 +27805,9 @@ var proposeSetupTool = {
     }
     if (carriesRules(setup) && !ctx.contract.takesSetupRules) {
       return fail("This keepr deployment cannot set up automations or notifications from here yet. Propose the setup without `automations` and `notifications`, and ask the user to add the rules in the web app (Settings \u2192 Automations). Nothing was sent to keepr.");
+    }
+    if (namesStoredCharts(setup) && !ctx.contract.takesSetupChartChanges) {
+      return fail("This keepr deployment cannot change the charts or dashboards a collection already has from here yet. Leave out each chart's and dashboard's `id` and any tile's `chartId`, give new ones names the collection does not use, or ask the user to change them in the web app. Nothing was sent to keepr.");
     }
     if (ctx.hasScope("cards") === false)
       return fail(ctx.cardsRefusal());
@@ -27914,11 +27936,12 @@ var applySetupTool = {
     if (out.tags?.length)
       lines.push("", `TAGS: ${out.tags.map((x) => `"${t2(x.name)}"`).join(", ")}`);
     if (out.charts?.length)
-      lines.push("", `CHARTS: ${out.charts.map((c2) => `"${t2(c2.name)}"`).join(", ")}`);
+      lines.push("", `CHARTS: ${out.charts.map((c2) => `"${t2(c2.name)}" ${verb(c2.changed)}`).join(", ")}`);
     if (out.dashboards?.length)
-      lines.push("", `DASHBOARDS: ${out.dashboards.map((d) => `"${t2(d.name)}"`).join(", ")}`);
+      lines.push("", `DASHBOARDS: ${out.dashboards.map((d) => `"${t2(d.name)}" ${verb(d.changed)}`).join(", ")}`);
+    const shown = out.overview?.name ?? (out.dashboards ?? []).find((d) => d.id === out.overview?.dashboardId)?.name;
     if (out.overview?.dashboardId)
-      lines.push("", `OVERVIEW: the collection's Overview now shows ${t2((out.dashboards ?? []).find((d) => d.id === out.overview?.dashboardId)?.name ?? "the dashboard")} for everyone.`);
+      lines.push("", `OVERVIEW: the collection's Overview now shows ${shown ? `"${t2(shown)}"` : "the dashboard"} for everyone.`);
     const rules = [...(out.automations ?? []).map((a) => ({ ...a, what: "rule" })), ...(out.notifications ?? []).map((n) => ({ ...n, what: "notification" }))];
     const running = rules.filter((r) => r.enabled);
     const waiting = rules.filter((r) => !r.enabled);
