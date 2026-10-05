@@ -68,6 +68,9 @@ CALLS = []      # every request the stub served, for assertions about what was s
 # Card blueprints (keepr 2.1). Off by default, so the create-card tests below
 # exercise the card-by-card path a deployment without them still uses.
 BLUEPRINTS = {"enabled": False, "preview": None, "apply": None}
+# Routes a test sets for itself (setup, automations, history — KPR-195):
+# ("GET", "/path?query") -> (status, body). Cleared before each test.
+EXTRA = {}
 # An older keepr whose strict envelope refuses importId.
 INGEST = {"refuse_import_id": False, "refuse_would_create": False}
 ATTACHED = {}   # itemId -> [{_id, filename}], so re-uploads can be detected
@@ -201,6 +204,8 @@ class Stub(BaseHTTPRequestHandler):
         key = self._key()
         if not key:
             return self._send(401, {"message": "Invalid API key."})
+        if ("GET", self.path) in EXTRA:
+            return self._send(*EXTRA[("GET", self.path)])
         if self.path == "/api/user-info":
             return self._send(200, {"fullName": "Ada Lovelace", "email": "ada@example.com",
                                     "auth": {"kind": "api-key", "scopes": KEYS[key],
@@ -259,6 +264,13 @@ class Stub(BaseHTTPRequestHandler):
         m = re.match(r"^/api/items/([A-Za-z0-9_-]+)/attachments$", self.path)
         if m:
             return self._send(200, ATTACHED.get(m.group(1), []))
+        if self.path == "/api/upload-requests/" + "e" * 24:
+            return self._send(200, {"_id": "e" * 24, "url": "https://keepr.example/x", "expiresAt": "2026-10-12T00:00:00Z",
+                                    "counts": {"entries": 2, "fulfilled": 1},
+                                    "entries": [{"itemId": "a" * 24, "title": "R-1", "name": "R-1.pdf", "fulfilled": {"name": "R-1.pdf"}},
+                                                {"itemId": "b" * 24, "title": "R-2", "pattern": "R-2*", "fulfilled": None}]})
+        if self.path.startswith("/api/upload-requests/"):
+            return self._send(404, {"statusCode": 404, "message": "No upload request has that id."})
         if self.path.startswith(f"/api/collections/{COLLECTION}/ingest-runs"):
             return self._send(200, [{"_id": "run1", "createdAt": "2026-09-18T00:00:00Z",
                                      "mode": "create", "dryRun": False,
@@ -280,11 +292,20 @@ class Stub(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(length) or b"{}")
         CALLS.append(("POST", self.path, body))
+        if ("POST", self.path) in EXTRA:
+            return self._send(*EXTRA[("POST", self.path)])
         if BLUEPRINTS["enabled"] and self.path == f"/api/collections/{COLLECTION}/blueprints/preview":
             return self._send(200, BLUEPRINTS["preview"](body["blueprint"]))
         if BLUEPRINTS["enabled"] and self.path == f"/api/collections/{COLLECTION}/blueprints/apply":
             status, doc = BLUEPRINTS["apply"](body["blueprint"])
             return self._send(status, doc)
+        if self.path == "/api/upload-requests":
+            if any(e.get("item_id") == "f" * 24 for e in body.get("entries", [])):
+                return self._send(400, {"statusCode": 400, "code": "entries_refused", "failureCount": 1,
+                                        "failures": [{"index": 1, "itemId": "f" * 24, "code": "item_locked",
+                                                      "message": "This record is locked; a manager can unlock it."}]})
+            return self._send(201, {"_id": "e" * 24, "url": f"https://keepr.example/collections/{COLLECTION}/items?attach=" + "e" * 24,
+                                    "entries": len(body["entries"]), "expiresAt": "2026-10-12T00:00:00Z"})
         if self.path == "/api/card-definitions":
             # The real envelope: 201 { status, payload: <the stored card> }.
             return self._send(201, {"status": {"acknowledged": True},
@@ -406,6 +427,7 @@ class KeeprScriptTest(unittest.TestCase):
     def setUp(self):
         global HOME
         CALLS.clear()
+        EXTRA.clear()
         ATTACHED.clear()
         CLIENT_HEADERS.clear()
         DOCS.update(clients=None, skill=None)
@@ -417,6 +439,103 @@ class KeeprScriptTest(unittest.TestCase):
 
     def config_path(self, *parts):
         return os.path.join(HOME, ".config", "keepr", *parts)
+
+
+    # -------------------------------------------------- setup, automations, history (KPR-195)
+
+    SETUP_STEPS = [
+        {"kind": "layout", "layoutKind": "tile", "card": {"key": "book"}, "tier": "collection", "change": "added"},
+        {"kind": "automation", "name": "Stamp read", "ruleKind": "rule", "change": "added", "state": "on",
+         "arrives": {"state": "on", "reasons": []}, "preview": {"summary": "When a Book is updated, set Read on to today."}},
+        {"kind": "automation", "name": "Tell me", "ruleKind": "rule", "change": "added", "state": "paused",
+         "arrives": {"state": "paused", "reasons": [{"code": "notifies", "message": "It sends notifications to people."}]},
+         "preview": {"summary": "When a Book is updated, notify managers.", "actions": [{"type": "notify", "recipientCount": 2}]}},
+    ]
+
+    def setup_stub(self, steps=None, apply_status=201):
+        steps = steps or self.SETUP_STEPS
+        BLUEPRINTS.update(enabled=True,
+                          preview=lambda bp: {"wouldApply": True, "problems": [], "steps": steps, "summary": ["Sets up \"My Books\" with 1 layout."]},
+                          apply=lambda bp: (apply_status, {"collectionId": COLLECTION, "layouts": [{"kind": "tile"}],
+                                                           "automations": [{"name": "Stamp read", "enabled": True},
+                                                                           {"name": "Tell me", "enabled": False, "awaitingPerson": True}]}))
+
+    def test_setup_previews_with_a_fingerprint_and_writes_nothing(self):
+        self.setup_stub()
+        spec = self.write_spec({"collection": {"automations": [{"name": "Tell me"}]}})
+        result = run("setup", "--collection", COLLECTION, "--spec", spec)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("PROPOSED — nothing has changed", result.stdout)
+        self.assertIn("adds automation 'Stamp read' — ON", result.stdout)
+        self.assertIn("adds automation 'Tell me' — PAUSED — waits for the person to turn it on, in keepr › Settings › Automations: It sends notifications to people.", result.stdout)
+        self.assertIn("notify: reaches 2 people", result.stdout)
+        self.assertIn("1 rule(s) will arrive PAUSED", result.stdout)
+        self.assertRegex(result.stdout, r"fingerprint: [0-9a-f]{16}")
+        self.assertFalse([c for c in CALLS if c[1].endswith("/blueprints/apply")])
+
+    def test_setup_applies_only_with_the_fingerprint_the_person_saw(self):
+        self.setup_stub()
+        spec = self.write_spec({"collection": {"automations": [{"name": "Tell me"}]}})
+        fp = re.search(r"fingerprint: ([0-9a-f]{16})", run("setup", "--collection", COLLECTION, "--spec", spec).stdout).group(1)
+        refused = run("setup", "--collection", COLLECTION, "--spec", spec, "--apply")
+        self.assertEqual(refused.returncode, 1)
+        self.assertIn("--apply needs --expect", refused.stderr)
+        # The plan moved since: "adds" became "changes".
+        moved = [dict(s) for s in self.SETUP_STEPS]
+        moved[2]["change"] = "changed"
+        self.setup_stub(moved)
+        drift = run("setup", "--collection", COLLECTION, "--spec", spec, "--apply", "--expect", fp)
+        self.assertEqual(drift.returncode, 1)
+        self.assertIn("NOTHING WAS CHANGED", drift.stderr)
+        self.assertFalse([c for c in CALLS if c[1].endswith("/blueprints/apply")])
+        self.setup_stub()
+        done = run("setup", "--collection", COLLECTION, "--spec", spec, "--apply", "--expect", fp)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("automation running now: Stamp read", done.stdout)
+        self.assertIn("PAUSED — waiting for the person to turn them on, in keepr › Settings › Automations", done.stdout)
+        self.assertIn("automation: Tell me", done.stdout)
+
+    def test_automations_lists_state_and_maker_and_pauses_by_name(self):
+        rules = [
+            {"_id": "a" * 24, "name": "Stamp read", "kind": "rule", "enabled": True, "summary": "When a Book is updated, set Read on.", "createdVia": {"kind": "session"}},
+            {"_id": "b" * 24, "name": "Tell me", "kind": "rule", "enabled": False, "awaitingPerson": True, "createdVia": {"kind": "oauth"}},
+        ]
+        EXTRA[("GET", f"/api/collections/{COLLECTION}/automations?describe=1")] = (200, rules)
+        EXTRA[("GET", f"/api/notification-defs?collection_id={COLLECTION}")] = (200, {"defs": [
+            {"_id": "c" * 24, "key": "w", "name": "Work waits", "scope": "collection", "enabled": False, "awaitingPerson": True},
+            {"_id": "d" * 24, "key": "p", "name": "Platform", "scope": "global", "enabled": True}]})
+        EXTRA[("POST", f"/api/collections/{COLLECTION}/automations/{'a' * 24}/disable")] = (200, {"enabled": False})
+        EXTRA[("GET", f"/api/collections/{COLLECTION}/automations/{'a' * 24}/runs?limit=10")] = (200, [{"startedAt": "2026-10-05T03:00:00Z", "status": "succeeded", "results": [{"type": "set-elements"}]}])
+        listed = run("automations", "--collection", COLLECTION)
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("'Stamp read' [rule] — ON, made by a person", listed.stdout)
+        self.assertIn("'Tell me' [rule] — WAITING FOR THE PERSON (paused until they turn it on), made by an assistant", listed.stdout)
+        self.assertIn("notification 'Work waits'", listed.stdout)
+        self.assertNotIn("Platform", listed.stdout)
+        self.assertIn("Only the person can turn on a rule that is WAITING, in keepr › Settings › Automations.", listed.stdout)
+        runs = run("automations", "--collection", COLLECTION, "--runs", "Stamp read")
+        self.assertIn("succeeded  1 action(s)", runs.stdout)
+        paused = run("automations", "--collection", COLLECTION, "--pause", "stamp read")
+        self.assertEqual(paused.returncode, 0, paused.stderr)
+        self.assertIn("PAUSED 'Stamp read'", paused.stdout)
+        unknown = run("automations", "--collection", COLLECTION, "--pause", "nope")
+        self.assertEqual(unknown.returncode, 1)
+        self.assertIn("no rule 'nope'", unknown.stderr)
+
+    def test_history_reads_who_changed_what_and_writes_nothing(self):
+        item = ITEMS[0]["_id"]
+        EXTRA[("GET", f"/api/items/{item}/history?limit=20&skip=0")] = (200, [
+            {"at": "2026-10-05T01:00:00Z", "summary": "changed Rating from 4 to 5", "actor": {"type": "oauth", "user": {"fullName": "Ada Lovelace"}}},
+            {"at": "2026-10-04T01:00:00Z", "summary": "changed Read on", "actor": {"type": "automation", "automationName": "Stamp read"}},
+        ])
+        EXTRA[("GET", f"/api/collections/{COLLECTION}/history?limit=20&skip=0")] = (200, [])
+        result = run("history", "--item", item)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # keepr's own sentence, which names who did it.
+        self.assertIn("changed Rating from 4 to 5", result.stdout)
+        self.assertIn("changed Read on", result.stdout)
+        self.assertIn("(nothing recorded)", run("history", "--collection", COLLECTION).stdout)
+        self.assertTrue(all(c[0] == "GET" for c in CALLS))
 
     # -------------------------------------------------- credentials
 
@@ -1121,6 +1240,51 @@ class KeeprScriptTest(unittest.TestCase):
         result = run("runs", "--collection", COLLECTION)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("created 2", result.stdout)
+
+    # -------------------------------------------------- upload requests (KPR-183)
+
+    def test_request_upload_hands_back_the_link(self):
+        entries = self.path("entries.json")
+        with open(entries, "w") as fh:
+            json.dump([{"item_id": "a" * 24, "name": "R-1.pdf"}], fh)
+        result = run("request-upload", "--collection", COLLECTION, "--entries", entries, "--note", "March")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("give the person this link: https://keepr.example/collections/", result.stdout)
+        self.assertIn("upload-status --id " + "e" * 24, result.stdout)
+        sent = [c for c in CALLS if c[0] == "POST" and c[1] == "/api/upload-requests"][-1][2]
+        self.assertEqual(sent, {"collection_id": COLLECTION, "entries": [{"item_id": "a" * 24, "name": "R-1.pdf"}], "note": "March"})
+
+    def test_request_upload_lists_refusals_and_exits_2(self):
+        entries = self.path("entries.json")
+        with open(entries, "w") as fh:
+            json.dump([{"item_id": "a" * 24}, {"item_id": "f" * 24}], fh)
+        result = run("request-upload", "--collection", COLLECTION, "--entries", entries)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("#1 (" + "f" * 24 + "): This record is locked", result.stderr)
+
+    def test_request_upload_sends_days_as_given_even_zero(self):
+        entries = self.path("entries.json")
+        with open(entries, "w") as fh:
+            json.dump([{"item_id": "a" * 24}], fh)
+        run("request-upload", "--collection", COLLECTION, "--entries", entries, "--days", "0")
+        sent = [c for c in CALLS if c[0] == "POST" and c[1] == "/api/upload-requests"][-1][2]
+        self.assertEqual(sent.get("expiresInDays"), 0, "keepr refuses 0 itself; it is never silently the default")
+
+    def test_upload_status_refuses_an_id_that_is_not_one(self):
+        before = len(CALLS)
+        result = run("upload-status", "--id", "../user-info")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("24-hex", result.stderr)
+        self.assertFalse([c for c in CALLS[before:] if "upload-requests" in c[1] or "user-info" in c[1]])
+
+    def test_upload_status(self):
+        result = run("upload-status", "--id", "e" * 24)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("1 of 2 file(s) attached", result.stdout)
+        self.assertIn("waiting  R-2  R-2*", result.stdout)
+        gone = run("upload-status", "--id", "0" * 24)
+        self.assertEqual(gone.returncode, 1)
+        self.assertIn("expired, was withdrawn", gone.stderr)
 
     # -------------------------------------------------- attachments
 

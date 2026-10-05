@@ -1,12 +1,12 @@
 ---
 name: keepr
-description: Read, add and change records in keepr — the user's collections of structured items — through its API or its MCP tools. Use whenever keepr is named or the user's data lives there. Reading ("what's in my keepr collection", "look up X in keepr", "find the items where…", "how many…", "how much did I spend…", "show me the latest…"), adding ("add this to keepr", "log this in my collection", "import this CSV into keepr", "track these in keepr", or pasted data plus a collection name), and managing cards ("add an element to my Book card", "change the card", "create a card in keepr", "what fields does the card have"). Covers API-key handling, reading a collection's schema, KQL queries, totals and averages worked out by keepr, dry-run validation, idempotent re-runs, linking records to each other, attaching files, and proposing card changes against a server-made diff.
+description: Read, add and change records in keepr — the user's collections of structured items — through its API or its MCP tools. Use whenever keepr is named or the user's data lives there. Reading ("what's in my keepr collection", "find the items where…", "how many…", "how much did I spend…"), adding ("add this to keepr", "import this CSV into keepr", or pasted data plus a collection name), managing cards ("add an element to my Book card", "create a card in keepr"), and setting up a collection ("lay out my task tiles", "add a rule that stamps the date when it's done", "notify me when…", "what rules run here", "who changed this"). Covers API-key handling, a collection's schema, KQL queries, totals worked out by keepr, dry-run validation, idempotent re-runs, linking records, attaching files, and proposing card changes and setups against a server-made preview.
 ---
 
 # keepr
 
 Read, add and change what a person keeps in keepr. This file is the part every
-job shares; the job itself is one of five chapters, loaded when you need it.
+job shares; the job itself is one of six chapters, loaded when you need it.
 
 keepr's vocabulary, because everything below uses it:
 
@@ -27,8 +27,9 @@ same for both. Only the commands differ; each chapter names both side by side.
 
 **If tools named `keepr_*` are available in this session, use them.** You will
 see `keepr_collections`, `keepr_schema`, `keepr_get_items`, `keepr_search`,
-`keepr_chart`, `keepr_ingest`, `keepr_propose_card`, `keepr_apply_card` and the
-rest. They
+`keepr_chart`, `keepr_ingest`, `keepr_propose_card`, `keepr_apply_card`,
+`keepr_propose_setup`, `keepr_apply_setup`, `keepr_automations`,
+`keepr_history` and the rest. They
 talk to the same API and take the same care. Nothing needs installing and you
 do not need a key — the server holds it, or connects itself.
 
@@ -63,6 +64,17 @@ card's `file` element — a photo field, say), pass `keepr_attach_file` the
 element's name as `element`: a single file element takes one file and
 replaces what is there (that needs a key with Can delete records), a list
 appends. Without `element` the file is one of the item's other attachments.
+
+**When you cannot send the files yourself, ask the person for them.** Files on
+their phone or computer that you cannot read, photos they mention but have not
+given you, anything over about a megabyte: call `keepr_request_upload` (or
+`keepr.py request-upload`) with the items waiting — and each file's name or a
+name pattern when you know it. keepr returns a link; give it to the person.
+It opens keepr with those items waiting, they drop the files (or pick photos
+on a phone), and keepr matches each file to its item. Then
+`keepr_upload_status` (or `keepr.py upload-status`) says what has arrived.
+Never ask for files to be pasted into the chat for this, and never shrink or
+convert them to make them fit: the link takes the originals, up to 100 MB each.
 
 ## The key
 
@@ -137,8 +149,9 @@ demand rather than up front.
 | --- | --- |
 | know what is there — list, look up, count, find, summarise | `references/reading.md` |
 | how much, how many, the average — totals by month or by category | `references/charts.md` |
-| put records in — a sentence, a list, a spreadsheet, a document, files | `references/adding.md` |
+| put records in — a sentence, a list, a spreadsheet, a document, files; change items already there, one or many | `references/adding.md` |
 | make or change a card — add an element, rename a field, create a card | `references/cards.md` |
+| set up a collection — tile, table, form and page layouts, filters, quick adds, rules ("when X, do Y"), notifications; see or pause its rules; who changed what | `references/setup.md` |
 | filter with a query — the `--q` / `q` syntax, dates and their weekday, hour or month, who added it, operators | `references/kql.md` |
 
 A job can cross chapters: "add these, then show me the total" is adding then
@@ -154,7 +167,7 @@ Two rules hold in every chapter:
 
 ## Staying current
 
-This is keepr skill **2.6.0**. keepr moves faster than any copy of it, so:
+This is keepr skill **2.7.0**. keepr moves faster than any copy of it, so:
 
 - Every command names this copy to keepr and, once a day, asks whether a newer
   release is out. When one is, it prints a `KEEPR UPDATE:` note on stderr (the
@@ -165,7 +178,7 @@ This is keepr skill **2.6.0**. keepr moves faster than any copy of it, so:
   then tell the person in one sentence. When it gives steps instead, pass them
   on in one short sentence. Once per conversation, never in place of an answer.
 - Working through the MCP tools, `keepr_collections` reports the latest keepr
-  skill. When it is newer than **2.6.0**, tell the person once that their keepr
+  skill. When it is newer than **2.7.0**, tell the person once that their keepr
   skill is out of date, with this link:
   https://keepr.cloud/docs/guides/assistants/update-your-assistant
 - If a row fails with an error code, or a card uses an element type, that this
@@ -189,8 +202,9 @@ script, drive the API directly — the contract is identical.
 
 - `scripts/keepr.py` — the client. `login`, `logout`, `check`, `collections`,
   `schema`, `items`, `get`, `search`, `template`, `csv`, `ingest`, `runs`,
-  `attach`, `create-card`, `change-card`, `contract`. Stdlib only.
-- `references/reading.md` · `adding.md` · `cards.md` — the three chapters.
+  `attach`, `create-card`, `change-card`, `setup`, `automations`, `history`,
+  `contract`. Stdlib only.
+- `references/reading.md` · `adding.md` · `cards.md` · `setup.md` — the chapters.
 - `references/kql.md` — the query language, for reading.
 - `references/charts.md` — totals, counts and averages worked out by keepr (`keepr_chart`).
 - `references/api.md` — the HTTP contract, curl examples, every error code.

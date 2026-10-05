@@ -182,6 +182,26 @@ it is, if an import went wrong.
 
 `skipped` is a good word: it means the item was already exactly right.
 
+## Changing items that are already there
+
+`keepr_update_item` changes the elements you name on one item by id, and leaves
+the rest alone. To make **one change to many items** — "mark all of these done",
+"set the site on every open order" — give it `ids` (up to 100) or a KQL `q`,
+with `collection`:
+
+1. Call it with `dry_run: true`. keepr says how many items the change would
+   touch and names a few. Show the person that, and the change.
+2. Only when they agree, call it again with **exactly the same change**,
+   `dry_run: false`, and the `confirm` token the dry run gave. A different
+   change, or no token, is refused; a filter that matches a different number
+   of items by then is refused by keepr, and you dry-run again.
+
+It is all or nothing — if keepr ever says it stopped part-way, tell the person
+how many changed and that the collection's history shows which — it touches
+only the collection's own items, and it never deletes. There is no command-line
+equivalent for a change to many items. Items with an external id are better changed with `keepr_ingest` in
+`upsert` mode (on the command line, `keepr.py ingest --mode upsert`).
+
 ## Attachments — files onto the items you just made
 
 Only when the collection has attachments on (`schema` says so; otherwise every
@@ -251,3 +271,24 @@ Rules the command already follows, so you don't have to:
 3. `ingest --dry-run`, fix, `ingest`.
 4. `attach --results … --dir … --dry-run`, check the pairing, then attach.
 5. Report: items created, photos attached, and **anything unmatched**, by name.
+
+### When the files are the person's, not yours
+
+The folder is on their phone, or on a computer you cannot read, or the files
+are too big to send: ask for them instead of uploading them.
+
+```bash
+# entries.json: [{"item_id": "…", "name": "R-1042.pdf"}, {"item_id": "…", "pattern": "IMG_*.HEIC", "element": "photos"}]
+python3 scripts/keepr.py request-upload --collection "Expenses" --entries entries.json --note "March receipts"
+#   give the person this link: https://keepr.cloud/collections/…/items?attach=…
+python3 scripts/keepr.py upload-status --id <request id>
+#   1 of 2 file(s) attached
+#     waiting  R-2  IMG_*.HEIC
+```
+
+Through MCP the same is `keepr_request_upload` and `keepr_upload_status`. One
+request covers one collection, up to 1,000 entries; an item may appear more than
+once (front and back). It is all or nothing: an item the person cannot change, a
+locked record, or an `element` that is not a file element refuses the request,
+each by its entry's index. The link works for 7 days (1–30) and only for the
+person, signed in. Report what arrived, and what is still waiting, by name.

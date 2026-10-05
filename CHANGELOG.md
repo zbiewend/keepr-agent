@@ -3,6 +3,17 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.7.0 — 2026-10-05
+
+Skill 2.7.0, keepr-mcp 0.9.0.
+
+- **Your assistant can set up a collection.** Ask it to lay out how cards look in the list, which columns the table shows, how the item form is grouped, or a printable page, and to add saved filters, quick adds, tags, rules, notifications and charts, on new cards or ones you already have. `keepr_propose_setup` shows keepr's own preview: each part added, changed (with what it was and what it becomes) or already the same, a tile drawn as its rows, and each rule with what it does, how many records it would touch and who it would notify. `keepr_apply_setup` applies exactly what you saw, all at once or not at all, after you type the collection's name back.
+- **Rules that act on their own wait for you.** A rule that only fills in values on the record that set it off runs at once. A rule that notifies people, changes other records, creates records or runs on a schedule arrives paused, and only you can turn it on, in keepr › Settings › Automations. Your assistant cannot, and it tells you so.
+- **Read and pause rules, and see who changed what.** `keepr_automations` lists a collection's rules and notifications (on, paused or waiting for you, and who made each), reads a rule's recent runs, and pauses one. `keepr_history` reads an item's, a card's or a collection's changes. Neither deletes or undoes anything.
+- **Change many items at once.** `keepr_update_item` takes up to 100 ids or a filter. It shows what would change first, with the count and a few titles, and makes the change only with the token that preview gave.
+- **Ask for files your assistant cannot send.** `keepr_request_upload` lists the items waiting for files and gives you a link: open it, drop the files or pick photos, and keepr matches each to its item. `keepr_upload_status` says what has arrived and what is still missing.
+- The script gains `setup`, `automations`, `history` and `request-upload`.
+
 ## 2.6.0 — 2026-10-04
 
 Skill 2.6.0, keepr-mcp 0.8.0.

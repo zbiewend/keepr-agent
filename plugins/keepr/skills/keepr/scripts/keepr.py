@@ -32,6 +32,9 @@ Commands
   change-card --apply TOKEN [--confirm "Card name"]
                                          apply a proposal the user has seen
   runs        --collection X             recent ingest runs, for audit
+  request-upload --collection X --entries F
+                                         ask the person for files through a link (they upload them)
+  upload-status --id REQUEST             what has arrived for an upload request
   contract    [--check]                  the live write contract this deployment publishes
   update                                 update this skill to the latest release, or say how
 
@@ -53,6 +56,7 @@ Staying current
 
 import argparse
 import csv as csvmod
+import hashlib
 import json
 import mimetypes
 import os
@@ -1114,6 +1118,65 @@ def cmd_runs(a):
               f"{'  import ' + run['importId'] if run.get('importId') else ''}"
               f"{'  UNDONE' if run.get('undone') else ''}  "
               + " · ".join(f"{k} {v}" for k, v in summary.items()))
+
+
+# ------------------------------------------------------------------ upload requests
+
+def cmd_request_upload(a):
+    """Ask the PERSON for files they hold (KPR-183): POST /api/upload-requests
+    with the items waiting and, per entry, the file's name or a name pattern;
+    keepr returns a link they open to drop the files. The bytes never pass
+    through this script — use it for files on their phone or computer that the
+    agent cannot read, or that are too big to carry."""
+    collection = resolve_collection(a.collection)
+    try:
+        with open(a.entries, encoding="utf-8") as fh:
+            entries = json.load(fh)
+    except (OSError, ValueError) as exc:
+        die(f"--entries must be a JSON file holding a list of entries: {exc}")
+    if isinstance(entries, dict):
+        entries = entries.get("entries")
+    if not isinstance(entries, list) or not entries:
+        die('--entries must hold a non-empty list like [{"item_id": "...", "name": "R-1.pdf"}]')
+    body = {"collection_id": collection, "entries": entries}
+    if a.note:
+        body["note"] = a.note
+    if a.days is not None:
+        body["expiresInDays"] = a.days
+    status, res = request("POST", "/api/upload-requests", body)
+    if status == 400 and isinstance(res, dict) and res.get("code") == "entries_refused":
+        print(f"keepr refused {res.get('failureCount', len(res.get('failures', [])))} entries; nothing was created "
+              "(it is all or nothing):", file=sys.stderr)
+        for f in res.get("failures", [])[:50]:
+            print(f"  #{f.get('index')} ({f.get('itemId') or 'no item'}): {f.get('message')}", file=sys.stderr)
+        sys.exit(2)
+    fail_on(status, res, "creating the upload request")
+    if a.json:
+        print(json.dumps(res, indent=2, default=str))
+        return
+    print(f"upload request {res.get('_id')} for {res.get('entries')} file(s), until {str(res.get('expiresAt', ''))[:10]}")
+    print(f"give the person this link: {res.get('url')}")
+    print(f"then: keepr.py upload-status --id {res.get('_id')}")
+
+
+def cmd_upload_status(a):
+    if not HEX24.match(a.id or ""):
+        die("--id is the 24-hex id request-upload printed")
+    status, res = request("GET", f"/api/upload-requests/{a.id}")
+    if status == 404:
+        die("no upload request with that id for this account: it expired, was withdrawn, or is someone else's")
+    fail_on(status, res, "reading the upload request")
+    if a.json:
+        print(json.dumps(res, indent=2, default=str))
+        return
+    counts = res.get("counts", {})
+    print(f"{counts.get('fulfilled', 0)} of {counts.get('entries', 0)} file(s) attached")
+    waiting = [e for e in res.get("entries", []) if not e.get("fulfilled")]
+    for e in waiting:
+        want = e.get("name") or e.get("pattern") or "any file"
+        print(f"  waiting  {e.get('title') or e.get('itemId')}{' (item gone)' if e.get('gone') else ''}  {want}")
+    if waiting:
+        print(f"the link still works until {str(res.get('expiresAt', ''))[:10]}: {res.get('url')}")
 
 
 # ------------------------------------------------------------------ attach
@@ -2244,6 +2307,330 @@ def write_credentials(url, key):
     os.chmod(CREDENTIALS_FILE, 0o600)
 
 
+# ---------------------------------------------------------------- setup (KPR-195)
+#
+# A setup is keepr's own document (references/setup.md): layouts, filters,
+# quick adds, tags, rules, notifications, charts, on new or existing cards.
+# Previewed by keepr, applied all or nothing. The preview prints a fingerprint
+# of the SETUP ITSELF and of keepr's plan — every step with what it was and
+# what it becomes — and --apply needs it back (--expect): it previews again
+# and applies only when both are what the person read. A spec edited since,
+# or a colleague's edit to something the setup changes, is refused.
+
+# Characters that show nothing: controls, bidi overrides, zero-width marks,
+# tag characters (keepr-mcp chartTable.ts INVISIBLE_RANGES).
+_INVISIBLE = re.compile("[" + "".join(
+    re.escape(chr(a)) if a == b else f"{re.escape(chr(a))}-{re.escape(chr(b))}"
+    for a, b in [(0x00, 0x08), (0x0b, 0x0c), (0x0e, 0x1f), (0x7f, 0x9f), (0xad, 0xad), (0x061c, 0x061c), (0x180e, 0x180e),
+                 (0x200b, 0x200f), (0x202a, 0x202e), (0x2060, 0x2069), (0xfeff, 0xfeff), (0xe0000, 0xe007f)]) + "]")
+
+
+def _one_line(value, limit=200):
+    """Someone else's text, safe to print in a line: one line, nothing invisible, at most `limit` characters."""
+    text = str("" if value is None else value)
+    text = re.sub(r"[\t\n\r\v\f\x85  ]", " ", text)
+    text = " ".join(_INVISIBLE.sub("", text).split())
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _setup_fingerprint(setup, steps):
+    plan = [{k: v for k, v in (s or {}).items() if k != "preview"} for s in steps or []]
+    blob = json.dumps({"setup": setup, "plan": plan}, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def _changes(before, after):
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return []
+    scalar = lambda v: v is None or isinstance(v, (str, int, float, bool))
+    out = []
+    for k in sorted(set(before) | set(after)):
+        b, a = before.get(k), after.get(k)
+        if json.dumps(b, sort_keys=True, default=str) == json.dumps(a, sort_keys=True, default=str):
+            continue
+        out.append(f"{k}: {_one_line('(none)' if b is None else b, 4000)} → {_one_line('(none)' if a is None else a, 4000)}"
+                   if scalar(b) and scalar(a) else k)
+    return out
+
+
+def _draw_layout(kind, body):
+    body = body if isinstance(body, dict) else {}
+    if kind == "tile":
+        rows = body.get("rows") or []
+        return ["      | " + " | ".join(f"{_one_line(c.get('element') or c.get('system') or '?', 60)} ({c.get('span') or 1})"
+                                       for c in (row if isinstance(row, list) else []) if isinstance(c, dict)) + " |" for row in rows] or ["      (no rows)"]
+    if kind == "form":
+        return [f"      [{_one_line(g.get('title') or 'Untitled', 80)}]{' (collapsed)' if g.get('collapsed') else ''}: "
+                + (", ".join(_one_line(e, 60) for e in g.get("elements") or []) or "(empty)")
+                for g in body.get("groups") or [] if isinstance(g, dict)] or ["      (no groups)"]
+    if kind == "table":
+        return ["      columns: " + (", ".join(_one_line(c.get("element") or c.get("system") or "?", 60)
+                                            for c in body.get("columns") or [] if isinstance(c, dict)) or "(none)")]
+    if kind == "page":
+        blocks = len(body.get("blocks") or [])
+        return [f"      {'a page of the records a query selects' if body.get('subject') == 'query' else 'one record per page'}, {blocks} block(s)"]
+    return []
+
+
+def _print_setup_steps(steps, setup):
+    sent_layouts = ((setup.get("collection") or {}).get("cardLayouts") or []) if isinstance(setup, dict) else []
+    layout_i = 0
+    for s in steps or []:
+        kind = s.get("kind")
+        change = {"changed": "CHANGES", "unchanged": "unchanged"}.get(s.get("change"), "adds")
+        name = _one_line(s.get("name") or s.get("key") or s.get("layoutKind") or "")
+        if kind in ("automation", "notification"):
+            where = "Settings › Notifications" if kind == "notification" else "Settings › Automations"
+            if s.get("change") == "unchanged":
+                state = "paused" if s.get("state") == "paused" else "on"
+            elif s.get("state") == "paused":
+                why = " ".join(_one_line(r.get("message") or r.get("code")) for r in (s.get("arrives") or {}).get("reasons") or [])
+                state = (f"PAUSED — waits for the person to turn it on, in keepr › {where}"
+                         + (" (this change pauses a rule that is running now)" if s.get("willPause") else "") + (f": {why}" if why else ""))
+            else:
+                state = "ON — runs as soon as it is applied"
+            print(f"  {change} {kind} '{name}' — {state}")
+            preview = s.get("preview") or {}
+            if preview.get("summary"):
+                print(f"      {_one_line(preview['summary'], 400)}")
+            elif preview.get("note"):
+                print(f"      {_one_line(preview['note'], 300)}")
+            for act in preview.get("actions") or []:
+                bits = []
+                if isinstance(act.get("matches"), int):
+                    bits.append(f"{act['matches']} record(s) match today")
+                elif act.get("message"):
+                    bits.append(_one_line(act["message"]))
+                if isinstance(act.get("recipientCount"), int):
+                    bits.append(f"reaches {act['recipientCount']} people")
+                if act.get("title"):
+                    bits.append(f"says \"{_one_line(act['title'], 120)}\"")
+                if bits:
+                    print(f"      {_one_line(act.get('type'), 40)}: {'; '.join(bits)}")
+            sources = (preview.get("generate") or {}).get("sources") or {}
+            if isinstance(sources.get("matches"), int):
+                print(f"      makes work for {sources['matches']} record(s) a run" + (f" (of {sources.get('total')})" if sources.get("truncated") else ""))
+            runs = [_one_line(r.get("local"), 40) for r in preview.get("nextRuns") or [] if r.get("local")]
+            if runs:
+                print(f"      next runs: {', '.join(runs)}")
+            for w in preview.get("warnings") or []:
+                if w.get("message"):
+                    print(f"      warning: {_one_line(w['message'], 300)}")
+            if s.get("change") == "changed":
+                ch = _changes(s.get("before"), s.get("after"))
+                if ch:
+                    print(f"      changes: {'; '.join(ch)}")
+        elif kind == "layout":
+            card = s.get("card") or {}
+            ref = card.get("key") or card.get("ref") or card.get("globalKey") or "?"
+            print(f"  {change} the {_one_line(s.get('layoutKind'), 20)}{(' ' + repr(name)) if s.get('name') else ''} of {_one_line(ref, 80)} ({_one_line(s.get('tier'), 20)} tier)")
+            body = (s.get("after") or {}).get("body") if isinstance(s.get("after"), dict) else None
+            if body is None and layout_i < len(sent_layouts):
+                body = (sent_layouts[layout_i] or {}).get("body")
+            layout_i += 1
+            if s.get("change") != "unchanged":
+                for line in _draw_layout(s.get("layoutKind"), body):
+                    print(line)
+        elif kind == "tagRule":
+            print(f"  adds the rule of tag '{name}' — PAUSED — it tags nothing until the person turns it on, in keepr › Settings › Tags")
+        else:
+            print(f"  {change} {_one_line(kind, 40)} '{name}'")
+            if s.get("change") == "changed":
+                ch = _changes(s.get("before"), s.get("after"))
+                if ch:
+                    print(f"      changes: {'; '.join(ch)}")
+
+
+def _setup_refusal(status, res, what):
+    hint = scope_hint(status, res)
+    print(f"{what} ({status}{' ' + _one_line(res.get('code'), 60) if res.get('code') else ''}): {_one_line(res.get('message'), 400)}", file=sys.stderr)
+    if hint:
+        print(f"  ({hint})", file=sys.stderr)
+    for p in (res.get("problems") or []):
+        print(f"  {_one_line(p.get('path'), 120)}: {_one_line(p.get('message'), 400)} ({_one_line(p.get('code'), 60)})", file=sys.stderr)
+
+
+def cmd_setup(a):
+    collection = resolve_collection(a.collection)
+    try:
+        with open(a.spec, encoding="utf-8") as fh:
+            setup = json.load(fh)
+    except (FileNotFoundError, ValueError) as e:
+        die(f"cannot read {a.spec}: {e}")
+    if not isinstance(setup, dict):
+        die("a setup is one JSON object: {\"cards\"?: [...], \"collection\"?: {...}} — see references/setup.md")
+    if a.apply and not a.expect:
+        die("--apply needs --expect FINGERPRINT: run the preview first, show the person, then apply with the fingerprint it printed.")
+
+    status, res = request("POST", f"/api/collections/{collection}/blueprints/preview", {"blueprint": setup})
+    res = res if isinstance(res, dict) else {}
+    if status >= 400:
+        _setup_refusal(status, res, "keepr refused the setup")
+        sys.exit(1)
+    if not res.get("wouldApply", False):
+        print("keepr would refuse this setup. Nothing was changed. Fix each line and propose again:", file=sys.stderr)
+        _setup_refusal(status, res, "refused")
+        sys.exit(1)
+    steps = res.get("steps") or []
+    fp = _setup_fingerprint(setup, steps)
+
+    if not a.apply:
+        print("PROPOSED — nothing has changed. Show this to the person and wait for a yes.\n")
+        for line in res.get("summary") or []:
+            print(_one_line(line, 600))
+        print()
+        _print_setup_steps(steps, setup)
+        paused = [s for s in steps if s.get("kind") in ("automation", "notification") and s.get("change") != "unchanged" and s.get("state") == "paused"]
+        rules_n = sum(1 for s in paused if s.get("kind") == "automation")
+        notes_n = len(paused) - rules_n
+        tags_n = sum(1 for s in steps if s.get("kind") == "tagRule")
+        if rules_n:
+            print(f"\n{rules_n} rule(s) will arrive PAUSED. Only the person can turn them on, in keepr › Settings › Automations.")
+        if notes_n:
+            print(f"{notes_n} notification(s) will arrive PAUSED. Only the person can turn them on, in keepr › Settings › Notifications.")
+        if tags_n:
+            print(f"{tags_n} tag rule(s) will arrive PAUSED. Only the person can turn them on, in keepr › Settings › Tags.")
+        print(f"\nfingerprint: {fp}\nTo apply it once they agree: keepr.py setup --collection {a.collection!r} --spec {a.spec} --apply --expect {fp}")
+        return
+
+    if fp != a.expect:
+        die("NOTHING WAS CHANGED: this is not the setup the person saw — the spec file, or something in the collection it "
+            "changes, is different now. Run the preview again and show them the fresh one.")
+    status, res = request("POST", f"/api/collections/{collection}/blueprints/apply", {"blueprint": setup})
+    res = res if isinstance(res, dict) else {}
+    if status >= 400:
+        _setup_refusal(status, res, "keepr refused the setup")
+        bp = res.get("blueprint") or {}
+        if bp.get("compensated") is True:
+            print("Nothing was kept: keepr undid everything this apply had made or changed.", file=sys.stderr)
+        elif bp.get("compensated") is False:
+            left = ", ".join(f"{_one_line(r.get('kind'), 40)} {_one_line(r.get('name') or r.get('id'), 120)}" for r in bp.get("remaining", []))
+            print(f"WARNING: keepr could not undo everything this apply did: {left}. Check the collection in the web app.", file=sys.stderr)
+        elif status >= 500:
+            print("keepr failed part-way and did not say whether it undid what it had done. Check the collection in the web app before trying again.", file=sys.stderr)
+        sys.exit(1)
+    print("APPLIED.")
+    for row in res.get("members") or []:
+        print(f"  added to the collection: {_one_line(row.get('name'))} ({_one_line(row.get('key'), 80)}), a global card")
+    for what in ("cards", "elementSets", "filters", "layouts", "quickAdds", "tags", "charts", "dashboards"):
+        for row in res.get(what) or []:
+            print(f"  {what[:-1]}: {_one_line(row.get('name') or row.get('kind') or row.get('id'))}{' (changed)' if row.get('changed') else ''}")
+    waiting = []
+    for what in ("automations", "notifications"):
+        for row in res.get(what) or []:
+            if row.get("enabled"):
+                print(f"  {what[:-1]} running now: {_one_line(row.get('name'))}")
+            else:
+                waiting.append((what[:-1], row))
+    for what, where in (("automation", "Settings › Automations"), ("notification", "Settings › Notifications")):
+        mine = [row for w, row in waiting if w == what]
+        if mine:
+            print(f"\nPAUSED — waiting for the person to turn them on, in keepr › {where}:")
+            for row in mine:
+                print(f"  {what}: {_one_line(row.get('name'))}")
+    for row in res.get("rules") or []:
+        print(f"  tag rule PAUSED: {_one_line(row.get('name'))} — the person turns it on in keepr › Settings › Tags")
+    if waiting or res.get("rules"):
+        print("Only the person can turn these on; keepr refuses a key that tries.")
+
+
+def _find_rule(collection, ref):
+    status, rules = request("GET", f"/api/collections/{collection}/automations?describe=1")
+    fail_on(status, rules, "reading the rules")
+    rules = [r for r in (rules or []) if not r.get("inherited")]
+    if ref is None:
+        return rules, None
+    hits = [r for r in rules if r.get("_id") == ref] if HEX24.match(ref) else [r for r in rules if (r.get("name") or "").lower() == ref.lower()]
+    if not hits:
+        die(f"no rule '{_one_line(ref, 80)}' in this collection — run keepr.py automations --collection … to list them.")
+    if len(hits) > 1:
+        die(f"'{_one_line(ref, 80)}' names {len(hits)} rules: " + ", ".join(f"{_one_line(r.get('name'))} ({r.get('_id')})" for r in hits) + ". Name one by id.")
+    return rules, hits[0]
+
+
+def cmd_automations(a):
+    collection = resolve_collection(a.collection)
+    if a.runs and a.pause:
+        die("give --runs or --pause, not both.")
+    if a.runs or a.pause:
+        _, rule = _find_rule(collection, a.runs or a.pause)
+        if a.runs:
+            status, runs = request("GET", f"/api/collections/{collection}/automations/{rule['_id']}/runs?limit={a.limit}")
+            fail_on(status, runs, "reading the runs")
+            print(f"runs of '{_one_line(rule.get('name'))}', newest first:")
+            for run in runs or []:
+                actions = len(run.get("results") or [])
+                print(f"  {_one_line(run.get('startedAt'), 40)}  {_one_line(run.get('status'), 40)}"
+                      + (f"  {actions} action(s)" if actions else "")
+                      + (f"  error: {_one_line(run['error'], 300)}" if run.get("error") else ""))
+            if not runs:
+                print("  (it has not run yet)")
+            return
+        status, res = request("POST", f"/api/collections/{collection}/automations/{rule['_id']}/disable", {})
+        fail_on(status, res, "pausing it")
+        print(f"PAUSED '{_one_line(rule.get('name'))}'. To turn it back on, the person does it in keepr › Settings › Automations.")
+        return
+    rules, _ = _find_rule(collection, None)
+    status, defs = request("GET", f"/api/notification-defs?collection_id={collection}")
+    # The collection's own, and the caller's personal ones for THIS collection.
+    defs = [d for d in ((defs or {}).get("defs") or []) if d.get("scope") == "collection" or (d.get("scope") == "user" and d.get("collection_id"))] if status < 400 and isinstance(defs, dict) else []
+
+    def state(r):
+        return "WAITING FOR THE PERSON (paused until they turn it on)" if r.get("awaitingPerson") else ("PAUSED" if r.get("enabled") is False else "ON")
+
+    def made(r):
+        kind = (r.get("createdVia") or {}).get("kind")
+        return {"api-key": ", made by an API key", "oauth": ", made by an assistant", "session": ", made by a person"}.get(kind, "")
+    print(f"{len(rules)} rule(s), {len(defs)} notification(s):")
+    for r in rules:
+        managed = " — an automatic tag's rule" if r.get("kind") == "tag-rule" else (" — a calculated value" if r.get("managed") else "")
+        print(f"  '{_one_line(r.get('name'))}' [{_one_line(r.get('kind') or 'rule', 40)}] — {state(r)}{made(r)}{managed}  {r.get('_id')}")
+        if r.get("summary"):
+            print(f"      {_one_line(r['summary'], 400)}")
+    for d in defs:
+        print(f"  notification '{_one_line(d.get('name'))}' (key {_one_line(d.get('key'), 80)}) — {state(d)}{made(d)}  {d.get('_id')}")
+    if any(r.get("awaitingPerson") for r in rules):
+        print("\nOnly the person can turn on a rule that is WAITING, in keepr › Settings › Automations.")
+    if any(d.get("awaitingPerson") for d in defs):
+        print("Only the person can turn on a notification that is WAITING, in keepr › Settings › Notifications.")
+
+
+def cmd_history(a):
+    if a.item and a.card:
+        die("give --item or --card, not both.")
+    if a.item:
+        if not HEX24.match(a.item):
+            die(f"'{_one_line(a.item, 40)}' is not an item id (24 hex characters).")
+        path, what = f"/api/items/{a.item}/history", f"item {a.item}"
+    elif a.card:
+        if HEX24.match(a.card):
+            card_id = a.card
+        else:
+            if not a.collection:
+                die("a card named by key needs --collection.")
+            collection = resolve_collection(a.collection)
+            schema = load_schema(collection)
+            hit = next((c for c in schema.get("cards", []) if (c.get("key") or "").lower() == a.card.lower() or (c.get("name") or "").lower() == a.card.lower()), None)
+            if not hit:
+                die(f"no card '{_one_line(a.card, 80)}' in this collection.")
+            card_id = hit.get("id")
+        path, what = f"/api/card-definitions/{card_id}/history", f"card {_one_line(a.card, 80)}"
+    else:
+        if not a.collection:
+            die("give --item ID, --card KEY (with --collection), or --collection.")
+        collection = resolve_collection(a.collection)
+        path, what = f"/api/collections/{collection}/history", "the collection"
+    status, rows, headers = request("GET", f"{path}?limit={a.limit}&skip={a.skip}", with_headers=True)
+    fail_on(status, rows, "reading the history")
+    total = (headers or {}).get("X-Total-Count") or (headers or {}).get("x-total-count")
+    rows = rows if isinstance(rows, list) else []
+    print(f"history of {what}, newest first ({len(rows)}{f' of {total}' if total else ''}{f', from {a.skip}' if a.skip else ''}):")
+    for r in rows:
+        print(f"  {_one_line(r.get('at'), 40)}  {_one_line(r.get('summary') or r.get('action'), 400)}")
+    if not rows:
+        print("  (nothing recorded)")
+
+
 def cmd_login(a):
     # The whole point of this command is that the PERSON types the key, in a
     # terminal, with no echo. Piped stdin means something else is supplying
@@ -2670,6 +3057,19 @@ def main():
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_runs)
 
+    p = sub.add_parser("request-upload", help="ask the person for files through a link")
+    p.add_argument("--collection", required=True)
+    p.add_argument("--entries", required=True, help='a JSON file: [{"item_id": ..., "name"|"pattern": ..., "element": ...}]')
+    p.add_argument("--note", help="one line shown to the person (280 characters)")
+    p.add_argument("--days", type=int, help="how long the link works, 1-30 (default 7)")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_request_upload)
+
+    p = sub.add_parser("upload-status", help="what has arrived for an upload request")
+    p.add_argument("--id", required=True)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_upload_status)
+
     p = sub.add_parser("attach", help="upload files onto items")
     p.add_argument("--item", help="attach to this one item id")
     p.add_argument("--file", action="append", help="repeatable; with --item")
@@ -2700,6 +3100,28 @@ def main():
     p.add_argument("--confirm", metavar="CARD_NAME",
                    help="the card's name typed back; required with --apply when the proposal is destructive")
     p.set_defaults(fn=cmd_change_card)
+
+    p = sub.add_parser("setup", help="propose a setup (layouts, filters, rules…) and apply it by fingerprint")
+    p.add_argument("--collection", required=True)
+    p.add_argument("--spec", required=True, help="setup.json — references/setup.md")
+    p.add_argument("--apply", action="store_true", help="apply it (ask the person first)")
+    p.add_argument("--expect", metavar="FINGERPRINT", help="the fingerprint the preview printed; required with --apply")
+    p.set_defaults(fn=cmd_setup)
+
+    p = sub.add_parser("automations", help="a collection's rules and notifications; a rule's runs; pause one")
+    p.add_argument("--collection", required=True)
+    p.add_argument("--runs", metavar="RULE", help="a rule's recent runs, by id or exact name")
+    p.add_argument("--pause", metavar="RULE", help="pause a rule, by id or exact name")
+    p.add_argument("--limit", type=int, default=10)
+    p.set_defaults(fn=cmd_automations)
+
+    p = sub.add_parser("history", help="who changed what: an item, a card, or a collection (reads only)")
+    p.add_argument("--item", help="an item id")
+    p.add_argument("--card", help="a card key (with --collection) or id")
+    p.add_argument("--collection", help="the collection")
+    p.add_argument("--limit", type=int, default=20)
+    p.add_argument("--skip", type=int, default=0, help="older entries: skip this many of the newest")
+    p.set_defaults(fn=cmd_history)
 
     p = sub.add_parser("login", help="store your key (run this yourself, in a terminal)")
     p.add_argument("--url", help="API base URL for self-hosted keepr (default https://api.keepr.cloud)")

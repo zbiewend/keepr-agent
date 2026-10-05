@@ -30,9 +30,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/codegen/code.js
+// node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/codegen/code.js"(exports) {
+  "node_modules/ajv/dist/compile/codegen/code.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.regexpCode = exports.getEsmExportName = exports.getProperty = exports.safeStringify = exports.stringify = exports.strConcat = exports.addCodeArg = exports.str = exports._ = exports.nil = exports._Code = exports.Name = exports.IDENTIFIER = exports._CodeOrName = void 0;
@@ -74,13 +74,13 @@ var require_code = __commonJS({
       }
       get str() {
         var _a;
-        return (_a = this._str) !== null && _a !== void 0 ? _a : this._str = this._items.reduce((s, c) => `${s}${c}`, "");
+        return (_a = this._str) !== null && _a !== void 0 ? _a : this._str = this._items.reduce((s, c2) => `${s}${c2}`, "");
       }
       get names() {
         var _a;
-        return (_a = this._names) !== null && _a !== void 0 ? _a : this._names = this._items.reduce((names, c) => {
-          if (c instanceof Name)
-            names[c.str] = (names[c.str] || 0) + 1;
+        return (_a = this._names) !== null && _a !== void 0 ? _a : this._names = this._items.reduce((names, c2) => {
+          if (c2 instanceof Name)
+            names[c2.str] = (names[c2.str] || 0) + 1;
           return names;
         }, {});
       }
@@ -184,9 +184,9 @@ var require_code = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/codegen/scope.js
+// node_modules/ajv/dist/compile/codegen/scope.js
 var require_scope = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/codegen/scope.js"(exports) {
+  "node_modules/ajv/dist/compile/codegen/scope.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ValueScope = exports.ValueScopeName = exports.Scope = exports.varKinds = exports.UsedValueState = void 0;
@@ -310,12 +310,12 @@ var require_scope = __commonJS({
             if (nameSet.has(name))
               return;
             nameSet.set(name, UsedValueState.Started);
-            let c = valueCode(name);
-            if (c) {
+            let c2 = valueCode(name);
+            if (c2) {
               const def = this.opts.es5 ? exports.varKinds.var : exports.varKinds.const;
-              code = (0, code_1._)`${code}${def} ${name} = ${c};${this.opts._n}`;
-            } else if (c = getCode === null || getCode === void 0 ? void 0 : getCode(name)) {
-              code = (0, code_1._)`${code}${c}${this.opts._n}`;
+              code = (0, code_1._)`${code}${def} ${name} = ${c2};${this.opts._n}`;
+            } else if (c2 = getCode === null || getCode === void 0 ? void 0 : getCode(name)) {
+              code = (0, code_1._)`${code}${c2}${this.opts._n}`;
             } else {
               throw new ValueError(name);
             }
@@ -329,9 +329,9 @@ var require_scope = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/codegen/index.js
+// node_modules/ajv/dist/compile/codegen/index.js
 var require_codegen = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/codegen/index.js"(exports) {
+  "node_modules/ajv/dist/compile/codegen/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.or = exports.and = exports.not = exports.CodeGen = exports.operators = exports.varKinds = exports.ValueScopeName = exports.ValueScope = exports.Scope = exports.Name = exports.regexpCode = exports.stringify = exports.getProperty = exports.nil = exports.strConcat = exports.str = exports._ = void 0;
@@ -791,11 +791,11 @@ var require_codegen = __commonJS({
         return this._leafNode(new AssignOp(lhs, exports.operators.ADD, rhs));
       }
       // appends passed SafeExpr to code or executes Block
-      code(c) {
-        if (typeof c == "function")
-          c();
-        else if (c !== code_1.nil)
-          this._leafNode(new AnyCode(c));
+      code(c2) {
+        if (typeof c2 == "function")
+          c2();
+        else if (c2 !== code_1.nil)
+          this._leafNode(new AnyCode(c2));
         return this;
       }
       // returns code for object literal for the passed argument list of key-value pairs
@@ -1002,24 +1002,24 @@ var require_codegen = __commonJS({
         return replaceName(expr);
       if (!canOptimize(expr))
         return expr;
-      return new code_1._Code(expr._items.reduce((items, c) => {
-        if (c instanceof code_1.Name)
-          c = replaceName(c);
-        if (c instanceof code_1._Code)
-          items.push(...c._items);
+      return new code_1._Code(expr._items.reduce((items, c2) => {
+        if (c2 instanceof code_1.Name)
+          c2 = replaceName(c2);
+        if (c2 instanceof code_1._Code)
+          items.push(...c2._items);
         else
-          items.push(c);
+          items.push(c2);
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants[n.str];
-        if (c === void 0 || names[n.str] !== 1)
+        const c2 = constants[n.str];
+        if (c2 === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
-        return c;
+        return c2;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c2) => c2 instanceof code_1.Name && names[c2.str] === 1 && constants[c2.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -1049,9 +1049,9 @@ var require_codegen = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/util.js
+// node_modules/ajv/dist/compile/util.js
 var require_util = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/util.js"(exports) {
+  "node_modules/ajv/dist/compile/util.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.checkStrictMode = exports.getErrorPath = exports.Type = exports.useFunc = exports.setEvaluated = exports.evaluatedPropsToName = exports.mergeEvaluated = exports.eachItem = exports.unescapeJsonPointer = exports.escapeJsonPointer = exports.escapeFragment = exports.unescapeFragment = exports.schemaRefOrVal = exports.schemaHasRulesButRef = exports.schemaHasRules = exports.checkUnknownRules = exports.alwaysValidSchema = exports.toHash = void 0;
@@ -1216,9 +1216,9 @@ var require_util = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/names.js
+// node_modules/ajv/dist/compile/names.js
 var require_names = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/names.js"(exports) {
+  "node_modules/ajv/dist/compile/names.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -1255,9 +1255,9 @@ var require_names = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/errors.js
+// node_modules/ajv/dist/compile/errors.js
 var require_errors = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/errors.js"(exports) {
+  "node_modules/ajv/dist/compile/errors.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.extendErrors = exports.resetErrorsCount = exports.reportExtraError = exports.reportError = exports.keyword$DataError = exports.keywordError = void 0;
@@ -1377,9 +1377,9 @@ var require_errors = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/boolSchema.js
+// node_modules/ajv/dist/compile/validate/boolSchema.js
 var require_boolSchema = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/boolSchema.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/boolSchema.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.boolOrEmptySchema = exports.topBoolOrEmptySchema = void 0;
@@ -1428,9 +1428,9 @@ var require_boolSchema = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/rules.js
+// node_modules/ajv/dist/compile/rules.js
 var require_rules = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/rules.js"(exports) {
+  "node_modules/ajv/dist/compile/rules.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getRules = exports.isJSONType = void 0;
@@ -1459,9 +1459,9 @@ var require_rules = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/applicability.js
+// node_modules/ajv/dist/compile/validate/applicability.js
 var require_applicability = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/applicability.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/applicability.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.shouldUseRule = exports.shouldUseGroup = exports.schemaHasRulesForType = void 0;
@@ -1482,9 +1482,9 @@ var require_applicability = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/dataType.js
+// node_modules/ajv/dist/compile/validate/dataType.js
 var require_dataType = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/dataType.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/dataType.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.reportTypeError = exports.checkDataTypes = exports.checkDataType = exports.coerceAndCheckDataType = exports.getJSONTypes = exports.getSchemaTypes = exports.DataType = void 0;
@@ -1539,7 +1539,7 @@ var require_dataType = __commonJS({
     exports.coerceAndCheckDataType = coerceAndCheckDataType;
     var COERCIBLE = /* @__PURE__ */ new Set(["string", "number", "integer", "boolean", "null"]);
     function coerceToTypes(types, coerceTypes) {
-      return coerceTypes ? types.filter((t) => COERCIBLE.has(t) || coerceTypes === "array" && t === "array") : [];
+      return coerceTypes ? types.filter((t3) => COERCIBLE.has(t3) || coerceTypes === "array" && t3 === "array") : [];
     }
     function coerceData(it, types, coerceTo) {
       const { gen, data, opts } = it;
@@ -1549,9 +1549,9 @@ var require_dataType = __commonJS({
         gen.if((0, codegen_1._)`${dataType} == 'object' && Array.isArray(${data}) && ${data}.length == 1`, () => gen.assign(data, (0, codegen_1._)`${data}[0]`).assign(dataType, (0, codegen_1._)`typeof ${data}`).if(checkDataTypes(types, data, opts.strictNumbers), () => gen.assign(coerced, data)));
       }
       gen.if((0, codegen_1._)`${coerced} !== undefined`);
-      for (const t of coerceTo) {
-        if (COERCIBLE.has(t) || t === "array" && opts.coerceTypes === "array") {
-          coerceSpecificType(t);
+      for (const t3 of coerceTo) {
+        if (COERCIBLE.has(t3) || t3 === "array" && opts.coerceTypes === "array") {
+          coerceSpecificType(t3);
         }
       }
       gen.else();
@@ -1561,8 +1561,8 @@ var require_dataType = __commonJS({
         gen.assign(data, coerced);
         assignParentData(it, coerced);
       });
-      function coerceSpecificType(t) {
-        switch (t) {
+      function coerceSpecificType(t3) {
+        switch (t3) {
           case "string":
             gen.elseIf((0, codegen_1._)`${dataType} == "number" || ${dataType} == "boolean"`).assign(coerced, (0, codegen_1._)`"" + ${data}`).elseIf((0, codegen_1._)`${data} === null`).assign(coerced, (0, codegen_1._)`""`);
             return;
@@ -1634,8 +1634,8 @@ var require_dataType = __commonJS({
       }
       if (types.number)
         delete types.integer;
-      for (const t in types)
-        cond = (0, codegen_1.and)(cond, checkDataType(t, data, strictNums, correct));
+      for (const t3 in types)
+        cond = (0, codegen_1.and)(cond, checkDataType(t3, data, strictNums, correct));
       return cond;
     }
     exports.checkDataTypes = checkDataTypes;
@@ -1666,9 +1666,9 @@ var require_dataType = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/defaults.js
+// node_modules/ajv/dist/compile/validate/defaults.js
 var require_defaults = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/defaults.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/defaults.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.assignDefaults = void 0;
@@ -1703,9 +1703,9 @@ var require_defaults = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/code.js
+// node_modules/ajv/dist/vocabularies/code.js
 var require_code2 = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/code.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/code.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateUnion = exports.validateArray = exports.usePattern = exports.callValidateCode = exports.schemaProperties = exports.allSchemaProperties = exports.noPropertyInData = exports.propertyInData = exports.isOwnProperty = exports.hasPropFunc = exports.reportMissingProp = exports.checkMissingProp = exports.checkReportMissingProp = void 0;
@@ -1836,9 +1836,9 @@ var require_code2 = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/keyword.js
+// node_modules/ajv/dist/compile/validate/keyword.js
 var require_keyword = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/keyword.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/keyword.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateKeywordUsage = exports.validSchemaType = exports.funcKeywordCode = exports.macroKeywordCode = void 0;
@@ -1954,9 +1954,9 @@ var require_keyword = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/subschema.js
+// node_modules/ajv/dist/compile/validate/subschema.js
 var require_subschema = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/subschema.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/subschema.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.extendSubschemaMode = exports.extendSubschemaData = exports.getSubschema = void 0;
@@ -2037,9 +2037,9 @@ var require_subschema = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/fast-deep-equal/index.js
+// node_modules/fast-deep-equal/index.js
 var require_fast_deep_equal = __commonJS({
-  "../../integrate-gap/mcp/node_modules/fast-deep-equal/index.js"(exports, module) {
+  "node_modules/fast-deep-equal/index.js"(exports, module) {
     "use strict";
     module.exports = function equal(a, b) {
       if (a === b) return true;
@@ -2072,9 +2072,9 @@ var require_fast_deep_equal = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/json-schema-traverse/index.js
+// node_modules/json-schema-traverse/index.js
 var require_json_schema_traverse = __commonJS({
-  "../../integrate-gap/mcp/node_modules/json-schema-traverse/index.js"(exports, module) {
+  "node_modules/json-schema-traverse/index.js"(exports, module) {
     "use strict";
     var traverse = module.exports = function(schema, opts, cb) {
       if (typeof opts == "function") {
@@ -2160,9 +2160,9 @@ var require_json_schema_traverse = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/resolve.js
+// node_modules/ajv/dist/compile/resolve.js
 var require_resolve = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/resolve.js"(exports) {
+  "node_modules/ajv/dist/compile/resolve.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getSchemaRefs = exports.resolveUrl = exports.normalizeId = exports._getFullPath = exports.getFullPath = exports.inlineRef = void 0;
@@ -2316,9 +2316,9 @@ var require_resolve = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/index.js
+// node_modules/ajv/dist/compile/validate/index.js
 var require_validate = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/validate/index.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getData = exports.KeywordCxt = exports.validateFunctionCode = void 0;
@@ -2550,9 +2550,9 @@ var require_validate = __commonJS({
         it.dataTypes = types;
         return;
       }
-      types.forEach((t) => {
-        if (!includesType(it.dataTypes, t)) {
-          strictTypesError(it, `type "${t}" not allowed by context "${it.dataTypes.join(",")}"`);
+      types.forEach((t3) => {
+        if (!includesType(it.dataTypes, t3)) {
+          strictTypesError(it, `type "${t3}" not allowed by context "${it.dataTypes.join(",")}"`);
         }
       });
       narrowSchemaTypes(it, types);
@@ -2568,7 +2568,7 @@ var require_validate = __commonJS({
         const rule = rules[keyword];
         if (typeof rule == "object" && (0, applicability_1.shouldUseRule)(it.schema, rule)) {
           const { type } = rule.definition;
-          if (type.length && !type.some((t) => hasApplicableType(ts, t))) {
+          if (type.length && !type.some((t3) => hasApplicableType(ts, t3))) {
             strictTypesError(it, `missing type "${type.join(",")}" for keyword "${keyword}"`);
           }
         }
@@ -2577,15 +2577,15 @@ var require_validate = __commonJS({
     function hasApplicableType(schTs, kwdT) {
       return schTs.includes(kwdT) || kwdT === "number" && schTs.includes("integer");
     }
-    function includesType(ts, t) {
-      return ts.includes(t) || t === "integer" && ts.includes("number");
+    function includesType(ts, t3) {
+      return ts.includes(t3) || t3 === "integer" && ts.includes("number");
     }
     function narrowSchemaTypes(it, withTypes) {
       const ts = [];
-      for (const t of it.dataTypes) {
-        if (includesType(withTypes, t))
-          ts.push(t);
-        else if (withTypes.includes("integer") && t === "number")
+      for (const t3 of it.dataTypes) {
+        if (includesType(withTypes, t3))
+          ts.push(t3);
+        else if (withTypes.includes("integer") && t3 === "number")
           ts.push("integer");
       }
       it.dataTypes = ts;
@@ -2824,9 +2824,9 @@ var require_validate = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/runtime/validation_error.js
+// node_modules/ajv/dist/runtime/validation_error.js
 var require_validation_error = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/runtime/validation_error.js"(exports) {
+  "node_modules/ajv/dist/runtime/validation_error.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var ValidationError = class extends Error {
@@ -2840,9 +2840,9 @@ var require_validation_error = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/ref_error.js
+// node_modules/ajv/dist/compile/ref_error.js
 var require_ref_error = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/ref_error.js"(exports) {
+  "node_modules/ajv/dist/compile/ref_error.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var resolve_1 = require_resolve();
@@ -2857,9 +2857,9 @@ var require_ref_error = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/compile/index.js
+// node_modules/ajv/dist/compile/index.js
 var require_compile = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/compile/index.js"(exports) {
+  "node_modules/ajv/dist/compile/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.resolveSchema = exports.getCompilingSchema = exports.resolveRef = exports.compileSchema = exports.SchemaEnv = void 0;
@@ -3081,9 +3081,9 @@ var require_compile = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/refs/data.json
+// node_modules/ajv/dist/refs/data.json
 var require_data = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/refs/data.json"(exports, module) {
+  "node_modules/ajv/dist/refs/data.json"(exports, module) {
     module.exports = {
       $id: "https://raw.githubusercontent.com/ajv-validator/ajv/master/lib/refs/data.json#",
       description: "Meta-schema for $data reference (JSON AnySchema extension proposal)",
@@ -3100,9 +3100,9 @@ var require_data = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/fast-uri/lib/utils.js
+// node_modules/fast-uri/lib/utils.js
 var require_utils = __commonJS({
-  "../../integrate-gap/mcp/node_modules/fast-uri/lib/utils.js"(exports, module) {
+  "node_modules/fast-uri/lib/utils.js"(exports, module) {
     "use strict";
     var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
     var isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u);
@@ -3602,9 +3602,9 @@ var require_utils = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/fast-uri/lib/schemes.js
+// node_modules/fast-uri/lib/schemes.js
 var require_schemes = __commonJS({
-  "../../integrate-gap/mcp/node_modules/fast-uri/lib/schemes.js"(exports, module) {
+  "node_modules/fast-uri/lib/schemes.js"(exports, module) {
     "use strict";
     var { isUUID } = require_utils();
     var URN_REG = /^([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-./:;=@]|%[\da-f]{2})+)$/iu;
@@ -3813,9 +3813,9 @@ var require_schemes = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/fast-uri/index.js
+// node_modules/fast-uri/index.js
 var require_fast_uri = __commonJS({
-  "../../integrate-gap/mcp/node_modules/fast-uri/index.js"(exports, module) {
+  "node_modules/fast-uri/index.js"(exports, module) {
     "use strict";
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, serializePathEncoding, normalizeQueryFragmentEncoding, encodeQuery, encodeFragment, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
@@ -4219,9 +4219,9 @@ var require_fast_uri = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/runtime/uri.js
+// node_modules/ajv/dist/runtime/uri.js
 var require_uri = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/runtime/uri.js"(exports) {
+  "node_modules/ajv/dist/runtime/uri.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var uri = require_fast_uri();
@@ -4230,9 +4230,9 @@ var require_uri = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/core.js
+// node_modules/ajv/dist/core.js
 var require_core = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/core.js"(exports) {
+  "node_modules/ajv/dist/core.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
@@ -4593,7 +4593,7 @@ var require_core = __commonJS({
           type: (0, dataType_1.getJSONTypes)(def.type),
           schemaType: (0, dataType_1.getJSONTypes)(def.schemaType)
         };
-        (0, util_1.eachItem)(keyword, definition.type.length === 0 ? (k) => addRule.call(this, k, definition) : (k) => definition.type.forEach((t) => addRule.call(this, k, definition, t)));
+        (0, util_1.eachItem)(keyword, definition.type.length === 0 ? (k) => addRule.call(this, k, definition) : (k) => definition.type.forEach((t3) => addRule.call(this, k, definition, t3)));
         return this;
       }
       getKeyword(keyword) {
@@ -4792,7 +4792,7 @@ var require_core = __commonJS({
       if (dataType && post)
         throw new Error('keyword with "post" flag cannot have "type"');
       const { RULES } = this;
-      let ruleGroup = post ? RULES.post : RULES.rules.find(({ type: t }) => t === dataType);
+      let ruleGroup = post ? RULES.post : RULES.rules.find(({ type: t3 }) => t3 === dataType);
       if (!ruleGroup) {
         ruleGroup = { type: dataType, rules: [] };
         RULES.rules.push(ruleGroup);
@@ -4841,9 +4841,9 @@ var require_core = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/core/id.js
+// node_modules/ajv/dist/vocabularies/core/id.js
 var require_id = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/core/id.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/core/id.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var def = {
@@ -4856,9 +4856,9 @@ var require_id = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/core/ref.js
+// node_modules/ajv/dist/vocabularies/core/ref.js
 var require_ref = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/core/ref.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/core/ref.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.callRef = exports.getValidate = void 0;
@@ -4978,9 +4978,9 @@ var require_ref = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/core/index.js
+// node_modules/ajv/dist/vocabularies/core/index.js
 var require_core2 = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/core/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/core/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var id_1 = require_id();
@@ -4999,9 +4999,9 @@ var require_core2 = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitNumber.js
+// node_modules/ajv/dist/vocabularies/validation/limitNumber.js
 var require_limitNumber = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5031,9 +5031,9 @@ var require_limitNumber = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/multipleOf.js
+// node_modules/ajv/dist/vocabularies/validation/multipleOf.js
 var require_multipleOf = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5059,9 +5059,9 @@ var require_multipleOf = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/runtime/ucs2length.js
+// node_modules/ajv/dist/runtime/ucs2length.js
 var require_ucs2length = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
+  "node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function ucs2length(str) {
@@ -5085,9 +5085,9 @@ var require_ucs2length = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitLength.js
+// node_modules/ajv/dist/vocabularies/validation/limitLength.js
 var require_limitLength = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5117,9 +5117,9 @@ var require_limitLength = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/pattern.js
+// node_modules/ajv/dist/vocabularies/validation/pattern.js
 var require_pattern = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -5154,9 +5154,9 @@ var require_pattern = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitProperties.js
+// node_modules/ajv/dist/vocabularies/validation/limitProperties.js
 var require_limitProperties = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5183,9 +5183,9 @@ var require_limitProperties = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/required.js
+// node_modules/ajv/dist/vocabularies/validation/required.js
 var require_required = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/required.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/required.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -5265,9 +5265,9 @@ var require_required = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitItems.js
+// node_modules/ajv/dist/vocabularies/validation/limitItems.js
 var require_limitItems = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5294,9 +5294,9 @@ var require_limitItems = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/runtime/equal.js
+// node_modules/ajv/dist/runtime/equal.js
 var require_equal = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/runtime/equal.js"(exports) {
+  "node_modules/ajv/dist/runtime/equal.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var equal = require_fast_deep_equal();
@@ -5305,9 +5305,9 @@ var require_equal = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
+// node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
 var require_uniqueItems = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var dataType_1 = require_dataType();
@@ -5340,7 +5340,7 @@ var require_uniqueItems = __commonJS({
           gen.if((0, codegen_1._)`${i} > 1`, () => (canOptimize() ? loopN : loopN2)(i, j));
         }
         function canOptimize() {
-          return itemTypes.length > 0 && !itemTypes.some((t) => t === "object" || t === "array");
+          return itemTypes.length > 0 && !itemTypes.some((t3) => t3 === "object" || t3 === "array");
         }
         function loopN(i, j) {
           const item = gen.name("item");
@@ -5372,9 +5372,9 @@ var require_uniqueItems = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/const.js
+// node_modules/ajv/dist/vocabularies/validation/const.js
 var require_const = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/const.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/const.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5401,9 +5401,9 @@ var require_const = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/enum.js
+// node_modules/ajv/dist/vocabularies/validation/enum.js
 var require_enum = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/enum.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/enum.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5450,9 +5450,9 @@ var require_enum = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/index.js
+// node_modules/ajv/dist/vocabularies/validation/index.js
 var require_validation = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/validation/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var limitNumber_1 = require_limitNumber();
@@ -5488,9 +5488,9 @@ var require_validation = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
+// node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
 var require_additionalItems = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateAdditionalItems = void 0;
@@ -5541,9 +5541,9 @@ var require_additionalItems = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/items.js
+// node_modules/ajv/dist/vocabularies/applicator/items.js
 var require_items = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/items.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/items.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateTuple = void 0;
@@ -5598,9 +5598,9 @@ var require_items = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
+// node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
 var require_prefixItems = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var items_1 = require_items();
@@ -5615,9 +5615,9 @@ var require_prefixItems = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/items2020.js
+// node_modules/ajv/dist/vocabularies/applicator/items2020.js
 var require_items2020 = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5650,9 +5650,9 @@ var require_items2020 = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/contains.js
+// node_modules/ajv/dist/vocabularies/applicator/contains.js
 var require_contains = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5744,9 +5744,9 @@ var require_contains = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/dependencies.js
+// node_modules/ajv/dist/vocabularies/applicator/dependencies.js
 var require_dependencies = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateSchemaDeps = exports.validatePropertyDeps = exports.error = void 0;
@@ -5838,9 +5838,9 @@ var require_dependencies = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
+// node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
 var require_propertyNames = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -5881,9 +5881,9 @@ var require_propertyNames = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
+// node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
 var require_additionalProperties = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -5987,9 +5987,9 @@ var require_additionalProperties = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/properties.js
+// node_modules/ajv/dist/vocabularies/applicator/properties.js
 var require_properties = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var validate_1 = require_validate();
@@ -6045,9 +6045,9 @@ var require_properties = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
+// node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
 var require_patternProperties = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -6119,9 +6119,9 @@ var require_patternProperties = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/not.js
+// node_modules/ajv/dist/vocabularies/applicator/not.js
 var require_not = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/not.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/not.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
@@ -6150,9 +6150,9 @@ var require_not = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/anyOf.js
+// node_modules/ajv/dist/vocabularies/applicator/anyOf.js
 var require_anyOf = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -6167,9 +6167,9 @@ var require_anyOf = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/oneOf.js
+// node_modules/ajv/dist/vocabularies/applicator/oneOf.js
 var require_oneOf = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -6225,9 +6225,9 @@ var require_oneOf = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/allOf.js
+// node_modules/ajv/dist/vocabularies/applicator/allOf.js
 var require_allOf = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
@@ -6252,9 +6252,9 @@ var require_allOf = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/if.js
+// node_modules/ajv/dist/vocabularies/applicator/if.js
 var require_if = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/if.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/if.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -6321,9 +6321,9 @@ var require_if = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/thenElse.js
+// node_modules/ajv/dist/vocabularies/applicator/thenElse.js
 var require_thenElse = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
@@ -6339,9 +6339,9 @@ var require_thenElse = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/index.js
+// node_modules/ajv/dist/vocabularies/applicator/index.js
 var require_applicator = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/applicator/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var additionalItems_1 = require_additionalItems();
@@ -6387,9 +6387,9 @@ var require_applicator = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/format/format.js
+// node_modules/ajv/dist/vocabularies/format/format.js
 var require_format = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/format/format.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/format/format.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -6477,9 +6477,9 @@ var require_format = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/format/index.js
+// node_modules/ajv/dist/vocabularies/format/index.js
 var require_format2 = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/format/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/format/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var format_1 = require_format();
@@ -6488,9 +6488,9 @@ var require_format2 = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/metadata.js
+// node_modules/ajv/dist/vocabularies/metadata.js
 var require_metadata = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/metadata.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/metadata.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.contentVocabulary = exports.metadataVocabulary = void 0;
@@ -6511,9 +6511,9 @@ var require_metadata = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/draft7.js
+// node_modules/ajv/dist/vocabularies/draft7.js
 var require_draft7 = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/draft7.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/draft7.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var core_1 = require_core2();
@@ -6533,9 +6533,9 @@ var require_draft7 = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/discriminator/types.js
+// node_modules/ajv/dist/vocabularies/discriminator/types.js
 var require_types = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DiscrError = void 0;
@@ -6547,9 +6547,9 @@ var require_types = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/discriminator/index.js
+// node_modules/ajv/dist/vocabularies/discriminator/index.js
 var require_discriminator = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -6652,9 +6652,9 @@ var require_discriminator = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/refs/json-schema-draft-07.json
+// node_modules/ajv/dist/refs/json-schema-draft-07.json
 var require_json_schema_draft_07 = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports, module) {
+  "node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports, module) {
     module.exports = {
       $schema: "http://json-schema.org/draft-07/schema#",
       $id: "http://json-schema.org/draft-07/schema#",
@@ -6809,9 +6809,9 @@ var require_json_schema_draft_07 = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv/dist/ajv.js
+// node_modules/ajv/dist/ajv.js
 var require_ajv = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv/dist/ajv.js"(exports, module) {
+  "node_modules/ajv/dist/ajv.js"(exports, module) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv = void 0;
@@ -6879,9 +6879,9 @@ var require_ajv = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv-formats/dist/formats.js
+// node_modules/ajv-formats/dist/formats.js
 var require_formats = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv-formats/dist/formats.js"(exports) {
+  "node_modules/ajv-formats/dist/formats.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.formatNames = exports.fastFormats = exports.fullFormats = void 0;
@@ -7000,23 +7000,23 @@ var require_formats = __commonJS({
       if (!(s1 && s2))
         return void 0;
       const t1 = (/* @__PURE__ */ new Date("2020-01-01T" + s1)).valueOf();
-      const t2 = (/* @__PURE__ */ new Date("2020-01-01T" + s2)).valueOf();
-      if (!(t1 && t2))
+      const t22 = (/* @__PURE__ */ new Date("2020-01-01T" + s2)).valueOf();
+      if (!(t1 && t22))
         return void 0;
-      return t1 - t2;
+      return t1 - t22;
     }
-    function compareIsoTime(t1, t2) {
-      if (!(t1 && t2))
+    function compareIsoTime(t1, t22) {
+      if (!(t1 && t22))
         return void 0;
       const a1 = TIME.exec(t1);
-      const a2 = TIME.exec(t2);
+      const a2 = TIME.exec(t22);
       if (!(a1 && a2))
         return void 0;
       t1 = a1[1] + a1[2] + a1[3];
-      t2 = a2[1] + a2[2] + a2[3];
-      if (t1 > t2)
+      t22 = a2[1] + a2[2] + a2[3];
+      if (t1 > t22)
         return 1;
-      if (t1 < t2)
+      if (t1 < t22)
         return -1;
       return 0;
     }
@@ -7041,11 +7041,11 @@ var require_formats = __commonJS({
       if (!(dt1 && dt2))
         return void 0;
       const [d1, t1] = dt1.split(DATE_TIME_SEPARATOR);
-      const [d2, t2] = dt2.split(DATE_TIME_SEPARATOR);
+      const [d2, t22] = dt2.split(DATE_TIME_SEPARATOR);
       const res = compareDate(d1, d2);
       if (res === void 0)
         return void 0;
-      return res || compareTime(t1, t2);
+      return res || compareTime(t1, t22);
     }
     var NOT_URI_FRAGMENT = /\/|:/;
     var URI = /^(?:[a-z][a-z0-9+\-.]*:)(?:\/?\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|(?:[a-z0-9\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\d*)?(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)(?:\?(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$/i;
@@ -7082,9 +7082,9 @@ var require_formats = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv-formats/dist/limit.js
+// node_modules/ajv-formats/dist/limit.js
 var require_limit = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv-formats/dist/limit.js"(exports) {
+  "node_modules/ajv-formats/dist/limit.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.formatLimitDefinition = void 0;
@@ -7154,9 +7154,9 @@ var require_limit = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/ajv-formats/dist/index.js
+// node_modules/ajv-formats/dist/index.js
 var require_dist = __commonJS({
-  "../../integrate-gap/mcp/node_modules/ajv-formats/dist/index.js"(exports, module) {
+  "node_modules/ajv-formats/dist/index.js"(exports, module) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var formats_1 = require_formats();
@@ -7196,10 +7196,10 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 import process2 from "node:process";
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/core.js
+// node_modules/zod/v4/core/core.js
 var NEVER = Object.freeze({
   status: "aborted"
 });
@@ -7259,7 +7259,7 @@ function config(newConfig) {
   return globalConfig;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/util.js
+// node_modules/zod/v4/core/util.js
 var util_exports = {};
 __export(util_exports, {
   BIGINT_FORMAT_RANGES: () => BIGINT_FORMAT_RANGES,
@@ -7463,8 +7463,8 @@ function numKeys(data) {
   return keyCount;
 }
 var getParsedType = (data) => {
-  const t = typeof data;
-  switch (t) {
+  const t3 = typeof data;
+  switch (t3) {
     case "undefined":
       return "undefined";
     case "string":
@@ -7503,7 +7503,7 @@ var getParsedType = (data) => {
       }
       return "object";
     default:
-      throw new Error(`Unknown data type: ${t}`);
+      throw new Error(`Unknown data type: ${t3}`);
   }
 };
 var propertyKeyTypes = /* @__PURE__ */ new Set(["string", "number", "symbol"]);
@@ -7780,7 +7780,7 @@ var Class = class {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/errors.js
+// node_modules/zod/v4/core/errors.js
 var initializer = (inst, def) => {
   inst.name = "$ZodError";
   Object.defineProperty(inst, "_zod", {
@@ -7855,7 +7855,7 @@ function formatError(error2, _mapper) {
   return fieldErrors;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/parse.js
+// node_modules/zod/v4/core/parse.js
 var _parse = (_Err) => (schema, value, _ctx, _params) => {
   const ctx = _ctx ? Object.assign(_ctx, { async: false }) : { async: false };
   const result = schema._zod.run({ value, issues: [] }, ctx);
@@ -7907,7 +7907,7 @@ var _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
 };
 var safeParseAsync = /* @__PURE__ */ _safeParseAsync($ZodRealError);
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/regexes.js
+// node_modules/zod/v4/core/regexes.js
 var cuid = /^[cC][^\s-]{8,}$/;
 var cuid2 = /^[0-9a-z]+$/;
 var ulid = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/;
@@ -7965,7 +7965,7 @@ var _null = /null/i;
 var lowercase = /^[^A-Z]*$/;
 var uppercase = /^[^a-z]*$/;
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/checks.js
+// node_modules/zod/v4/core/checks.js
 var $ZodCheck = /* @__PURE__ */ $constructor("$ZodCheck", (inst, def) => {
   var _a;
   inst._zod ?? (inst._zod = {});
@@ -8350,7 +8350,7 @@ var $ZodCheckOverwrite = /* @__PURE__ */ $constructor("$ZodCheckOverwrite", (ins
   };
 });
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/doc.js
+// node_modules/zod/v4/core/doc.js
 var Doc = class {
   constructor(args = []) {
     this.content = [];
@@ -8386,14 +8386,14 @@ var Doc = class {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/versions.js
+// node_modules/zod/v4/core/versions.js
 var version = {
   major: 4,
   minor: 0,
   patch: 0
 };
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/schemas.js
+// node_modules/zod/v4/core/schemas.js
 var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
   var _a;
   inst ?? (inst = {});
@@ -8717,7 +8717,7 @@ var $ZodBase64 = /* @__PURE__ */ $constructor("$ZodBase64", (inst, def) => {
 function isValidBase64URL(data) {
   if (!base64url.test(data))
     return false;
-  const base642 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
+  const base642 = data.replace(/[-_]/g, (c2) => c2 === "-" ? "+" : "/");
   const padded = base642.padEnd(Math.ceil(base642.length / 4) * 4, "=");
   return isValidBase64(padded);
 }
@@ -9054,11 +9054,11 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     const unrecognized = [];
     const keySet = value.keySet;
     const _catchall = catchall._zod;
-    const t = _catchall.def.type;
+    const t3 = _catchall.def.type;
     for (const key of Object.keys(input)) {
       if (keySet.has(key))
         continue;
-      if (t === "never") {
+      if (t3 === "never") {
         unrecognized.push(key);
         continue;
       }
@@ -9631,10 +9631,10 @@ function handleRefineResult(result, payload, input, inst) {
   }
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/locales/en.js
+// node_modules/zod/v4/locales/en.js
 var parsedType = (data) => {
-  const t = typeof data;
-  switch (t) {
+  const t3 = typeof data;
+  switch (t3) {
     case "number": {
       return Number.isNaN(data) ? "NaN" : "number";
     }
@@ -9650,7 +9650,7 @@ var parsedType = (data) => {
       }
     }
   }
-  return t;
+  return t3;
 };
 var error = () => {
   const Sizable = {
@@ -9749,7 +9749,7 @@ function en_default() {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/registries.js
+// node_modules/zod/v4/core/registries.js
 var $output = Symbol("ZodOutput");
 var $input = Symbol("ZodInput");
 var $ZodRegistry = class {
@@ -9799,7 +9799,7 @@ function registry() {
 }
 var globalRegistry = /* @__PURE__ */ registry();
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/api.js
+// node_modules/zod/v4/core/api.js
 function _string(Class2, params) {
   return new Class2({
     type: "string",
@@ -10238,7 +10238,7 @@ function _refine(Class2, fn, _params) {
   return schema;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/core/to-json-schema.js
+// node_modules/zod/v4/core/to-json-schema.js
 var JSONSchemaGenerator = class {
   constructor(params) {
     this.counter = 0;
@@ -11005,7 +11005,7 @@ function isTransforming(_schema, _ctx) {
   throw new Error(`Unknown schema type: ${def.type}`);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/classic/iso.js
+// node_modules/zod/v4/classic/iso.js
 var iso_exports = {};
 __export(iso_exports, {
   ZodISODate: () => ZodISODate,
@@ -11046,7 +11046,7 @@ function duration2(params) {
   return _isoDuration(ZodISODuration, params);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/classic/errors.js
+// node_modules/zod/v4/classic/errors.js
 var initializer2 = (inst, issues) => {
   $ZodError.init(inst, issues);
   inst.name = "ZodError";
@@ -11080,13 +11080,13 @@ var ZodRealError = $constructor("ZodError", initializer2, {
   Parent: Error
 });
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/classic/parse.js
+// node_modules/zod/v4/classic/parse.js
 var parse2 = /* @__PURE__ */ _parse(ZodRealError);
 var parseAsync2 = /* @__PURE__ */ _parseAsync(ZodRealError);
 var safeParse2 = /* @__PURE__ */ _safeParse(ZodRealError);
 var safeParseAsync2 = /* @__PURE__ */ _safeParseAsync(ZodRealError);
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/classic/schemas.js
+// node_modules/zod/v4/classic/schemas.js
 var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   $ZodType.init(inst, def);
   inst.def = def;
@@ -11697,10 +11697,10 @@ function preprocess(fn, schema) {
   return pipe(transform(fn), schema);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/classic/external.js
+// node_modules/zod/v4/classic/external.js
 config(en_default());
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
 var LATEST_PROTOCOL_VERSION = "2025-11-25";
 var SUPPORTED_PROTOCOL_VERSIONS = [LATEST_PROTOCOL_VERSION, "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"];
 var RELATED_TASK_META_KEY = "io.modelcontextprotocol/related-task";
@@ -13229,7 +13229,7 @@ var UrlElicitationRequiredError = class extends McpError {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
 var STDIO_DEFAULT_MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 var ReadBuffer = class {
   constructor(options) {
@@ -13266,7 +13266,7 @@ function serializeMessage(message) {
   return JSON.stringify(message) + "\n";
 }
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 var StdioServerTransport = class {
   constructor(_stdin = process2.stdin, _stdout = process2.stdout, options) {
     this._stdin = _stdin;
@@ -13412,7 +13412,7 @@ function updateNotice(status) {
     ];
     const commands = u.commands ?? [];
     if (u.how === "assistant" && commands.length) {
-      lines.push(`You can update it yourself: run ${commands.map((c) => `\`${c}\``).join(", then ")}. Ask first if your environment needs permission to run commands.`);
+      lines.push(`You can update it yourself: run ${commands.map((c2) => `\`${c2}\``).join(", then ")}. Ask first if your environment needs permission to run commands.`);
       if (u.steps.length)
         lines.push(`Then tell them: ${u.steps.join(" ")}`);
     } else if (u.steps.length) {
@@ -13659,9 +13659,9 @@ var KeeprHttp = class {
 };
 function errorCode(body) {
   if (body && typeof body === "object" && "code" in body) {
-    const c = body.code;
-    if (typeof c === "string")
-      return c;
+    const c2 = body.code;
+    if (typeof c2 === "string")
+      return c2;
   }
   return null;
 }
@@ -13784,7 +13784,7 @@ function landingPage(ok2, text2) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#1f2328;background:#fff}@media(prefers-color-scheme:dark){body{color:#e6edf3;background:#0d1117}}h1{font-size:1.25rem;margin:0 0 .5rem}</style></head><body><h1>${title}</h1><p>${text2}</p></body></html>`;
 }
 function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return s.replace(/[&<>"']/g, (c2) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c2]);
 }
 function originOf(url) {
   try {
@@ -14378,7 +14378,7 @@ async function within(promise, ms) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "40288883788f",
+  version: "aaa8faf8e9d0",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -14422,7 +14422,19 @@ var contract_snapshot_default = {
     chartPreview: "POST /api/collections/{id}/charts/preview",
     chartRun: "POST /api/charts/run",
     automationPreview: "POST /api/collections/{id}/automations/preview",
-    resolveCode: "GET /api/codes/{kind}/{code}"
+    automationList: "GET /api/collections/{id}/automations",
+    automationRuns: "GET /api/collections/{id}/automations/{automationId}/runs",
+    automationEnable: "POST /api/collections/{id}/automations/{automationId}/enable",
+    automationDisable: "POST /api/collections/{id}/automations/{automationId}/disable",
+    notificationDefs: "GET /api/notification-defs",
+    itemHistory: "GET /api/items/{id}/history",
+    cardHistory: "GET /api/card-definitions/{id}/history",
+    collectionHistory: "GET /api/collections/{id}/history",
+    itemsBulk: "POST /api/items/bulk",
+    resolveCode: "GET /api/codes/{kind}/{code}",
+    uploadRequestCreate: "POST /api/upload-requests",
+    uploadRequestRead: "GET /api/upload-requests/{id}",
+    uploadRequestCancel: "DELETE /api/upload-requests/{id}"
   },
   recordCodes: {
     url: "A record's short web address is ${APP_BASE_URL}/<letter>/<code>. A code is 7 or more characters of lowercase Crockford base32 and reads in any case (i and l as 1, o as 0). Every id stays valid; a code is a second name for the record, never a permission.",
@@ -14776,7 +14788,8 @@ var contract_snapshot_default = {
     cards: "Optional: a setup may create no cards and only arrange existing ones. A setup with nothing in it is setup_empty.",
     layouts: 'collection.cardLayouts may name an existing card by { key }. tile and table: scope "collection" (the default) or "card" (only on a card this collection owns); form: the card tier only, on an owned card; page: either tier. A card tier the collection may not set is layout_tier.',
     changes: "An entry that matches what is there CHANGES it rather than adding one: tile, table and form by their tier, a page layout, saved filter or quick add (pinned for everyone) by id or exact name. The preview marks each step change: added | changed | unchanged, with before and after; unchanged entries are skipped; a failed apply puts every change back.",
-    judged: "The preview runs layout bodies through the apply's validators when the card and everything its elements come from exist, and filter queries when the setup creates no cards, element sets or tags."
+    judged: "The preview runs layout bodies through the apply's validators when the card and everything its elements come from exist, and filter queries when the setup creates no cards, element sets or tags.",
+    rules: "collection.automations: rules of kind rule | threshold | expected-item | generate-items, as POST \u2026/automations takes them (no enabled), naming cards by { ref } (one the setup makes), { key }, { globalKey } or id. collection.notifications: collection-tier notification definitions, matched by key. An entry matches an existing rule by id or exact name (a notification by id or key) and changes it; managed rules (driven fields, automatic tags) are rule_managed. The preview carries each rule's rule preview and state on | paused. A rule that notifies, changes other records, creates records or runs on a clock, and every notification, arrives PAUSED with awaitingPerson: true, whoever applies; a change to what a running one does pauses it (willPause). Only a person turns one on (403 person_must_enable to a key). A key needs write."
   },
   writeContract: {
     maxBatch: 200,
@@ -15224,9 +15237,9 @@ var ContractCache = class {
       if (entry?.code)
         this.codeMeaning.set(entry.code, entry.means);
     }
-    for (const t of this.body.elementTypes ?? []) {
-      if (t?.name)
-        this.elementTypes.set(t.name, t);
+    for (const t3 of this.body.elementTypes ?? []) {
+      if (t3?.name)
+        this.elementTypes.set(t3.name, t3);
     }
   }
   /** The deployment's own sentence for an error code. */
@@ -15259,6 +15272,14 @@ var ContractCache = class {
   hasEndpoint(name) {
     const endpoints = this.body.endpoints;
     return Boolean(endpoints && typeof endpoints === "object" && name in endpoints);
+  }
+  /** Whether the deployment takes a SETUP of existing cards (the contract's `setups`, KPR-190). */
+  get takesSetup() {
+    return Boolean(this.body.setups);
+  }
+  /** Whether a setup may carry automations and notifications (`setups.rules`, KPR-191). */
+  get takesSetupRules() {
+    return Boolean(this.body.setups?.rules);
   }
   /**
    * Whether the ingest envelope takes `importId` (undo import). An older
@@ -15338,7 +15359,7 @@ var ContractCache = class {
    * So it means "keepr-mcp is behind the deployment", which is our problem.
    */
   stalenessNote(codesSeen) {
-    const unknown2 = codesSeen.filter((c) => c && !this.codeMeaning.has(c));
+    const unknown2 = codesSeen.filter((c2) => c2 && !this.codeMeaning.has(c2));
     if (!unknown2.length)
       return null;
     const list = [...new Set(unknown2)].join(", ");
@@ -15357,10 +15378,10 @@ var RefusalBreaker = class {
   }
   /** Record a refusal. Returns how many identical ones have been seen. */
   record(signature, status) {
-    const t = this.now();
+    const t3 = this.now();
     const prev = this.seen.get(signature);
-    if (!prev || t - prev.firstAt > WINDOW_MS || prev.status !== status) {
-      this.seen.set(signature, { count: 1, firstAt: t, status });
+    if (!prev || t3 - prev.firstAt > WINDOW_MS || prev.status !== status) {
+      this.seen.set(signature, { count: 1, firstAt: t3, status });
       return 1;
     }
     prev.count += 1;
@@ -15422,20 +15443,37 @@ var RunLedger = class {
 import { randomBytes as randomBytes2 } from "node:crypto";
 var TTL_MS2 = 30 * 6e4;
 var MAX_OPEN = 20;
+var MAX_TOMBSTONES = 100;
+var APPLIED_BY = {
+  create: "keepr_apply_card (a card proposal from keepr_propose_card)",
+  change: "keepr_apply_card (a card proposal from keepr_propose_card)",
+  setup: "keepr_apply_setup (a setup proposal from keepr_propose_setup)",
+  bulk: "keepr_update_item with dry_run: false (a dry run of a change to many items)"
+};
 var ProposalStore = class {
   open = /* @__PURE__ */ new Map();
+  /** Tokens that expired, so a late apply hears "expired", not "unknown" (the review's F15). */
+  gone = /* @__PURE__ */ new Map();
   create(collectionId, collectionName, cards, blueprint = null) {
     return this.add({ kind: "create", collectionId, collectionName, cards, blueprint });
   }
   change(spec) {
     return this.add({ kind: "change", ...spec });
   }
+  setup(spec) {
+    return this.add({ kind: "setup", ...spec });
+  }
+  bulk(spec) {
+    return this.add({ kind: "bulk", ...spec });
+  }
   add(spec) {
     this.sweep();
     if (this.open.size >= MAX_OPEN) {
       const oldest = [...this.open.values()].sort((a, b) => a.createdAt - b.createdAt)[0];
-      if (oldest)
+      if (oldest) {
         this.open.delete(oldest.token);
+        this.gone.set(oldest.token, oldest.kind);
+      }
     }
     const proposal = {
       ...spec,
@@ -15445,30 +15483,40 @@ var ProposalStore = class {
     this.open.set(proposal.token, proposal);
     return proposal;
   }
-  take(token) {
+  /**
+   * Spend a token. `kinds` names the proposals the caller applies: a token of
+   * another kind is answered `wrong_kind` and NOT spent, so the model can
+   * take it to the right tool (a setup token sent to keepr_apply_card).
+   */
+  take(token, kinds) {
     this.sweep();
     const found = this.open.get(token);
-    if (!found)
-      return { ok: false, reason: "unknown" };
-    if (Date.now() - found.createdAt > TTL_MS2) {
-      this.open.delete(token);
-      return { ok: false, reason: "expired" };
+    if (!found) {
+      const kind = this.gone.get(token);
+      return kind ? { ok: false, reason: "expired", kind } : { ok: false, reason: "unknown" };
     }
+    if (kinds && !kinds.includes(found.kind))
+      return { ok: false, reason: "wrong_kind", kind: found.kind };
     this.open.delete(token);
     return { ok: true, proposal: found };
   }
   sweep() {
     const now = Date.now();
-    for (const [token, p] of this.open)
-      if (now - p.createdAt > TTL_MS2)
-        this.open.delete(token);
+    for (const [token, p] of this.open) {
+      if (now - p.createdAt <= TTL_MS2)
+        continue;
+      this.open.delete(token);
+      this.gone.set(token, p.kind);
+      if (this.gone.size > MAX_TOMBSTONES)
+        this.gone.delete(this.gone.keys().next().value);
+    }
   }
   get size() {
     return this.open.size;
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/external.js
+// node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -15580,7 +15628,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/helpers/util.js
+// node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -15673,8 +15721,8 @@ var ZodParsedType = util.arrayToEnum([
   "set"
 ]);
 var getParsedType2 = (data) => {
-  const t = typeof data;
-  switch (t) {
+  const t3 = typeof data;
+  switch (t3) {
     case "undefined":
       return ZodParsedType.undefined;
     case "string":
@@ -15714,7 +15762,7 @@ var getParsedType2 = (data) => {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/ZodError.js
+// node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -15832,7 +15880,7 @@ ZodError2.create = (issues) => {
   return error2;
 };
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/locales/en.js
+// node_modules/zod/v3/locales/en.js
 var errorMap = (issue2, _ctx) => {
   let message;
   switch (issue2.code) {
@@ -15935,7 +15983,7 @@ var errorMap = (issue2, _ctx) => {
 };
 var en_default2 = errorMap;
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/errors.js
+// node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default2;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -15944,7 +15992,7 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -16054,14 +16102,14 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// ../../integrate-gap/mcp/node_modules/zod/v3/types.js
+// node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -19509,7 +19557,7 @@ var coerce = {
 };
 var NEVER2 = INVALID;
 
-// ../../integrate-gap/mcp/node_modules/zod/v4/mini/schemas.js
+// node_modules/zod/v4/mini/schemas.js
 var ZodMiniType = /* @__PURE__ */ $constructor("ZodMiniType", (inst, def) => {
   if (!inst._zod)
     throw new Error("Uninitialized schema in ZodMiniType.");
@@ -19555,7 +19603,7 @@ function object2(shape2, params) {
   return new ZodMiniObject(def);
 }
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
 function isZ4Schema(s) {
   const schema = s;
   return !!schema._zod;
@@ -19715,12 +19763,12 @@ function getLiteralValue(schema) {
   return void 0;
 }
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
 function isTerminal(status) {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/Options.js
+// node_modules/zod-to-json-schema/dist/esm/Options.js
 var ignoreOverride = Symbol("Let zodToJsonSchema decide on which parser to use");
 var defaultOptions = {
   name: void 0,
@@ -19754,7 +19802,7 @@ var getDefaultOptions = (options) => typeof options === "string" ? {
   ...options
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/Refs.js
+// node_modules/zod-to-json-schema/dist/esm/Refs.js
 var getRefs = (options) => {
   const _options = getDefaultOptions(options);
   const currentPath = _options.name !== void 0 ? [..._options.basePath, _options.definitionPath, _options.name] : _options.basePath;
@@ -19775,7 +19823,7 @@ var getRefs = (options) => {
   };
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/errorMessages.js
+// node_modules/zod-to-json-schema/dist/esm/errorMessages.js
 function addErrorMessage(res, key, errorMessage2, refs) {
   if (!refs?.errorMessages)
     return;
@@ -19791,7 +19839,7 @@ function setResponseValueAndErrors(res, key, value, errorMessage2, refs) {
   addErrorMessage(res, key, errorMessage2, refs);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
+// node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
 var getRelativePath = (pathA, pathB) => {
   let i = 0;
   for (; i < pathA.length && i < pathB.length; i++) {
@@ -19801,7 +19849,7 @@ var getRelativePath = (pathA, pathB) => {
   return [(pathA.length - i).toString(), ...pathB.slice(i)].join("/");
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/any.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/any.js
 function parseAnyDef(refs) {
   if (refs.target !== "openAi") {
     return {};
@@ -19817,7 +19865,7 @@ function parseAnyDef(refs) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/array.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/array.js
 function parseArrayDef(def, refs) {
   const res = {
     type: "array"
@@ -19841,7 +19889,7 @@ function parseArrayDef(def, refs) {
   return res;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
 function parseBigintDef(def, refs) {
   const res = {
     type: "integer",
@@ -19887,24 +19935,24 @@ function parseBigintDef(def, refs) {
   return res;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
 function parseBooleanDef() {
   return {
     type: "boolean"
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
 function parseBrandedDef(_def, refs) {
   return parseDef(_def.type._def, refs);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
 var parseCatchDef = (def, refs) => {
   return parseDef(def.innerType._def, refs);
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/date.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/date.js
 function parseDateDef(def, refs, overrideDateStrategy) {
   const strategy = overrideDateStrategy ?? refs.dateStrategy;
   if (Array.isArray(strategy)) {
@@ -19963,7 +20011,7 @@ var integerDateParser = (def, refs) => {
   return res;
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/default.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/default.js
 function parseDefaultDef(_def, refs) {
   return {
     ...parseDef(_def.innerType._def, refs),
@@ -19971,12 +20019,12 @@ function parseDefaultDef(_def, refs) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
 function parseEffectsDef(_def, refs) {
   return refs.effectStrategy === "input" ? parseDef(_def.schema._def, refs) : parseAnyDef(refs);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
 function parseEnumDef(def) {
   return {
     type: "string",
@@ -19984,7 +20032,7 @@ function parseEnumDef(def) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
 var isJsonSchema7AllOfType = (type) => {
   if ("type" in type && type.type === "string")
     return false;
@@ -20026,7 +20074,7 @@ function parseIntersectionDef(def, refs) {
   } : void 0;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
 function parseLiteralDef(def, refs) {
   const parsedType2 = typeof def.value;
   if (parsedType2 !== "bigint" && parsedType2 !== "number" && parsedType2 !== "boolean" && parsedType2 !== "string") {
@@ -20046,7 +20094,7 @@ function parseLiteralDef(def, refs) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/string.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/string.js
 var emojiRegex2 = void 0;
 var zodPatterns = {
   /**
@@ -20371,7 +20419,7 @@ function stringifyRegExpWithFlags(regex, refs) {
   return pattern;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/record.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/record.js
 function parseRecordDef(def, refs) {
   if (refs.target === "openAi") {
     console.warn("Warning: OpenAI may not support records in schemas! Try an array of key-value pairs instead.");
@@ -20423,7 +20471,7 @@ function parseRecordDef(def, refs) {
   return schema;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/map.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/map.js
 function parseMapDef(def, refs) {
   if (refs.mapStrategy === "record") {
     return parseRecordDef(def, refs);
@@ -20448,7 +20496,7 @@ function parseMapDef(def, refs) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
 function parseNativeEnumDef(def) {
   const object3 = def.values;
   const actualKeys = Object.keys(def.values).filter((key) => {
@@ -20462,7 +20510,7 @@ function parseNativeEnumDef(def) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/never.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/never.js
 function parseNeverDef(refs) {
   return refs.target === "openAi" ? void 0 : {
     not: parseAnyDef({
@@ -20472,7 +20520,7 @@ function parseNeverDef(refs) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/null.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/null.js
 function parseNullDef(refs) {
   return refs.target === "openApi3" ? {
     enum: ["null"],
@@ -20482,7 +20530,7 @@ function parseNullDef(refs) {
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/union.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/union.js
 var primitiveMappings = {
   ZodString: "string",
   ZodNumber: "number",
@@ -20550,7 +20598,7 @@ var asAnyOf = (def, refs) => {
   return anyOf.length ? { anyOf } : void 0;
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
 function parseNullableDef(def, refs) {
   if (["ZodString", "ZodNumber", "ZodBigInt", "ZodBoolean", "ZodNull"].includes(def.innerType._def.typeName) && (!def.innerType._def.checks || !def.innerType._def.checks.length)) {
     if (refs.target === "openApi3") {
@@ -20582,7 +20630,7 @@ function parseNullableDef(def, refs) {
   return base && { anyOf: [base, { type: "null" }] };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/number.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/number.js
 function parseNumberDef(def, refs) {
   const res = {
     type: "number"
@@ -20631,7 +20679,7 @@ function parseNumberDef(def, refs) {
   return res;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/object.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/object.js
 function parseObjectDef(def, refs) {
   const forceOptionalIntoNullable = refs.target === "openAi";
   const result = {
@@ -20701,7 +20749,7 @@ function safeIsOptional(schema) {
   }
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
 var parseOptionalDef = (def, refs) => {
   if (refs.currentPath.toString() === refs.propertyPath?.toString()) {
     return parseDef(def.innerType._def, refs);
@@ -20720,7 +20768,7 @@ var parseOptionalDef = (def, refs) => {
   } : parseAnyDef(refs);
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
 var parsePipelineDef = (def, refs) => {
   if (refs.pipeStrategy === "input") {
     return parseDef(def.in._def, refs);
@@ -20740,12 +20788,12 @@ var parsePipelineDef = (def, refs) => {
   };
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
 function parsePromiseDef(def, refs) {
   return parseDef(def.type._def, refs);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/set.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/set.js
 function parseSetDef(def, refs) {
   const items = parseDef(def.valueType._def, {
     ...refs,
@@ -20765,7 +20813,7 @@ function parseSetDef(def, refs) {
   return schema;
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
 function parseTupleDef(def, refs) {
   if (def.rest) {
     return {
@@ -20793,24 +20841,24 @@ function parseTupleDef(def, refs) {
   }
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
 function parseUndefinedDef(refs) {
   return {
     not: parseAnyDef(refs)
   };
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
 function parseUnknownDef(refs) {
   return parseAnyDef(refs);
 }
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
 var parseReadonlyDef = (def, refs) => {
   return parseDef(def.innerType._def, refs);
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/selectParser.js
+// node_modules/zod-to-json-schema/dist/esm/selectParser.js
 var selectParser = (def, typeName, refs) => {
   switch (typeName) {
     case ZodFirstPartyTypeKind.ZodString:
@@ -20886,7 +20934,7 @@ var selectParser = (def, typeName, refs) => {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/parseDef.js
+// node_modules/zod-to-json-schema/dist/esm/parseDef.js
 function parseDef(def, refs, forceResolution = false) {
   const seenItem = refs.seen.get(def);
   if (refs.override) {
@@ -20942,7 +20990,7 @@ var addMeta = (def, refs, jsonSchema) => {
   return jsonSchema;
 };
 
-// ../../integrate-gap/mcp/node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
+// node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
 var zodToJsonSchema = (schema, options) => {
   const refs = getRefs(options);
   let definitions = typeof options === "object" && options.definitions ? Object.entries(options.definitions).reduce((acc, [name2, schema2]) => ({
@@ -21004,13 +21052,13 @@ var zodToJsonSchema = (schema, options) => {
   return combined;
 };
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
-function mapMiniTarget(t) {
-  if (!t)
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
+function mapMiniTarget(t3) {
+  if (!t3)
     return "draft-7";
-  if (t === "jsonSchema7" || t === "draft-7")
+  if (t3 === "jsonSchema7" || t3 === "draft-7")
     return "draft-7";
-  if (t === "jsonSchema2019-09" || t === "draft-2020-12")
+  if (t3 === "jsonSchema2019-09" || t3 === "draft-2020-12")
     return "draft-2020-12";
   return "draft-7";
 }
@@ -21046,7 +21094,7 @@ function parseWithCompat(schema, data) {
   return result.data;
 }
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
 var DEFAULT_REQUEST_TIMEOUT_MSEC = 6e4;
 var Protocol = class {
   constructor(_options) {
@@ -22000,7 +22048,7 @@ function mergeCapabilities(base, additional) {
   return result;
 }
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
 var import_ajv = __toESM(require_ajv(), 1);
 var import_ajv_formats = __toESM(require_dist(), 1);
 function createDefaultAjvInstance() {
@@ -22068,7 +22116,7 @@ var AjvJsonSchemaValidator = class {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/server.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/server.js
 var ExperimentalServerTasks = class {
   constructor(_server) {
     this._server = _server;
@@ -22141,12 +22189,12 @@ var ExperimentalServerTasks = class {
     if (params.messages.length > 0) {
       const lastMessage = params.messages[params.messages.length - 1];
       const lastContent = Array.isArray(lastMessage.content) ? lastMessage.content : [lastMessage.content];
-      const hasToolResults = lastContent.some((c) => c.type === "tool_result");
+      const hasToolResults = lastContent.some((c2) => c2.type === "tool_result");
       const previousMessage = params.messages.length > 1 ? params.messages[params.messages.length - 2] : void 0;
       const previousContent = previousMessage ? Array.isArray(previousMessage.content) ? previousMessage.content : [previousMessage.content] : [];
-      const hasPreviousToolUse = previousContent.some((c) => c.type === "tool_use");
+      const hasPreviousToolUse = previousContent.some((c2) => c2.type === "tool_use");
       if (hasToolResults) {
-        if (lastContent.some((c) => c.type !== "tool_result")) {
+        if (lastContent.some((c2) => c2.type !== "tool_result")) {
           throw new Error("The last message must contain only tool_result content if any is present");
         }
         if (!hasPreviousToolUse) {
@@ -22154,8 +22202,8 @@ var ExperimentalServerTasks = class {
         }
       }
       if (hasPreviousToolUse) {
-        const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
-        const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
+        const toolUseIds = new Set(previousContent.filter((c2) => c2.type === "tool_use").map((c2) => c2.id));
+        const toolResultIds = new Set(lastContent.filter((c2) => c2.type === "tool_result").map((c2) => c2.toolUseId));
         if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id) => toolResultIds.has(id))) {
           throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
         }
@@ -22281,7 +22329,7 @@ var ExperimentalServerTasks = class {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
 function assertToolsCallTaskCapability(requests, method, entityName) {
   if (!requests) {
     throw new Error(`${entityName} does not support task creation (required for ${method})`);
@@ -22316,7 +22364,7 @@ function assertClientRequestTaskCapability(requests, method, entityName) {
   }
 }
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/server/index.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/index.js
 var Server = class extends Protocol {
   /**
    * Initializes this server with the given name and version information.
@@ -22566,12 +22614,12 @@ var Server = class extends Protocol {
     if (params.messages.length > 0) {
       const lastMessage = params.messages[params.messages.length - 1];
       const lastContent = Array.isArray(lastMessage.content) ? lastMessage.content : [lastMessage.content];
-      const hasToolResults = lastContent.some((c) => c.type === "tool_result");
+      const hasToolResults = lastContent.some((c2) => c2.type === "tool_result");
       const previousMessage = params.messages.length > 1 ? params.messages[params.messages.length - 2] : void 0;
       const previousContent = previousMessage ? Array.isArray(previousMessage.content) ? previousMessage.content : [previousMessage.content] : [];
-      const hasPreviousToolUse = previousContent.some((c) => c.type === "tool_use");
+      const hasPreviousToolUse = previousContent.some((c2) => c2.type === "tool_use");
       if (hasToolResults) {
-        if (lastContent.some((c) => c.type !== "tool_result")) {
+        if (lastContent.some((c2) => c2.type !== "tool_result")) {
           throw new Error("The last message must contain only tool_result content if any is present");
         }
         if (!hasPreviousToolUse) {
@@ -22579,8 +22627,8 @@ var Server = class extends Protocol {
         }
       }
       if (hasPreviousToolUse) {
-        const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
-        const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
+        const toolUseIds = new Set(previousContent.filter((c2) => c2.type === "tool_use").map((c2) => c2.id));
+        const toolResultIds = new Set(lastContent.filter((c2) => c2.type === "tool_result").map((c2) => c2.toolUseId));
         if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id) => toolResultIds.has(id))) {
           throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
         }
@@ -22687,7 +22735,7 @@ var Server = class extends Protocol {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js
 var COMPLETABLE_SYMBOL = Symbol.for("mcp.completable");
 function isCompletable(schema) {
   return !!schema && typeof schema === "object" && COMPLETABLE_SYMBOL in schema;
@@ -22701,7 +22749,7 @@ var McpZodTypeKind;
   McpZodTypeKind2["Completable"] = "McpCompletable";
 })(McpZodTypeKind || (McpZodTypeKind = {}));
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
   const warnings = [];
@@ -22731,7 +22779,7 @@ function validateToolName(name) {
   }
   if (!TOOL_NAME_REGEX.test(name)) {
     const invalidChars = name.split("").filter((char) => !/[A-Za-z0-9._-]/.test(char)).filter((char, index, arr) => arr.indexOf(char) === index);
-    warnings.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
+    warnings.push(`Tool name contains invalid characters: ${invalidChars.map((c2) => `"${c2}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
     return {
       isValid: false,
       warnings
@@ -22759,7 +22807,7 @@ function validateAndWarnToolName(name) {
   return result.isValid;
 }
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
 var ExperimentalMcpServerTasks = class {
   constructor(_mcpServer) {
     this._mcpServer = _mcpServer;
@@ -22774,7 +22822,7 @@ var ExperimentalMcpServerTasks = class {
   }
 };
 
-// ../../integrate-gap/mcp/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
 var McpServer = class {
   constructor(serverInfo, options) {
     this._registeredResources = {};
@@ -23053,7 +23101,7 @@ var McpServer = class {
     return createCompletionResult(suggestions);
   }
   async handleResourceCompletion(request, ref) {
-    const template = Object.values(this._registeredResourceTemplates).find((t) => t.resourceTemplate.uriTemplate.toString() === ref.uri);
+    const template = Object.values(this._registeredResourceTemplates).find((t3) => t3.resourceTemplate.uriTemplate.toString() === ref.uri);
     if (!template) {
       if (this._registeredResources[ref.uri]) {
         return EMPTY_COMPLETION_RESULT;
@@ -23616,8 +23664,8 @@ function formatIngest(body, opts) {
   if (failures.length) {
     lines.push("", opts.dryRun ? "REFUSED rows \u2014 fix these and run again with dry_run: true:" : "FAILED rows \u2014 fix these and re-send ONLY these:");
     for (const row of failures) {
-      const who = row.externalId ? `${row.externalId}` : `row index ${row.index}`;
-      lines.push(`  ${who}`);
+      const who2 = row.externalId ? `${row.externalId}` : `row index ${row.index}`;
+      lines.push(`  ${who2}`);
       for (const e of row.errors ?? []) {
         if (e.code)
           codesSeen.push(e.code);
@@ -23627,7 +23675,7 @@ function formatIngest(body, opts) {
         if (meaning)
           lines.push(`      -> ${meaning}`);
         if (Array.isArray(e.candidates) && e.candidates.length) {
-          lines.push(`      could be: ${e.candidates.map((c) => `${Array.isArray(c.path) ? c.path.join("/") : c.path ?? "?"} (${c.tagId ?? "?"})`).join(", ")}`);
+          lines.push(`      could be: ${e.candidates.map((c2) => `${Array.isArray(c2.path) ? c2.path.join("/") : c2.path ?? "?"} (${c2.tagId ?? "?"})`).join(", ")}`);
         }
       }
     }
@@ -23699,7 +23747,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.8.0";
+var SERVER_VERSION = "0.9.0";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -23785,10 +23833,10 @@ This is a bug in keepr-mcp, not something the user did.`)) : await guard(def, ct
 
 // dist/src/context.js
 var SCOPE_NAMES = ["read", "write", "cards", "delete"];
-function collectionKind(c) {
-  if (typeof c.kind === "string" && c.kind)
-    return c.kind;
-  const publication = c.publication;
+function collectionKind(c2) {
+  if (typeof c2.kind === "string" && c2.kind)
+    return c2.kind;
+  const publication = c2.publication;
   if (publication && (publication.state === "published" || publication.state === "retiring"))
     return "global";
   return "standard";
@@ -23920,13 +23968,13 @@ var KeeprContext = class {
       return;
     }
     try {
-      const who = await this.http.request({ path: "/api/user-info" });
-      if (who.ok && who.body) {
+      const who2 = await this.http.request({ path: "/api/user-info" });
+      if (who2.ok && who2.body) {
         this.startup.keyValid = true;
         this.startup.reachable = true;
-        this.startup.accountEmail = who.body.email ?? null;
-        this.startup.accountName = who.body.fullName ?? null;
-        const scopes = who.body.auth?.scopes;
+        this.startup.accountEmail = who2.body.email ?? null;
+        this.startup.accountName = who2.body.fullName ?? null;
+        const scopes = who2.body.auth?.scopes;
         if (Array.isArray(scopes) && scopes.length) {
           this.scopesReported = scopes.map(String);
           if (this.scopesReported.includes("cards"))
@@ -23937,14 +23985,14 @@ var KeeprContext = class {
             this.scopeFacts.set(name, this.scopesReported.includes(name));
           this.keyScopeKnownAtStartup = true;
         }
-        this.keyCollectionIds = who.body.auth?.collectionIds ?? null;
-      } else if (who.status === 401) {
+        this.keyCollectionIds = who2.body.auth?.collectionIds ?? null;
+      } else if (who2.status === 401) {
         this.startup.reachable = true;
         this.startup.keyRefused = true;
         this.startup.problem = this.usesConnection && this.connection?.busyElsewhere ? "keepr is renewing this connection in another window right now. Call keepr_connect in a moment to pick it up." : this.usesConnection ? "The keepr connection was disconnected or has expired (401 after a refresh). Call keepr_connect to connect again \u2014 the person approves it in their browser. Do not retry other tools first." : "The API key was refused (401): unknown, revoked, expired, or its owner is inactive. The user must create a new one. Do not retry.";
       } else {
         this.startup.reachable = true;
-        this.startup.problem = `Unexpected ${who.status} from /api/user-info: ${errorMessage(who.body, "no message")}`;
+        this.startup.problem = `Unexpected ${who2.status} from /api/user-info: ${errorMessage(who2.body, "no message")}`;
       }
     } catch (err) {
       this.startup.problem = `keepr is unreachable from here: ${err.message}`;
@@ -23957,14 +24005,14 @@ var KeeprContext = class {
     const res = await this.http.request({ path: "/api/collections" });
     if (!res.ok || !Array.isArray(res.body))
       return;
-    this.collections = res.body.map((c) => {
-      const my = c.myAccess;
+    this.collections = res.body.map((c2) => {
+      const my = c2.myAccess;
       const { label, writable } = accessLabel(my);
-      const archived = c.status === "archived";
+      const archived = c2.status === "archived";
       const cardRole = ["owner", "manage"].includes(label);
       const row = {
-        id: String(c._id ?? c.id ?? ""),
-        name: String(c.name ?? ""),
+        id: String(c2._id ?? c2.id ?? ""),
+        name: String(c2.name ?? ""),
         access: label,
         writable: writable && !archived,
         cardRole,
@@ -23972,12 +24020,12 @@ var KeeprContext = class {
         // owner's key minted without Can change cards still cannot.
         canCreateCards: cardRole && !archived && this.hasScope("cards") !== false,
         archived,
-        allowAttachments: typeof c.allowAttachments === "boolean" ? c.allowAttachments : null,
-        kind: collectionKind(c),
+        allowAttachments: typeof c2.allowAttachments === "boolean" ? c2.allowAttachments : null,
+        kind: collectionKind(c2),
         // A sub-collection names its parent: cards defined there are
         // usable here, and a record of one of this collection's own
         // cards is written HERE, not to the parent.
-        parent: c.parent && typeof c.parent === "object" ? { id: String(c.parent._id ?? ""), name: String(c.parent.name ?? "") } : null
+        parent: c2.parent && typeof c2.parent === "object" ? { id: String(c2.parent._id ?? ""), name: String(c2.parent.name ?? "") } : null
       };
       if (archived)
         row.blockedReason = "archived \u2014 read-only for everyone, including the owner";
@@ -24009,15 +24057,15 @@ var KeeprContext = class {
     const needle = ref.trim();
     if (!needle)
       return { ok: false, message: "No collection given." };
-    const byId = this.collections.find((c) => c.id === needle);
+    const byId = this.collections.find((c2) => c2.id === needle);
     if (byId)
       return { ok: true, row: byId };
-    const exact = this.collections.filter((c) => c.name.toLowerCase() === needle.toLowerCase());
+    const exact = this.collections.filter((c2) => c2.name.toLowerCase() === needle.toLowerCase());
     if (exact.length === 1)
       return { ok: true, row: exact[0] };
     if (exact.length > 1)
       return { ok: false, message: this.ambiguous(needle, exact) };
-    const partial2 = this.collections.filter((c) => c.name.toLowerCase().includes(needle.toLowerCase()));
+    const partial2 = this.collections.filter((c2) => c2.name.toLowerCase().includes(needle.toLowerCase()));
     if (partial2.length === 1)
       return { ok: true, row: partial2[0] };
     if (partial2.length > 1)
@@ -24025,11 +24073,11 @@ var KeeprContext = class {
     if (/^[0-9a-fA-F]{24}$/.test(needle)) {
       return { ok: false, message: `No collection with id ${needle} is reachable by this key. A hidden collection answers 404, so this may be outside the key's allowlist. Do not look for somewhere else to put the data \u2014 ask the user.` };
     }
-    const names = this.collections.map((c) => `"${c.name}"`).join(", ") || "(none)";
+    const names = this.collections.map((c2) => `"${c2.name}"`).join(", ") || "(none)";
     return { ok: false, message: `No collection matches "${needle}". This key can reach: ${names}.` };
   }
   ambiguous(needle, rows) {
-    const list = rows.map((c) => `"${c.name}" (${c.id})`).join(", ");
+    const list = rows.map((c2) => `"${c2.name}" (${c2.id})`).join(", ");
     return `"${needle}" matches ${rows.length} collections: ${list}. Ask the user which one \u2014 do not pick.`;
   }
   /** The write latch, as the first build named it: read from the scope facts. */
@@ -24138,8 +24186,8 @@ var KeeprContext = class {
       lines.push(this.startup.problem);
       return lines.join(" ");
     }
-    const who = this.startup.accountEmail ?? this.startup.accountName ?? "an account";
-    lines.push(`Acting as ${who} at ${this.config.baseUrl}${this.config.apiKey ? ` with key ${keyDisplayPrefix(this.config.apiKey)}\u2026` : this.usesConnection ? " through a connection made with keepr_connect" : ""}.`, `${this.collections.length} collection${this.collections.length === 1 ? "" : "s"} reachable.`, `Contract ${this.contract.version}${this.contract.isLive ? "" : " (from a build-time snapshot; the live contract could not be fetched)"}.`, this.keyScopeKnownAtStartup ? this.scopeSentence() : "Write scope is unknown until the first write is attempted \u2014 this deployment does not report it.", "Always dry-run an ingest before committing it, and never invent a value the user did not give you.");
+    const who2 = this.startup.accountEmail ?? this.startup.accountName ?? "an account";
+    lines.push(`Acting as ${who2} at ${this.config.baseUrl}${this.config.apiKey ? ` with key ${keyDisplayPrefix(this.config.apiKey)}\u2026` : this.usesConnection ? " through a connection made with keepr_connect" : ""}.`, `${this.collections.length} collection${this.collections.length === 1 ? "" : "s"} reachable.`, `Contract ${this.contract.version}${this.contract.isLive ? "" : " (from a build-time snapshot; the live contract could not be fetched)"}.`, this.keyScopeKnownAtStartup ? this.scopeSentence() : "Write scope is unknown until the first write is attempted \u2014 this deployment does not report it.", "Always dry-run an ingest before committing it, and never invent a value the user did not give you.");
     const notice = updateNotice(this.updates);
     if (notice)
       lines.push(`
@@ -24194,25 +24242,25 @@ var collectionsTool = {
     else if (canDelete === false)
       lines.push("This key cannot delete records (Can delete records is off). No keepr MCP tool deletes either \u2014 removing records is done in the web app.");
     lines.push("", `${rows.length} collection${rows.length === 1 ? "" : "s"}:`);
-    for (const c of rows) {
-      const flags = [c.access];
-      if (c.kind === "personal")
+    for (const c2 of rows) {
+      const flags = [c2.access];
+      if (c2.kind === "personal")
         flags.push("personal collection");
-      else if (c.kind === "global")
+      else if (c2.kind === "global")
         flags.push("global collection");
-      if (c.archived)
+      if (c2.archived)
         flags.push("ARCHIVED, read-only");
-      else if (!c.writable)
+      else if (!c2.writable)
         flags.push("not writable by this key");
-      if (!c.archived && c.cardRole && !c.canCreateCards)
+      if (!c2.archived && c2.cardRole && !c2.canCreateCards)
         flags.push("cards: no \u2014 this key cannot change cards");
-      else if (!c.archived && c.canCreateCards)
+      else if (!c2.archived && c2.canCreateCards)
         flags.push("cards: yes");
-      if (c.allowAttachments === false)
+      if (c2.allowAttachments === false)
         flags.push("attachments off");
-      if (c.parent)
-        flags.push(`sub-collection of ${c.parent.name}`);
-      lines.push(`  ${c.name}  [${flags.join(", ")}]  ${c.id}`);
+      if (c2.parent)
+        flags.push(`sub-collection of ${c2.parent.name}`);
+      lines.push(`  ${c2.name}  [${flags.join(", ")}]  ${c2.id}`);
     }
     const u = ctx.updates;
     if (u?.latestSkill)
@@ -24255,27 +24303,27 @@ function clauseValue(v) {
   return JSON.stringify(v);
 }
 function describeRequiredWhen(clauses) {
-  return clauses.map((c) => {
-    const el = c.element ?? "?";
-    switch (c.op) {
+  return clauses.map((c2) => {
+    const el = c2.element ?? "?";
+    switch (c2.op) {
       case "eq":
-        return `${el} = ${clauseValue(c.value)}`;
+        return `${el} = ${clauseValue(c2.value)}`;
       case "ne":
-        return `${el} != ${clauseValue(c.value)}`;
+        return `${el} != ${clauseValue(c2.value)}`;
       case "in":
-        return `${el} in ${Array.isArray(c.value) ? clauseValue(c.value) : `(${clauseValue(c.value)})`}`;
+        return `${el} in ${Array.isArray(c2.value) ? clauseValue(c2.value) : `(${clauseValue(c2.value)})`}`;
       case "not-in":
-        return `${el} not in ${Array.isArray(c.value) ? clauseValue(c.value) : `(${clauseValue(c.value)})`}`;
+        return `${el} not in ${Array.isArray(c2.value) ? clauseValue(c2.value) : `(${clauseValue(c2.value)})`}`;
       case "empty":
         return `${el} is empty`;
       case "not-empty":
         return `${el} is not empty`;
       case "gt":
-        return `${el} > ${clauseValue(c.value)}`;
+        return `${el} > ${clauseValue(c2.value)}`;
       case "lt":
-        return `${el} < ${clauseValue(c.value)}`;
+        return `${el} < ${clauseValue(c2.value)}`;
       default:
-        return `${el} ${c.op ?? "?"} ${clauseValue(c.value)}`;
+        return `${el} ${c2.op ?? "?"} ${clauseValue(c2.value)}`;
     }
   }).join(" and ");
 }
@@ -24312,7 +24360,8 @@ var schemaTool = {
   inputSchema: {
     collection: external_exports.string().describe("Collection id, or its name. A name is matched exactly, then by unique substring; an ambiguous name is refused rather than guessed."),
     card: external_exports.string().optional().describe("Narrow to one card, by key or id."),
-    include_json_schema: external_exports.boolean().optional().describe("Include the rendered JSON Schema per card. Verbose \u2014 ask for it when generating rows programmatically, not to read.")
+    include_json_schema: external_exports.boolean().optional().describe("Include the rendered JSON Schema per card. Verbose \u2014 ask for it when generating rows programmatically, not to read."),
+    include_layouts: external_exports.boolean().optional().describe("Include each card's layouts \u2014 tile, table, page, form \u2014 and the tier each is set at. Read it before proposing a layout change with keepr_propose_setup.")
   },
   handler: async (args, ctx) => {
     const resolved = ctx.resolveCollection(String(args.collection ?? ""));
@@ -24326,9 +24375,9 @@ var schemaTool = {
     const body = res.body;
     const wanted = String(args.card ?? "").trim().toLowerCase();
     const allCards = body.cards ?? [];
-    const cards = allCards.filter((c) => !wanted || c.key?.toLowerCase() === wanted || c.id === args.card);
+    const cards = allCards.filter((c2) => !wanted || c2.key?.toLowerCase() === wanted || c2.id === args.card);
     if (wanted && !cards.length) {
-      const keys = (body.cards ?? []).map((c) => c.key).join(", ") || "(none)";
+      const keys = (body.cards ?? []).map((c2) => c2.key).join(", ") || "(none)";
       return fail(`No card "${args.card}" in "${target.name}". Cards here: ${keys}.`);
     }
     const warnings = [];
@@ -24354,7 +24403,7 @@ var schemaTool = {
       if (card.record?.lock && card.record.lock.after && card.record.lock.after !== "never") {
         lines.push(`  Entries freeze after ${card.record.lock.after === "create" ? "creation" : `${card.record.lock.minutes ?? "?"} minutes`} and are corrected rather than edited.`);
       }
-      const parent = card.parentCardId ? allCards.find((c) => c.id === card.parentCardId) : void 0;
+      const parent = card.parentCardId ? allCards.find((c2) => c2.id === card.parentCardId) : void 0;
       const parentKey = parent?.key ?? null;
       if (card.parentCardId)
         lines.push(`  Inherits from ${parent ? `card ${parent.key} ("${parent.name}")` : `card ${card.parentCardId}`}; its elements are listed below with this card's own.`);
@@ -24388,7 +24437,7 @@ var schemaTool = {
         if (el.isTitle)
           bits.push("title");
         if (el.choices?.length) {
-          bits.push(`choices: ${el.choices.map((c) => c.label && norm(c.label) !== norm(c.value) ? `${c.value} ("${c.label}")` : c.value).join(" | ")}`);
+          bits.push(`choices: ${el.choices.map((c2) => c2.label && norm(c2.label) !== norm(c2.value) ? `${c2.value} ("${c2.label}")` : c2.value).join(" | ")}`);
         }
         if (el.lookupCardKey)
           bits.push(`looks up card "${el.lookupCardKey}"`);
@@ -24416,7 +24465,7 @@ var schemaTool = {
           lines.push(`      send ${form.send}${form.note ? ` \u2014 ${form.note}` : ""}`);
         if (el.help)
           lines.push(`      help: ${el.help}`);
-        const labels = (el.choices ?? []).filter((c) => c.label && norm(c.label) !== norm(c.value));
+        const labels = (el.choices ?? []).filter((c2) => c2.label && norm(c2.label) !== norm(c2.value));
         return {
           name: el.name,
           label: el.label ?? el.name,
@@ -24427,8 +24476,8 @@ var schemaTool = {
           ...requiredWhen ? { requiredWhen } : {},
           isTitle: Boolean(el.isTitle),
           allowMultiple: Boolean(el.allowMultiple),
-          ...el.choices ? { choices: el.choices.map((c) => c.value) } : {},
-          ...labels.length ? { choiceLabels: Object.fromEntries(labels.map((c) => [c.value, c.label])) } : {},
+          ...el.choices ? { choices: el.choices.map((c2) => c2.value) } : {},
+          ...labels.length ? { choiceLabels: Object.fromEntries(labels.map((c2) => [c2.value, c2.label])) } : {},
           ...el.lookupCardKey ? { lookupCardKey: el.lookupCardKey } : {},
           ...el.filter ? { filter: el.filter, strict: Boolean(el.strict) } : {},
           ...el.measure ? { measure: el.measure, defaultUnit: el.defaultUnit, units: el.units } : {},
@@ -24497,6 +24546,55 @@ var schemaTool = {
         }
       }
     }
+    let automations = [];
+    if (!ctx.contract.isLive || ctx.contract.hasEndpoint("automationList")) {
+      const ar = await ctx.http.request({
+        path: `/api/collections/${target.id}/automations`,
+        query: { describe: "1" }
+      });
+      if (ar.ok && Array.isArray(ar.body)) {
+        automations = ar.body.filter((r) => !r.inherited).map((r) => ({
+          id: r._id,
+          name: r.name ?? "",
+          kind: r.kind ?? "rule",
+          state: r.awaitingPerson ? "waiting for the person" : r.enabled === false ? "paused" : "on",
+          summary: r.summary ?? null
+        }));
+        if (automations.length) {
+          lines.push("", "AUTOMATIONS (keepr_automations reads and switches them; keepr_propose_setup changes them):");
+          for (const a of automations)
+            lines.push(`  "${a.name}" [${a.state}]${a.summary ? ` \u2014 ${a.summary}` : ""}`);
+        }
+      }
+    }
+    const layouts = [];
+    if (args.include_layouts === true) {
+      const kinds = ["tile", "table", "page", "form"];
+      const unread = [];
+      await Promise.all(outCards.map(async (card) => Promise.all(kinds.map(async (kind) => {
+        const lr = await ctx.http.request({
+          path: `/api/card-definitions/${card.id}/layouts`,
+          query: { kind, collection_id: target.id }
+        });
+        if (!lr.ok) {
+          unread.push(`${card.key ?? card.id} ${kind}`);
+          return;
+        }
+        const rows = kind === "form" ? lr.body?.resolved ? [lr.body.resolved] : [] : lr.body?.layouts ?? [];
+        for (const l of rows) {
+          if (l.scope === "user")
+            continue;
+          layouts.push({ card: String(card.key ?? card.id), kind, tier: l.scope ?? "card", ...l.name ? { name: l.name } : {} });
+        }
+      }))));
+      if (unread.length)
+        warnings.push(`Some layouts could not be read (${unread.join(", ")}), so the list below may be missing them.`);
+      lines.push("", "LAYOUTS (by card, kind and tier \u2014 a missing kind means keepr arranges it automatically):");
+      for (const card of outCards) {
+        const mine = layouts.filter((l) => l.card === String(card.key ?? card.id));
+        lines.push(`  ${card.key ?? card.id}: ${mine.length ? mine.map((l) => `${l.kind}${l.name ? ` "${l.name}"` : ""} (${l.tier} tier)`).join(", ") : "(automatic)"}`);
+      }
+    }
     if (attestGated.length) {
       warnings.push(`These cards require a signed write and CANNOT be written by an API key: ${attestGated.join(", ")}. They have to be created in the web app.`);
     }
@@ -24515,6 +24613,8 @@ var schemaTool = {
       ...tags ? { tags } : {},
       writeContract: body.writeContract ?? null,
       savedFilters,
+      automations,
+      ...args.include_layouts === true ? { layouts } : {},
       warnings
     });
   }
@@ -24526,7 +24626,7 @@ function normalizeKey(raw) {
   return String(raw ?? "").normalize("NFKC").toLowerCase().normalize("NFKC").replace(/\s+/gu, " ").trim();
 }
 function candidatesOf(vocabulary) {
-  const byId = new Map(vocabulary.map((t) => [t.id.toLowerCase(), t]));
+  const byId = new Map(vocabulary.map((t3) => [t3.id.toLowerCase(), t3]));
   return vocabulary.map((tag) => {
     const chain = [tag];
     const seen = /* @__PURE__ */ new Set([tag.id.toLowerCase()]);
@@ -24539,8 +24639,8 @@ function candidatesOf(vocabulary) {
       chain.unshift(up);
       parent = up.parentId ? String(up.parentId).toLowerCase() : "";
     }
-    const keys = chain.map((t) => /* @__PURE__ */ new Set([normalizeKey(t.name), ...(t.aliases ?? []).map(normalizeKey)]));
-    return { tag, keys, label: tag.path ?? chain.map((t) => t.name).join("/") };
+    const keys = chain.map((t3) => /* @__PURE__ */ new Set([normalizeKey(t3.name), ...(t3.aliases ?? []).map(normalizeKey)]));
+    return { tag, keys, label: tag.path ?? chain.map((t3) => t3.name).join("/") };
   });
 }
 function answers(candidate, segments) {
@@ -24567,11 +24667,11 @@ function resolveTagNames(vocabulary, values) {
       continue;
     }
     const segments = normalizeKey(raw).split("/").map((s) => s.trim());
-    const hits = segments.every(Boolean) ? candidates.filter((c) => answers(c, segments)) : [];
+    const hits = segments.every(Boolean) ? candidates.filter((c2) => answers(c2, segments)) : [];
     if (!hits.length) {
       problems.push(`"${raw}" is not a tag in this collection. keepr never creates a tag from here \u2014 ask the person whether it should exist (they add it in keepr), or use one keepr_schema lists. An item used as a tag goes by its id (keepr_search with types: ["tags"]).`);
     } else if (hits.length > 1) {
-      problems.push(`"${raw}" could be more than one tag: ${hits.map((c) => c.label).join(", ")}. Send the path or the id.`);
+      problems.push(`"${raw}" could be more than one tag: ${hits.map((c2) => c2.label).join(", ")}. Send the path or the id.`);
     } else {
       ids.push(hits[0].tag.id.toLowerCase());
     }
@@ -24588,36 +24688,36 @@ function shownTags(item) {
   const handSet = new Set(hand);
   const order = [...hand, ...[...rule].filter((id) => !handSet.has(id))];
   const tags = order.map((id) => {
-    const t = titles[id];
+    const t3 = titles[id];
     const appliedBy = handSet.has(id) && rule.has(id) ? "both" : rule.has(id) ? "rule" : "hand";
-    if (!t)
+    if (!t3)
       return { id, kind: null, name: null, appliedBy };
-    if (t.kind === "tag")
-      return { id, kind: "collection", name: t.name ?? null, appliedBy, ...t.restricted ? { restricted: true } : {} };
-    return { id, kind: "item", name: t.unavailable ? null : t.title ?? null, appliedBy, ...t.unavailable ? { unavailable: true } : {} };
+    if (t3.kind === "tag")
+      return { id, kind: "collection", name: t3.name ?? null, appliedBy, ...t3.restricted ? { restricted: true } : {} };
+    return { id, kind: "item", name: t3.unavailable ? null : t3.title ?? null, appliedBy, ...t3.unavailable ? { unavailable: true } : {} };
   });
   const myTags = (item?.myTags ?? []).map((m) => {
     const id = lower(m.tagId);
     if (m.kind === "item") {
-      const t = titles[id];
-      return { id, kind: "item", name: t && !t.unavailable ? t.title ?? null : null, ...m.fromCollection ? { fromCollection: true } : {}, ...!t || t.unavailable ? { unavailable: true } : {} };
+      const t3 = titles[id];
+      return { id, kind: "item", name: t3 && !t3.unavailable ? t3.title ?? null : null, ...m.fromCollection ? { fromCollection: true } : {}, ...!t3 || t3.unavailable ? { unavailable: true } : {} };
     }
     return { id, kind: "private", name: m.name ?? null, ...m.fromCollection ? { fromCollection: true } : {} };
   });
   return { tags, myTags };
 }
-function word(t, id) {
-  if (t.name)
-    return t.name;
-  return t.unavailable ? `(no longer available, ${id})` : `(a tag this key cannot name, ${id})`;
+function word(t3, id) {
+  if (t3.name)
+    return t3.name;
+  return t3.unavailable ? `(no longer available, ${id})` : `(a tag this key cannot name, ${id})`;
 }
 function tagsLine(shown) {
   const parts = [];
   if (shown.tags.length) {
-    parts.push(`tags: ${shown.tags.map((t) => `${word(t, t.id)}${t.appliedBy === "rule" ? " (by a rule)" : t.appliedBy === "both" ? " (by hand and by a rule)" : ""}`).join(", ")}`);
+    parts.push(`tags: ${shown.tags.map((t3) => `${word(t3, t3.id)}${t3.appliedBy === "rule" ? " (by a rule)" : t3.appliedBy === "both" ? " (by hand and by a rule)" : ""}`).join(", ")}`);
   }
   if (shown.myTags.length) {
-    parts.push(`my tags: ${shown.myTags.map((t) => `${word(t, t.id)}${t.fromCollection ? " (on the collection)" : ""}`).join(", ")}`);
+    parts.push(`my tags: ${shown.myTags.map((t3) => `${word(t3, t3.id)}${t3.fromCollection ? " (on the collection)" : ""}`).join(", ")}`);
   }
   return parts.join(" \xB7 ");
 }
@@ -24693,9 +24793,9 @@ var getItemsTool = {
           return failFromResponse(schema, `reading the schema of "${target.name}" to find card "${ref}"`);
         const cards = schema.body?.cards ?? [];
         const low = ref.toLowerCase();
-        const hit = cards.find((c) => (c.key ?? "").toLowerCase() === low) ?? cards.find((c) => (c.name ?? "").toLowerCase() === low);
+        const hit = cards.find((c2) => (c2.key ?? "").toLowerCase() === low) ?? cards.find((c2) => (c2.name ?? "").toLowerCase() === low);
         if (!hit) {
-          return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.map((c) => c.key ?? c.id).join(", ") || "(none)"}. Nothing was counted or listed.`);
+          return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.map((c2) => c2.key ?? c2.id).join(", ") || "(none)"}. Nothing was counted or listed.`);
         }
         cardId = hit.id;
       }
@@ -24808,7 +24908,7 @@ var searchTool = {
     const limit = Math.min(Number(args.limit ?? 10), PER_BUCKET_MAX);
     const asked = Array.isArray(args.types) && args.types.length ? args.types : null;
     const wantsTags = !asked || asked.includes("tags");
-    const plain = asked ? asked.filter((t) => t !== "tags") : null;
+    const plain = asked ? asked.filter((t3) => t3 !== "tags") : null;
     let body = { query: q };
     if (!plain || plain.length) {
       const res = await ctx.http.request({ path: "/api/search", query: { q, limit, types: plain ? plain.join(",") : void 0 } });
@@ -24828,17 +24928,17 @@ var searchTool = {
     const collections = body.collections ?? [];
     const cards = body.cards ?? [];
     const items = body.items ?? [];
-    const byId = new Map(ctx.knownCollections().map((c) => [c.id, c.name]));
+    const byId = new Map(ctx.knownCollections().map((c2) => [c2.id, c2.name]));
     const lines = [];
     if (collections.length) {
       lines.push(`COLLECTIONS (${collections.length}):`);
-      for (const c of collections)
-        lines.push(`  ${c.name}${c.status === "archived" ? "  [archived]" : ""}  ${c._id}`);
+      for (const c2 of collections)
+        lines.push(`  ${c2.name}${c2.status === "archived" ? "  [archived]" : ""}  ${c2._id}`);
     }
     if (cards.length) {
       lines.push(lines.length ? "" : "", `CARD TYPES (${cards.length}):`);
-      for (const c of cards)
-        lines.push(`  ${c.key ?? c._id}  "${c.name}"  in ${byId.get(String(c.collection_id)) ?? c.collection_id}`);
+      for (const c2 of cards)
+        lines.push(`  ${c2.key ?? c2._id}  "${c2.name}"  in ${byId.get(String(c2.collection_id)) ?? c2.collection_id}`);
     }
     if (items.length) {
       lines.push(lines.length ? "" : "", `ITEMS (${items.length}):`);
@@ -24871,8 +24971,8 @@ Search is a literal substring, not a fuzzy match and not KQL \u2014 a shorter or
     return ok(lines.join("\n"), {
       query: q,
       buckets: {
-        collections: collections.map((c) => ({ id: c._id, name: c.name })),
-        cards: cards.map((c) => ({ id: c._id, key: c.key ?? null, name: c.name, collectionId: c.collection_id ?? null })),
+        collections: collections.map((c2) => ({ id: c2._id, name: c2.name })),
+        cards: cards.map((c2) => ({ id: c2._id, key: c2.key ?? null, name: c2.name, collectionId: c2.collection_id ?? null })),
         items: items.map((i) => ({ id: i._id, collectionId: i.collection_id ?? null, cardId: i.card_id ?? null })),
         ...wantsTags ? {
           tags: tagHits.map((h) => ({
@@ -25029,13 +25129,13 @@ function rangeText(range, tz) {
   return to ? `${isoDay(from)} to ${isoDay(to)}` : "";
 }
 function readType(source) {
-  const t = own(source, "type");
-  if (t !== "money" && t !== "measure")
+  const t3 = own(source, "type");
+  if (t3 !== "money" && t3 !== "measure")
     return { type: "number", currency: null, unit: null };
   return {
-    type: t,
-    currency: t === "money" && typeof own(source, "currency") === "string" ? String(own(source, "currency")) : null,
-    unit: t === "measure" && typeof own(source, "unit") === "string" ? String(own(source, "unit")) : null
+    type: t3,
+    currency: t3 === "money" && typeof own(source, "currency") === "string" ? String(own(source, "currency")) : null,
+    unit: t3 === "measure" && typeof own(source, "unit") === "string" ? String(own(source, "unit")) : null
   };
 }
 function readMeasures(result) {
@@ -25226,10 +25326,10 @@ function buildChartTable(result, { spec, spelling }) {
         columns.push(column(measure, 0, null, true));
     }
   }
-  const cell = (c, a) => {
-    const measure = measures[c.m];
-    const source = c.previous ? compare?.values : values;
-    const raw = a === null ? totalOf(c.previous ? compare?.totals : totals, c.m, c.s) : cellOf(source, c.m, a, c.s);
+  const cell = (c2, a) => {
+    const measure = measures[c2.m];
+    const source = c2.previous ? compare?.values : values;
+    const raw = a === null ? totalOf(c2.previous ? compare?.totals : totals, c2.m, c2.s) : cellOf(source, c2.m, a, c2.s);
     return spellValue(measure, raw, spelling);
   };
   let entries = axis ? axis.entries.slice() : [];
@@ -25245,10 +25345,10 @@ function buildChartTable(result, { spec, spelling }) {
     const kept = entries.filter((e) => !e.other && !e.notSet).sort((x, y) => rank(y) - rank(x) || x.index - y.index);
     entries = [...kept, ...entries.filter((e) => e.other), ...entries.filter((e) => e.notSet)];
   }
-  const rows = axis ? entries.map((e) => ({ label: cleanLabel(entryLabel(e, axis, tz, spelling)), cells: columns.map((c) => cell(c, e.index)) })) : [{ label: "All items", cells: columns.map((c) => cell(c, null)) }];
+  const rows = axis ? entries.map((e) => ({ label: cleanLabel(entryLabel(e, axis, tz, spelling)), cells: columns.map((c2) => cell(c2, e.index)) })) : [{ label: "All items", cells: columns.map((c2) => cell(c2, null)) }];
   let overall = null;
   if (axis) {
-    const cells = columns.map((c) => cell(c, null));
+    const cells = columns.map((c2) => cell(c2, null));
     if (cells.some((x) => x.text))
       overall = { label: "Overall", cells };
   }
@@ -25259,7 +25359,7 @@ function buildChartTable(result, { spec, spelling }) {
     groupCurrency: keyUnits.currency,
     newestLast: axis?.kind === "time",
     // A heading names a measure (at most 80 characters) and a series: room for both.
-    columns: columns.map((c) => ({ ...c, title: cleanLabel(c.title, 2 * MAX_LABEL), heading: cleanLabel(c.heading, 2 * MAX_LABEL) })),
+    columns: columns.map((c2) => ({ ...c2, title: cleanLabel(c2.title, 2 * MAX_LABEL), heading: cleanLabel(c2.heading, 2 * MAX_LABEL) })),
     rows,
     overall,
     measures
@@ -25304,13 +25404,13 @@ function tableText(table) {
   const cap = Math.max(1, Math.min(MAX_ROWS, Math.floor(MAX_CELLS / width)));
   const shown = Math.min(table.rows.length, cap);
   const from = table.newestLast ? table.rows.length - shown : 0;
-  const blank = (t) => t || "\u2014";
-  const header = [table.groupTitle, ...table.columns.map((c) => c.heading)];
+  const blank = (t3) => t3 || "\u2014";
+  const header = [table.groupTitle, ...table.columns.map((c2) => c2.heading)];
   const lines = [
     `| ${header.join(" | ")} |`,
     `|${header.map((_, i) => i === 0 ? "---" : "---:").join("|")}|`
   ];
-  const line = (r) => `| ${[r.label || " ", ...r.cells.map((c) => blank(c.text))].join(" | ")} |`;
+  const line = (r) => `| ${[r.label || " ", ...r.cells.map((c2) => blank(c2.text))].join(" | ")} |`;
   table.rows.slice(from, from + shown).forEach((r) => lines.push(line(r)));
   if (table.overall)
     lines.push(line(table.overall));
@@ -25522,13 +25622,13 @@ function render(result, shown, ctx) {
   const sampleLine = sampleSentence(result);
   if (sampleLine)
     lines.push(sampleLine);
-  const t = tableText(table);
-  lines.push("", ...t.lines);
-  const truncated = t.shown < t.total;
+  const t3 = tableText(table);
+  lines.push("", ...t3.lines);
+  const truncated = t3.shown < t3.total;
   if (truncated) {
-    lines.push("", `TRUNCATED: ${table.newestLast ? "the newest " : ""}${t.shown} of ${t.total} rows shown${table.overall ? " (the Overall row counts every row)" : ""}. Ask with a shorter range, a coarser bucket or fewer categories for the rest.`);
+    lines.push("", `TRUNCATED: ${table.newestLast ? "the newest " : ""}${t3.shown} of ${t3.total} rows shown${table.overall ? " (the Overall row counts every row)" : ""}. Ask with a shorter range, a coarser bucket or fewer categories for the rest.`);
   }
-  if (result.compare && table.columns.length && !table.columns.some((c) => c.previous)) {
+  if (result.compare && table.columns.length && !table.columns.some((c2) => c2.previous)) {
     lines.push("", "This chart also counts the previous period; a split chart's previous period is not shown here. Ask without the split to compare.");
   }
   const sampled = Boolean(result.sample);
@@ -25540,19 +25640,19 @@ function render(result, shown, ctx) {
   if (warnings.length)
     lines.push("", "ABOUT THIS QUESTION:", ...warnings.map((w) => `  - ${w.sentence}`));
   lines.push("", "NEXT: answer from these numbers as keepr counted them. Say the range and any filter, and repeat each note that changes the answer (items left out, other currencies, an estimate). The Overall row is keepr's own figure over every item \u2014 not the rows added up (an average's Overall is the average of all the items) \u2014 so never re-add the rows yourself.");
-  const columnOut = table.columns.map((c) => ({
-    title: c.title,
-    measure: c.measure,
-    series: c.series,
-    type: c.type,
-    ...c.currency ? { currency: c.currency } : {},
-    ...c.unit ? { unit: c.unit } : {},
-    ...c.displayUnit ? { displayUnit: c.displayUnit } : {},
-    ...c.percent ? { percent: true } : {},
-    ...c.dated ? { format: c.dated } : {},
-    ...c.estimated ? { estimated: true } : {},
-    ...c.hidden ? { hidden: true } : {},
-    ...c.previous ? { previousPeriod: true } : {}
+  const columnOut = table.columns.map((c2) => ({
+    title: c2.title,
+    measure: c2.measure,
+    series: c2.series,
+    type: c2.type,
+    ...c2.currency ? { currency: c2.currency } : {},
+    ...c2.unit ? { unit: c2.unit } : {},
+    ...c2.displayUnit ? { displayUnit: c2.displayUnit } : {},
+    ...c2.percent ? { percent: true } : {},
+    ...c2.dated ? { format: c2.dated } : {},
+    ...c2.estimated ? { estimated: true } : {},
+    ...c2.hidden ? { hidden: true } : {},
+    ...c2.previous ? { previousPeriod: true } : {}
   }));
   const rowOut = (r) => ({ label: r.label, values: r.cells.map((x) => x.value) });
   return ok(lines.join("\n"), {
@@ -25571,10 +25671,10 @@ function render(result, shown, ctx) {
     ...table.groupUnit ? { groupUnit: table.groupUnit } : {},
     ...table.groupCurrency ? { groupCurrency: table.groupCurrency } : {},
     columns: columnOut,
-    rows: table.rows.slice(t.from, t.from + t.shown).map(rowOut),
+    rows: table.rows.slice(t3.from, t3.from + t3.shown).map(rowOut),
     overall: table.overall ? rowOut(table.overall) : null,
-    rowsTotal: t.total,
-    rowsShown: t.shown,
+    rowsTotal: t3.total,
+    rowsShown: t3.shown,
     truncated,
     notes,
     warnings
@@ -25593,7 +25693,7 @@ keepr answered at the screen grade, not the export grade this tool asked for, so
   }
   return render(r, shown, ctx);
 }
-var tierOf = (c) => c.inherited ? `from ${cleanText(String(c.inheritedFrom?.name ?? "the collection above"))}` : c.scope === "collection" ? "for everyone" : "personal";
+var tierOf = (c2) => c2.inherited ? `from ${cleanText(String(c2.inheritedFrom?.name ?? "the collection above"))}` : c2.scope === "collection" ? "for everyone" : "personal";
 function summaryOf(spec) {
   if (!spec)
     return "";
@@ -25615,9 +25715,9 @@ async function listCharts(ctx, target) {
   }
   const shown = all.slice(0, LIST_MAX);
   const lines = [`${all.length} saved chart${all.length === 1 ? "" : "s"} in "${target.name}"${shown.length < all.length ? ` (the first ${shown.length})` : ""}:`];
-  for (const c of shown) {
-    const desc = c.description ? ` \u2014 ${cleanText(c.description, MAX_LABEL)}` : "";
-    lines.push(`  ${c._id}  "${cleanText(String(c.name ?? ""), MAX_LABEL)}"  [${tierOf(c)}]  ${cleanText(summaryOf(c.spec), 2 * MAX_LABEL)}${desc}`);
+  for (const c2 of shown) {
+    const desc = c2.description ? ` \u2014 ${cleanText(c2.description, MAX_LABEL)}` : "";
+    lines.push(`  ${c2._id}  "${cleanText(String(c2.name ?? ""), MAX_LABEL)}"  [${tierOf(c2)}]  ${cleanText(summaryOf(c2.spec), 2 * MAX_LABEL)}${desc}`);
   }
   if (shown.length < all.length)
     lines.push("", `${all.length - shown.length} more are not listed. Ask for one by name with chart: "<name>".`);
@@ -25626,7 +25726,7 @@ async function listCharts(ctx, target) {
     collectionId: target.id,
     total: all.length,
     truncated: shown.length < all.length,
-    charts: shown.map((c) => ({ id: c._id, name: c.name, tier: c.inherited ? "inherited" : c.scope === "collection" ? "collection" : "personal", ...c.inherited ? { inheritedFrom: c.inheritedFrom?.name ?? null } : {}, description: c.description || "", summary: summaryOf(c.spec) }))
+    charts: shown.map((c2) => ({ id: c2._id, name: c2.name, tier: c2.inherited ? "inherited" : c2.scope === "collection" ? "collection" : "personal", ...c2.inherited ? { inheritedFrom: c2.inheritedFrom?.name ?? null } : {}, description: c2.description || "", summary: summaryOf(c2.spec) }))
   });
 }
 var PARTIAL_MIN = 3;
@@ -25648,16 +25748,16 @@ async function findChart(ctx, target, rawRef) {
     return { ok: false, result: failFromHttp(res, `finding the chart "${ref}" in "${target.name}"`, { saved: true, collection: target.name }) };
   const all = [...res.body?.charts ?? [], ...res.body?.inherited ?? []];
   const low = ref.toLowerCase();
-  const exact = all.filter((c) => String(c.name ?? "").trim().toLowerCase() === low);
+  const exact = all.filter((c2) => String(c2.name ?? "").trim().toLowerCase() === low);
   const partial2 = !exact.length;
-  const hits = exact.length ? exact : ref.length >= PARTIAL_MIN ? all.filter((c) => String(c.name ?? "").toLowerCase().includes(low)) : [];
+  const hits = exact.length ? exact : ref.length >= PARTIAL_MIN ? all.filter((c2) => String(c2.name ?? "").toLowerCase().includes(low)) : [];
   if (hits.length === 1)
     return { ok: true, chart: hits[0], partial: partial2 };
   if (hits.length > 1) {
-    const list = hits.slice(0, 20).map((c) => `"${cleanText(String(c.name), MAX_LABEL)}" (${c._id}, ${tierOf(c)})`).join(", ");
+    const list = hits.slice(0, 20).map((c2) => `"${cleanText(String(c2.name), MAX_LABEL)}" (${c2._id}, ${tierOf(c2)})`).join(", ");
     return { ok: false, result: fail(`"${ref}" matches ${hits.length} charts in "${target.name}": ${list}. Ask the user which one, then pass its id as chart \u2014 do not pick.`, { ok: false, status: 400, code: "ambiguous_chart" }) };
   }
-  const names = all.slice(0, 30).map((c) => `"${cleanText(String(c.name), MAX_LABEL)}"`).join(", ");
+  const names = all.slice(0, 30).map((c2) => `"${cleanText(String(c2.name), MAX_LABEL)}"`).join(", ");
   return { ok: false, result: fail(`No saved chart "${ref}" in "${target.name}" that this key can see. ${all.length ? `Charts here: ${names}${all.length > 30 ? ", \u2026" : ""}.` : "It has none."} Ask with spec instead, or list them with list: true.`, { ok: false, status: 404, code: "chart_not_found" }) };
 }
 async function runSaved(ctx, target, args) {
@@ -25692,14 +25792,14 @@ async function runSpec(ctx, target, args) {
       return failFromHttp(schema, `reading the schema of "${target.name}" to find card "${ref}"`, { saved: false, collection: target.name });
     const cards = [...schema.body?.cards ?? [], ...schema.body?.familyCards ?? []];
     const low = ref.toLowerCase();
-    const byKey = cards.filter((c) => typeof c.key === "string" && c.key.toLowerCase() === low);
-    const hits = byKey.length ? byKey : cards.filter((c) => typeof c.name === "string" && c.name.trim().toLowerCase() === low);
-    const said = (c) => `"${cleanText(String(c.name ?? ""))}" (${c.key ? `key ${cleanText(c.key)}, ` : ""}${c.id}${c.collection?.name ? `, in ${cleanText(c.collection.name)}` : ""})`;
+    const byKey = cards.filter((c2) => typeof c2.key === "string" && c2.key.toLowerCase() === low);
+    const hits = byKey.length ? byKey : cards.filter((c2) => typeof c2.name === "string" && c2.name.trim().toLowerCase() === low);
+    const said = (c2) => `"${cleanText(String(c2.name ?? ""))}" (${c2.key ? `key ${cleanText(c2.key)}, ` : ""}${c2.id}${c2.collection?.name ? `, in ${cleanText(c2.collection.name)}` : ""})`;
     if (hits.length > 1) {
       return fail(`"${ref}" names ${hits.length} cards here: ${hits.slice(0, 10).map(said).join(", ")}. Ask the user which one, then pass its id as spec.card_id \u2014 do not pick. Nothing was counted.`, { ok: false, status: 400, code: "ambiguous_card" });
     }
     if (!hits.length) {
-      return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.slice(0, 40).map((c) => cleanText(String(c.key ?? c.id))).join(", ") || "(none)"}. Nothing was counted.`, { ok: false, status: 400, code: "card_not_found" });
+      return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.slice(0, 40).map((c2) => cleanText(String(c2.key ?? c2.id))).join(", ") || "(none)"}. Nothing was counted.`, { ok: false, status: 400, code: "card_not_found" });
     }
     spec.card_id = hits[0].id;
     card = { id: hits[0].id, name: cleanText(String(hits[0].name ?? hits[0].key ?? hits[0].id)) };
@@ -25805,7 +25905,7 @@ var ingestTool = {
       }
       const tags = row.tags;
       if (tags !== void 0 && tags !== null) {
-        if (!Array.isArray(tags) || tags.some((t) => typeof t !== "string" || !t.trim())) {
+        if (!Array.isArray(tags) || tags.some((t3) => typeof t3 !== "string" || !t3.trim())) {
           problems.push(`row ${i}: tags must be a list of tag names, paths or ids, e.g. ["Urgent", "Health/Digestive"].`);
         } else if (tags.length && !ctx.contract.takesTagNames) {
           problems.push(`row ${i}: carries tags, and this keepr does not take tags on rows yet \u2014 send the row without \`tags\`, and tell the user their tags cannot be kept this way yet.`);
@@ -25985,22 +26085,240 @@ function mintImportId() {
   return `imp-${day}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// dist/src/tools/updateItem.js
+// dist/src/tools/updateMany.js
+import { createHash as createHash2 } from "node:crypto";
 var HEX244 = /^[0-9a-fA-F]{24}$/;
+var MAX_IDS = 100;
+var SAMPLE = 5;
+var t = (v, max = 200) => cleanText(v === null || v === void 0 ? "" : String(v), max);
+function digestOf(parts) {
+  const stable2 = (v) => Array.isArray(v) ? `[${v.map(stable2).join(",")}]` : v && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable2(v[k])}`).join(",")}}` : JSON.stringify(v === void 0 ? null : v);
+  return createHash2("sha256").update(stable2(parts)).digest("hex");
+}
+async function updateMany(args, ctx) {
+  const rawIds = Array.isArray(args.ids) ? args.ids.map((v) => String(v)) : null;
+  const ids = rawIds ? [...new Set(rawIds.map((id) => id.toLowerCase()))] : null;
+  const q = typeof args.q === "string" ? args.q.trim() : "";
+  if (ids && q)
+    return fail("Give `ids` or `q`, not both. Nothing was changed.");
+  if (ids) {
+    if (!ids.length)
+      return fail("`ids` is empty. Nothing was changed.");
+    if (ids.length > MAX_IDS)
+      return fail(`At most ${MAX_IDS} ids in one call (${ids.length} given). Use \`q\` for a filter, or split the list. Nothing was changed.`);
+    const bad = ids.filter((id) => !HEX244.test(id));
+    if (bad.length)
+      return fail(`Not item ids: ${bad.slice(0, 5).map((b) => t(b, 40)).join(", ")}. An id is 24 hex characters. Nothing was changed.`);
+  }
+  if (!ctx.contract.hasEndpoint("itemsBulk") && ctx.contract.isLive) {
+    return fail('This keepr deployment does not take changes to many items from here. Change them one at a time, or with keepr_ingest mode "upsert" when they have external ids. Nothing was changed.');
+  }
+  const collectionRef = String(args.collection ?? "");
+  if (!collectionRef)
+    return fail(`A change to many items needs \`collection\` \u2014 the collection the ${ids ? "ids" : "filter"} belong to. Nothing was changed.`);
+  const resolved = ctx.resolveCollection(collectionRef);
+  if (!resolved.ok)
+    return fail(resolved.message);
+  const target = resolved.row;
+  if (ctx.hasScope("write") === false)
+    return fail(ctx.readOnlyRefusal());
+  const elements = args.elements && typeof args.elements === "object" ? args.elements : {};
+  const toAdd = Array.isArray(args.tags_add) ? args.tags_add : [];
+  const toRemove = Array.isArray(args.tags_remove) ? args.tags_remove : [];
+  if (!Object.keys(elements).length && !toAdd.length && !toRemove.length) {
+    return fail("Nothing to change. Name at least one element, or tags to add or take off.");
+  }
+  const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
+  if (!schema.ok)
+    return failFromResponse(schema, `reading the schema of "${t(target.name)}"`);
+  let tagIdsAdd = [];
+  let tagIdsRemove = [];
+  let addNames = [];
+  let removeNames = [];
+  if (toAdd.length || toRemove.length) {
+    const vocab = schema.body?.tags;
+    if (!Array.isArray(vocab))
+      return fail("This keepr does not list its tags to assistants yet, so tags cannot be changed from here. Nothing was changed.");
+    const adds = resolveTagNames(vocab, toAdd);
+    const removes = resolveTagNames(vocab, toRemove);
+    const problems = [...adds.problems.map((p) => `tags_add: ${p}`), ...removes.problems.map((p) => `tags_remove: ${p}`)];
+    const both = adds.ids.filter((id) => removes.ids.includes(id));
+    if (both.length)
+      problems.push(`The same tag is both added and taken off (${both.join(", ")}).`);
+    if (problems.length)
+      return fail(`NOTHING WAS CHANGED. Tags could not be matched:
+
+${problems.map((p) => `  ${p}`).join("\n")}`);
+    tagIdsAdd = [...new Set(adds.ids)];
+    tagIdsRemove = [...new Set(removes.ids)];
+    const wanted = new Set([...tagIdsAdd, ...tagIdsRemove].map((id) => id.toLowerCase()));
+    const restricted = vocab.filter((tag) => tag.restricted === true && wanted.has(String(tag.id).toLowerCase())).map((tag) => tag.path ?? tag.name);
+    if (restricted.length)
+      return fail(`NOTHING WAS CHANGED. ${restricted.map((n) => `"${t(n)}"`).join(", ")}: a restricted tag decides who can see what, so only the person, signed in to keepr, adds or takes one off. Ask them to do it in keepr.`);
+    const ruled = vocab.filter((tag) => tag.rule?.strict === true && wanted.has(String(tag.id).toLowerCase())).map((tag) => tag.path ?? tag.name);
+    if (ruled.length)
+      return fail(`NOTHING WAS CHANGED. ${ruled.map((n) => `"${t(n)}"`).join(", ")}: only ${ruled.length === 1 ? "its" : "their"} rule applies ${ruled.length === 1 ? "that tag" : "those tags"}, so ${ruled.length === 1 ? "it is" : "they are"} never added or taken off by hand.`);
+    const nameOf = (id) => {
+      const tag = vocab.find((x) => String(x.id).toLowerCase() === id.toLowerCase());
+      return tag ? tag.path ?? tag.name : id;
+    };
+    addNames = tagIdsAdd.map(nameOf);
+    removeNames = tagIdsRemove.map(nameOf);
+  }
+  const change = {
+    ...Object.keys(elements).length ? { elements } : {},
+    ...tagIdsAdd.length ? { tagIdsAdd } : {},
+    ...tagIdsRemove.length ? { tagIdsRemove } : {}
+  };
+  let cardId = null;
+  let cardName = null;
+  if (!ids && args.card !== void 0 && args.card !== null && String(args.card).trim() !== "") {
+    const ref = String(args.card).trim();
+    const cards = schema.body?.cards ?? [];
+    const hit = HEX244.test(ref) ? { id: ref } : cards.find((c2) => (c2.key ?? "").toLowerCase() === ref.toLowerCase()) ?? cards.find((c2) => (c2.name ?? "").toLowerCase() === ref.toLowerCase());
+    if (!hit)
+      return fail(`No card "${t(ref)}" in "${t(target.name)}". Cards here: ${cards.map((c2) => t(c2.key ?? c2.id, 60)).join(", ") || "(none)"}. Nothing was changed.`);
+    cardId = hit.id;
+    cardName = "name" in hit && hit.name ? String(hit.name) : "key" in hit && hit.key ? String(hit.key) : hit.id;
+  }
+  const dryRun = args.dry_run;
+  const many = !ids || ids.length > 1;
+  if (many && typeof dryRun !== "boolean") {
+    return fail("`dry_run` is required for a change to more than one item: call with dry_run: true first, show the person how many items it changes, and only then call again with dry_run: false and the `confirm` token the dry run gave. Nothing was changed.");
+  }
+  const digest = digestOf({ collection: target.id, ids: ids ? [...ids].sort() : null, q: ids ? null : q, card: cardId, change });
+  let confirmed = null;
+  if (many && dryRun === false) {
+    const token = String(args.confirm ?? "");
+    if (!token)
+      return fail("A change to more than one item needs `confirm` \u2014 the token its dry run gave \u2014 so what is applied is what the person saw. Run the dry run first. Nothing was changed.");
+    const taken = ctx.proposals.take(token, ["bulk"]);
+    if (!taken.ok) {
+      return fail(taken.reason === "expired" ? "That dry run has expired (they last 30 minutes). Run it again and show the person the fresh count. Nothing was changed." : "That `confirm` token is not a dry run of a change to many items (each is used once). Run the dry run again. Nothing was changed.");
+    }
+    confirmed = taken.proposal;
+    if (confirmed.digest !== digest) {
+      return fail("NOTHING WAS CHANGED: this is not the change the dry run showed \u2014 the items, the filter or the values differ. Run the dry run for this change and show the person what it does.");
+    }
+  }
+  let body;
+  let count;
+  if (ids) {
+    count = ids.length;
+    body = { collection_id: target.id, merge: true, rows: ids.map((_id) => ({ _id, ...change })) };
+  } else {
+    if (!q)
+      return fail("Give `ids` or `q`. Nothing was changed.");
+    if (confirmed)
+      count = confirmed.count;
+    else {
+      const counted = await ctx.http.request({ path: "/api/items/count", query: { collection_id: target.id, scope: "own", q, ...cardId ? { card_id: cardId } : {} } });
+      if (!counted.ok)
+        return failFromResponse(counted, `counting the items "${t(q)}" matches in "${t(target.name)}"`);
+      count = counted.body?.count ?? counted.totalCount ?? 0;
+      if (!count)
+        return fail(`"${t(q)}" matches no items in "${t(target.name)}". Nothing was changed.`);
+    }
+    body = { collection_id: target.id, merge: true, select: { q, scope: "own", ...cardId ? { card_id: cardId } : {}, expectedCount: count }, patch: change };
+  }
+  const res = await ctx.http.request({ method: "POST", path: "/api/items/bulk", body: { ...body, ...dryRun === true ? { dryRun: true } : {} } });
+  ctx.noteWriteAttempt(res);
+  if (!res.ok)
+    return refusal(res, ctx, target.name, q);
+  const out = res.body ?? {};
+  if (dryRun === true) {
+    const n = ids ? out.summary?.update ?? ids.length : out.matched ?? count;
+    const sample = await sampleOf(ctx, target.id, ids, q, cardId);
+    const proposal = ctx.proposals.bulk({ collectionId: target.id, collectionName: target.name, digest, count: n });
+    const lines = [
+      // The filter and the values in FULL: the token is bound to all of them (G1, G2).
+      `DRY RUN \u2014 nothing has changed. This would change ${n} item${n === 1 ? "" : "s"} in "${t(target.name)}"${cardName ? `, ${t(cardName, 120)} cards only` : ""}${q ? ` matching: ${t(q, 2e4)}` : ""}:`,
+      ...sample.map((s) => `  ${t(s.displayValue ?? s._id)}`),
+      ...n > sample.length ? [`  \u2026and ${n - sample.length} more`] : [],
+      "",
+      `The change: ${describeChange(elements, addNames, removeNames)}.`,
+      ...warningsOf(out).map((w) => `keepr: ${w}`),
+      ...out.summary?.blanks ? [`It would empty ${out.summary.blanks} stored value${out.summary.blanks === 1 ? "" : "s"}.`] : [],
+      "",
+      `NEXT: show the person this, and if they agree call keepr_update_item again with exactly the same change, dry_run: false and confirm: "${proposal.token}". The token is good for 30 minutes, once, and only for this change.`
+    ];
+    return ok(lines.join("\n"), { dryRun: true, wouldChange: n, confirm: proposal.token, sample: sample.map((s) => ({ id: s._id, title: s.displayValue ?? null })) });
+  }
+  if (out.ok === false || out.partial) {
+    const at = out.failedAt;
+    return fail(`keepr stopped part-way: ${(out.written ?? []).length} item${(out.written ?? []).length === 1 ? "" : "s"} changed before it stopped${at?.message ? ` \u2014 ${t(at.message, 300)}` : ""}. Tell the person; the change log in keepr shows which.`, { partial: true, written: out.written ?? [], failedAt: at ?? null });
+  }
+  const written = out.written ?? [];
+  return ok(`CHANGED ${written.length} item${written.length === 1 ? "" : "s"} in "${t(target.name)}": ${describeChange(elements, addNames, removeNames)}.`, { changed: written.length, ids: written.map((w) => w._id) });
+}
+function warningsOf(out) {
+  const rows = out.rows ?? [];
+  return [...new Set(rows.flatMap((r) => (r.warnings ?? []).map((w) => t(w.message ?? w.code, 300))).filter(Boolean))].slice(0, 10);
+}
+function describeChange(elements, add, remove) {
+  const parts = Object.entries(elements).map(([k, v]) => `${t(k, 200)} \u2192 ${v === null || v === "" ? "(empty)" : t(JSON.stringify(v), 2e4)}`);
+  if (add.length)
+    parts.push(`add tags ${add.map((x) => t(x, 60)).join(", ")}`);
+  if (remove.length)
+    parts.push(`take off tags ${remove.map((x) => t(x, 60)).join(", ")}`);
+  return parts.join("; ");
+}
+async function sampleOf(ctx, collectionId, ids, q, cardId) {
+  const res = ids ? await ctx.http.request({ path: "/api/items", query: { ids: ids.slice(0, SAMPLE).join(",") } }) : await ctx.http.request({ path: "/api/items", query: { collection_id: collectionId, scope: "own", q, ...cardId ? { card_id: cardId } : {}, limit: SAMPLE } });
+  return res.ok && Array.isArray(res.body) ? res.body.slice(0, SAMPLE) : [];
+}
+function refusal(res, ctx, collectionName, q) {
+  const code = errorCode(res.body);
+  if (res.status === 403 && ctx.keyScope === "read")
+    return fail(ctx.readOnlyRefusal());
+  if (code === "count_mismatch") {
+    const now = res.body?.count;
+    return fail(`NOTHING WAS CHANGED: "${t(q)}" now matches ${now ?? "a different number of"} items, not the number the person agreed to. Run the dry run again and show them the new count.`, { code });
+  }
+  if (code === "rows_invalid") {
+    const rows = res.body?.rows ?? [];
+    const lines = [`NOTHING WAS CHANGED \u2014 keepr refused ${rows.length} row${rows.length === 1 ? "" : "s"} (the change is all or nothing):`];
+    for (const e of rows.slice(0, 20)) {
+      lines.push(`  row ${e.index ?? "?"}${e.element ? ` ${t(e.element, 60)}` : ""}: ${t(e.code ?? "error", 60)}: ${t(e.message, 300)}`);
+      const meaning = ctx.contract.meaningOf(e.code);
+      if (meaning)
+        lines.push(`    -> ${meaning}`);
+    }
+    return fail(lines.join("\n"), { code, errors: rows });
+  }
+  return failFromResponse(res, `changing items in "${t(collectionName)}"`);
+}
+
+// dist/src/tools/updateItem.js
+var HEX245 = /^[0-9a-fA-F]{24}$/;
 var updateItemTool = {
   name: "keepr_update_item",
-  description: 'Change specific elements on ONE existing keepr item, or add and take off its tags, addressed by its id. Elements you do not mention are left alone. Name tags as keepr_schema lists them (a name, or a path like Health/Digestive) or by id; an item used as a tag goes by its id. keepr never creates a tag here: if the tag the person wants does not exist, ask them. A restricted tag (it decides who can see what) is added or taken off only by the person in keepr, never from here. For bulk changes, or anything with an external_id, use keepr_ingest with mode: "upsert" instead.',
+  description: `Change specific elements on an existing keepr item, or add and take off its tags, addressed by its id. Elements you do not mention are left alone. Or change MANY at once: \`ids\` (up to ${MAX_IDS}) or a KQL \`q\`, with \`collection\` \u2014 one change applied to every item, all or nothing. A change to more than one item needs \`dry_run\`: call with dry_run: true, show the person how many it changes, then call again with the same change, dry_run: false and the \`confirm\` token the dry run gave. Nothing here deletes. Name tags as keepr_schema lists them (a name, or a path like Health/Digestive) or by id; an item used as a tag goes by its id. keepr never creates a tag here: if the tag the person wants does not exist, ask them. A restricted tag (it decides who can see what) is added or taken off only by the person in keepr, never from here. For rows with an external_id, use keepr_ingest with mode: "upsert" instead.`,
   writes: true,
   inputSchema: {
-    item_id: external_exports.string().describe("The item id \u2014 24 hex characters, from keepr_get_items or keepr_search."),
+    item_id: external_exports.string().optional().describe("ONE item: its id \u2014 24 hex characters, from keepr_get_items or keepr_search."),
+    ids: external_exports.array(external_exports.string()).optional().describe(`MANY items by id (up to ${MAX_IDS}), with \`collection\`.`),
+    q: external_exports.string().optional().describe("MANY items matching a KQL filter, with `collection` (and `card`)."),
+    collection: external_exports.string().optional().describe("With `ids` or `q`: the collection, by id or name."),
+    card: external_exports.string().optional().describe("With `q`: narrow to one card, by key or id."),
+    dry_run: external_exports.boolean().optional().describe("Required with more than one item. true changes nothing and says how many items would change."),
+    confirm: external_exports.string().optional().describe("With dry_run: false for more than one item: the token the dry run gave. It is bound to exactly that change, and used once."),
     elements: external_exports.record(external_exports.unknown()).optional().describe("Only the elements to change. Anything omitted keeps its stored value."),
     visibility: external_exports.enum(["shared", "private"]).optional(),
     tags_add: external_exports.array(external_exports.string()).optional().describe("Tags to add, by name, path (Parent/Child) or id. Tags already on the item stay."),
     tags_remove: external_exports.array(external_exports.string()).optional().describe("Tags to take off, by name, path or id. Other tags stay.")
   },
   handler: async (args, ctx) => {
+    const several = args.ids !== void 0 || args.q !== void 0;
+    if (several && args.item_id !== void 0)
+      return fail("Give `item_id` for one item, or `ids` / `q` for many \u2014 not both. Nothing was changed.");
+    if (several) {
+      if (args.visibility)
+        return fail("Visibility is changed one item at a time. Nothing was changed.");
+      return updateMany(args, ctx);
+    }
     const itemId = String(args.item_id ?? "");
-    if (!HEX244.test(itemId))
+    if (!HEX245.test(itemId))
       return fail(`"${itemId}" is not an item id. An id is 24 hex characters \u2014 get one from keepr_get_items.`);
     const elements = args.elements ?? {};
     const toAdd = Array.isArray(args.tags_add) ? args.tags_add : [];
@@ -26101,8 +26419,8 @@ ${problems.map((p) => `  ${p}`).join("\n")}`);
     const lines = [`Updated "${after?.displayValue ?? before.body?.displayValue ?? itemId}".`];
     if (changed.length) {
       lines.push("", "CHANGED:");
-      for (const c of changed)
-        lines.push(`  ${c.element}: ${fmt(c.from)} -> ${fmt(c.to)}`);
+      for (const c2 of changed)
+        lines.push(`  ${c2.element}: ${fmt(c2.from)} -> ${fmt(c2.to)}`);
     }
     if (unchanged.length)
       lines.push("", `Already had that value: ${unchanged.join(", ")}.`);
@@ -26143,7 +26461,7 @@ function rowRefusal(res, itemId, ctx) {
 }
 function restrictedAmong(vocabulary, ids) {
   const wanted = new Set(ids.map((id) => id.toLowerCase()));
-  return vocabulary.filter((t) => t.restricted === true && wanted.has(String(t.id).toLowerCase())).map((t) => t.path ?? t.name);
+  return vocabulary.filter((t3) => t3.restricted === true && wanted.has(String(t3.id).toLowerCase())).map((t3) => t3.path ?? t3.name);
 }
 function fmt(v) {
   if (v === null || v === void 0 || v === "")
@@ -26165,7 +26483,7 @@ function storedCardOf(body) {
 var norm2 = (s) => String(s ?? "").trim().toLowerCase();
 async function planParents(cards, target, ctx) {
   const problems = [];
-  const refsOf = (c) => [c.key, c.name].filter(Boolean).map(norm2);
+  const refsOf = (c2) => [c2.key, c2.name].filter(Boolean).map(norm2);
   const cache2 = { cards: null };
   const loadSchema = async () => {
     if (cache2.cards)
@@ -26187,7 +26505,7 @@ async function planParents(cards, target, ctx) {
       problems.push(`card ${i} ("${card.name}"): parentCardKey "${card.parentCardKey}" names the card itself. A card cannot inherit from itself.`);
       continue;
     }
-    const sibling = cards.findIndex((c, j) => j !== i && refsOf(c).includes(ref));
+    const sibling = cards.findIndex((c2, j) => j !== i && refsOf(c2).includes(ref));
     if (sibling >= 0) {
       inProposal.set(i, sibling);
       continue;
@@ -26195,7 +26513,7 @@ async function planParents(cards, target, ctx) {
     const failed = await loadSchema();
     if (failed)
       return { ok: false, response: failed, doing: `reading the schema of "${target.name}" to find parent card "${card.parentCardKey}"` };
-    const here = (cache2.cards ?? []).find((c) => norm2(c.key) === ref) ?? (cache2.cards ?? []).find((c) => norm2(c.name) === ref);
+    const here = (cache2.cards ?? []).find((c2) => norm2(c2.key) === ref) ?? (cache2.cards ?? []).find((c2) => norm2(c2.name) === ref);
     if (here) {
       existing.set(i, { kind: "existing", id: here.id, key: here.key ?? null, name: here.name ?? here.key ?? here.id, source: "collection" });
       continue;
@@ -26208,12 +26526,12 @@ async function planParents(cards, target, ctx) {
     if (!globals.ok)
       return { ok: false, response: globals, doing: `looking for a global card "${card.parentCardKey}"` };
     const list = Array.isArray(globals.body) ? globals.body : [];
-    const global = list.find((c) => norm2(c.key) === ref) ?? list.find((c) => norm2(c.name) === ref);
+    const global = list.find((c2) => norm2(c2.key) === ref) ?? list.find((c2) => norm2(c2.name) === ref);
     if (global) {
       existing.set(i, { kind: "existing", id: String(global._id), key: global.key ?? null, name: global.name ?? global.key ?? String(global._id), source: "global" });
       continue;
     }
-    const known = (cache2.cards ?? []).map((c) => c.key ?? c.name).filter(Boolean);
+    const known = (cache2.cards ?? []).map((c2) => c2.key ?? c2.name).filter(Boolean);
     problems.push(`card ${i} ("${card.name}"): parentCardKey "${card.parentCardKey}" names no card in this proposal, in "${target.name}", or among the global cards. Cards in "${target.name}": ${known.join(", ") || "(none)"}.`);
   }
   if (problems.length)
@@ -26261,37 +26579,37 @@ var localIdOf = (s) => String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9._-
 function buildBlueprint(cards, filters = [], layouts = [], tags = []) {
   const problems = [];
   const used = /* @__PURE__ */ new Set();
-  const localIds = cards.map((c) => {
-    const base = localIdOf(c.key || c.name);
+  const localIds = cards.map((c2) => {
+    const base = localIdOf(c2.key || c2.name);
     let id = base;
     for (let n = 2; used.has(id); n += 1)
       id = `${base}-${n}`;
     used.add(id);
     return id;
   });
-  const indexOf = (name) => cards.findIndex((c) => norm2(c.key) === norm2(name) || norm2(c.name) === norm2(name));
+  const indexOf = (name) => cards.findIndex((c2) => norm2(c2.key) === norm2(name) || norm2(c2.name) === norm2(name));
   const refFor = (name) => {
     const idx = indexOf(name);
     return idx >= 0 ? { ref: localIds[idx] } : { key: String(name).trim() };
   };
-  const bpCards = cards.map((c, i) => ({
+  const bpCards = cards.map((c2, i) => ({
     localId: localIds[i],
-    ...c.key ? { key: c.key } : {},
-    name: c.name,
-    ...c.description ? { description: c.description } : {},
-    ...c.icon ? { icon: c.icon } : {},
-    ...c.color ? { color: c.color } : {},
-    ...c.displayTemplate ? { displayTemplate: c.displayTemplate } : {},
-    ...c.parentCardKey ? { parentRef: refFor(c.parentCardKey) } : {},
-    ...Array.isArray(c.elementSets) && c.elementSets.length ? { elementSetRefs: c.elementSets.map((k) => ({ key: String(k) })) } : {},
-    ...c.options && typeof c.options === "object" ? { options: c.options } : {},
-    elements: (c.elements ?? []).map((el) => {
+    ...c2.key ? { key: c2.key } : {},
+    name: c2.name,
+    ...c2.description ? { description: c2.description } : {},
+    ...c2.icon ? { icon: c2.icon } : {},
+    ...c2.color ? { color: c2.color } : {},
+    ...c2.displayTemplate ? { displayTemplate: c2.displayTemplate } : {},
+    ...c2.parentCardKey ? { parentRef: refFor(c2.parentCardKey) } : {},
+    ...Array.isArray(c2.elementSets) && c2.elementSets.length ? { elementSetRefs: c2.elementSets.map((k) => ({ key: String(k) })) } : {},
+    ...c2.options && typeof c2.options === "object" ? { options: c2.options } : {},
+    elements: (c2.elements ?? []).map((el) => {
       const options = { ...el.options ?? {} };
       if (el.lookupCardKey)
         options.lookupCardId = refFor(el.lookupCardKey);
       if (el.sourceCardKey) {
         if (!options.drivenFrom || typeof options.drivenFrom !== "object") {
-          problems.push(`card "${c.name}" element "${el.name}": sourceCardKey needs options.drivenFrom with sourceElementName, linkElementName and aggregate.`);
+          problems.push(`card "${c2.name}" element "${el.name}": sourceCardKey needs options.drivenFrom with sourceElementName, linkElementName and aggregate.`);
         } else {
           options.drivenFrom = { ...options.drivenFrom, sourceCardId: refFor(el.sourceCardKey) };
         }
@@ -26326,42 +26644,42 @@ function buildBlueprint(cards, filters = [], layouts = [], tags = []) {
   }
   if (tags.length) {
     const usedTags = /* @__PURE__ */ new Set();
-    const tagLocal = tags.map((t) => {
-      const base = localIdOf(t.name).replace(/^card$/, "tag").slice(0, 52);
+    const tagLocal = tags.map((t3) => {
+      const base = localIdOf(t3.name).replace(/^card$/, "tag").slice(0, 52);
       let id = `tag-${base}`;
       for (let n = 2; usedTags.has(id); n += 1)
         id = `tag-${base}-${n}`;
       usedTags.add(id);
       return id;
     });
-    const tagIndexOf = (name) => tags.findIndex((t) => norm2(t.name) === norm2(name));
-    collection.tags = tags.map((t, i) => {
-      if (!t?.name)
+    const tagIndexOf = (name) => tags.findIndex((t3) => norm2(t3.name) === norm2(name));
+    collection.tags = tags.map((t3, i) => {
+      if (!t3?.name)
         problems.push(`tag ${i}: no name.`);
-      const parentIdx = t?.parent ? tagIndexOf(t.parent) : -1;
-      if (t?.parent && parentIdx < 0)
-        problems.push(`tag "${t.name}": its parent "${t.parent}" is not a tag in this proposal \u2014 a proposal nests only the tags it makes.`);
+      const parentIdx = t3?.parent ? tagIndexOf(t3.parent) : -1;
+      if (t3?.parent && parentIdx < 0)
+        problems.push(`tag "${t3.name}": its parent "${t3.parent}" is not a tag in this proposal \u2014 a proposal nests only the tags it makes.`);
       let rule;
-      if (t?.rule) {
-        if (!t.rule.card)
-          problems.push(`tag "${t.name}": its rule needs the card whose items it tags.`);
+      if (t3?.rule) {
+        if (!t3.rule.card)
+          problems.push(`tag "${t3.name}": its rule needs the card whose items it tags.`);
         rule = {
-          cardRef: refFor(t.rule.card),
-          ...t.rule.where !== void 0 ? { where: t.rule.where } : {},
-          ...t.rule.match ? { match: t.rule.match } : {},
-          ...t.rule.strict !== void 0 ? { strict: t.rule.strict } : {},
-          ...Array.isArray(t.rule.related) && t.rule.related.length ? {
-            related: t.rule.related.map(({ card: relatedCard, ...rest }) => ({ ...rest, cardRef: refFor(relatedCard) }))
+          cardRef: refFor(t3.rule.card),
+          ...t3.rule.where !== void 0 ? { where: t3.rule.where } : {},
+          ...t3.rule.match ? { match: t3.rule.match } : {},
+          ...t3.rule.strict !== void 0 ? { strict: t3.rule.strict } : {},
+          ...Array.isArray(t3.rule.related) && t3.rule.related.length ? {
+            related: t3.rule.related.map(({ card: relatedCard, ...rest }) => ({ ...rest, cardRef: refFor(relatedCard) }))
           } : {}
         };
       }
       return {
         localId: tagLocal[i],
-        name: t?.name,
-        ...t?.description ? { description: t.description } : {},
-        ...t?.color ? { color: t.color } : {},
-        ...t?.icon ? { icon: t.icon } : {},
-        ...Array.isArray(t?.aliases) && t.aliases.length ? { aliases: t.aliases } : {},
+        name: t3?.name,
+        ...t3?.description ? { description: t3.description } : {},
+        ...t3?.color ? { color: t3.color } : {},
+        ...t3?.icon ? { icon: t3.icon } : {},
+        ...Array.isArray(t3?.aliases) && t3.aliases.length ? { aliases: t3.aliases } : {},
         ...parentIdx >= 0 ? { parentRef: { ref: tagLocal[parentIdx] } } : {},
         ...rule ? { rule } : {}
       };
@@ -26503,28 +26821,28 @@ function itemsClause(n) {
 }
 function describeChanges(body) {
   const lines = [];
-  for (const c of body.changes ?? []) {
-    switch (c.kind) {
+  for (const c2 of body.changes ?? []) {
+    switch (c2.kind) {
       case "added":
-        lines.push(`  + added  ${c.element}${c.dataType ? `  [${c.dataType}]` : ""}`);
+        lines.push(`  + added  ${c2.element}${c2.dataType ? `  [${c2.dataType}]` : ""}`);
         break;
       case "removed":
-        lines.push(`  - REMOVED  ${c.element}${c.dataType ? `  [${c.dataType}]` : ""}${itemsClause(c.itemsWithValues)}${(c.itemsWithValues ?? 0) > 0 ? "; THOSE VALUES WILL BE LOST" : ""}`);
+        lines.push(`  - REMOVED  ${c2.element}${c2.dataType ? `  [${c2.dataType}]` : ""}${itemsClause(c2.itemsWithValues)}${(c2.itemsWithValues ?? 0) > 0 ? "; THOSE VALUES WILL BE LOST" : ""}`);
         break;
       case "retyped":
-        lines.push(`  ~ RETYPED  ${c.element}  ${String(c.from ?? "?")} -> ${String(c.to ?? "?")}${itemsClause(c.itemsWithValues)}${(c.itemsWithValues ?? 0) > 0 ? c.conversion === "measurement" || c.conversion === "currency" ? `; converted (${c.conversion})` : "; NOT converted \u2014 stored values are reinterpreted, and may be lost" : ""}`);
+        lines.push(`  ~ RETYPED  ${c2.element}  ${String(c2.from ?? "?")} -> ${String(c2.to ?? "?")}${itemsClause(c2.itemsWithValues)}${(c2.itemsWithValues ?? 0) > 0 ? c2.conversion === "measurement" || c2.conversion === "currency" ? `; converted (${c2.conversion})` : "; NOT converted \u2014 stored values are reinterpreted, and may be lost" : ""}`);
         break;
       case "optionsChanged":
-        lines.push(`  ~ options  ${c.element}${Array.isArray(c.keys) && c.keys.length ? `  (${c.keys.join(", ")})` : ""}`);
+        lines.push(`  ~ options  ${c2.element}${Array.isArray(c2.keys) && c2.keys.length ? `  (${c2.keys.join(", ")})` : ""}`);
         break;
       case "labelChanged":
-        lines.push(`  ~ label  ${c.element}  ${fmtValue(c.from)} -> ${fmtValue(c.to)}`);
+        lines.push(`  ~ label  ${c2.element}  ${fmtValue(c2.from)} -> ${fmtValue(c2.to)}`);
         break;
       case "reordered":
         lines.push("  ~ elements reordered");
         break;
       default:
-        lines.push(`  ~ ${c.kind}${c.element ? `  ${c.element}` : ""}`);
+        lines.push(`  ~ ${c2.kind}${c2.element ? `  ${c2.element}` : ""}`);
     }
   }
   for (const f of body.cardFields ?? [])
@@ -26612,7 +26930,7 @@ ${problems.map((p) => `  ${p.path ?? ""}: ${p.message ?? ""}${p.code ? ` (${p.co
     ...(body.summary ?? []).map((s) => `keepr: ${s}`)
   ];
   for (const step of steps.filter((s) => s.kind === "card")) {
-    const spec = cards.find((c) => localIdOf(c.key || c.name) === step.localId || norm2(c.name) === norm2(step.name));
+    const spec = cards.find((c2) => localIdOf(c2.key || c2.name) === step.localId || norm2(c2.name) === norm2(step.name));
     lines.push("", `CARD "${step.name}" (key ${step.key})${step.parent ? `, inheriting from ${describeRef(step.parent, nameOfLocal, target.name)}` : ""}`);
     if (spec?.description)
       lines.push(`  ${spec.description}`);
@@ -26754,11 +27072,11 @@ ${plan.problems.map((p) => `  ${p}`).join("\n")}`, { validation: { ok: false, pr
     proposalToken: proposal.token,
     collectionId: target.id,
     collectionName: target.name,
-    cards: planned.map((c) => ({
-      name: c.name,
-      key: c.key ?? null,
-      elementCount: c.elements.length,
-      parent: c.parent ? { name: c.parent.name, key: c.parent.key, ...c.parent.kind === "existing" ? { id: c.parent.id, source: c.parent.source } : { source: "proposal" } } : null
+    cards: planned.map((c2) => ({
+      name: c2.name,
+      key: c2.key ?? null,
+      elementCount: c2.elements.length,
+      parent: c2.parent ? { name: c2.parent.name, key: c2.parent.key, ...c2.parent.kind === "existing" ? { id: c2.parent.id, source: c2.parent.source } : { source: "proposal" } } : null
     })),
     validation: { ok: true, problems: [] }
   });
@@ -26779,10 +27097,10 @@ async function proposeChange(change, target, ctx) {
   await ctx.contract.noteVersionSeen(schema.body?.writeContract?.contractVersion);
   const ref = String(change.card).trim();
   const cards = schema.body?.cards ?? [];
-  const found = cards.find((c) => c.id === ref) ?? cards.filter((c) => (c.key ?? "").toLowerCase() === ref.toLowerCase());
+  const found = cards.find((c2) => c2.id === ref) ?? cards.filter((c2) => (c2.key ?? "").toLowerCase() === ref.toLowerCase());
   const card = Array.isArray(found) ? found[0] : found;
   if (!card) {
-    return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.map((c) => c.key ?? c.id).join(", ") || "(none)"}.`);
+    return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.map((c2) => c2.key ?? c2.id).join(", ") || "(none)"}.`);
   }
   const stored = await ctx.http.request({ path: `/api/card-definitions/${card.id}` });
   if (!stored.ok)
@@ -26801,18 +27119,18 @@ ${built.problems.map((p) => `  ${p}`).join("\n")}`, { validation: { ok: false, p
       built.payload.parentCardId = null;
     else {
       const ref2 = String(change.parentCardKey).trim();
-      const here = cards.find((c) => norm2(c.key) === norm2(ref2)) ?? cards.find((c) => norm2(c.name) === norm2(ref2));
+      const here = cards.find((c2) => norm2(c2.key) === norm2(ref2)) ?? cards.find((c2) => norm2(c2.name) === norm2(ref2));
       let parentId = here?.id ?? null;
       if (!parentId) {
         const quoted = ref2.replace(/["\\]/g, "");
         const globals = await ctx.http.request({ path: "/api/card-definitions", query: { q: `scope = global and (key = "${quoted}" or name = "${quoted}")` } });
         if (!globals.ok)
           return failFromResponse(globals, `looking for a global card "${ref2}"`);
-        const g = (Array.isArray(globals.body) ? globals.body : []).find((c) => norm2(c.key) === norm2(ref2) || norm2(c.name) === norm2(ref2));
+        const g = (Array.isArray(globals.body) ? globals.body : []).find((c2) => norm2(c2.key) === norm2(ref2) || norm2(c2.name) === norm2(ref2));
         parentId = g ? String(g._id) : null;
       }
       if (!parentId)
-        return fail(`parentCardKey "${ref2}" names no card in "${target.name}" and no global card. Cards here: ${cards.map((c) => c.key ?? c.id).join(", ") || "(none)"}. Nothing was sent to keepr.`);
+        return fail(`parentCardKey "${ref2}" names no card in "${target.name}" and no global card. Cards here: ${cards.map((c2) => c2.key ?? c2.id).join(", ") || "(none)"}. Nothing was sent to keepr.`);
       if (parentId === card.id)
         return fail("A card cannot be its own parent. Nothing was sent to keepr.");
       built.payload.parentCardId = parentId;
@@ -26913,15 +27231,22 @@ var applyCardTool = {
   },
   handler: async (args, ctx) => {
     const token = String(args.proposal_token ?? "");
-    const taken = ctx.proposals.take(token);
+    const taken = ctx.proposals.take(token, ["create", "change"]);
+    if (!taken.ok && taken.reason === "wrong_kind") {
+      return fail(`That token is not a card proposal: it goes to ${APPLIED_BY[taken.kind]}. Nothing was changed and the token is still good.`);
+    }
     if (!taken.ok) {
+      if (taken.reason === "expired" && taken.kind !== "create" && taken.kind !== "change")
+        return fail(`That token has expired (they last 30 minutes); it was for ${APPLIED_BY[taken.kind]}. Start that again.`);
       return fail(taken.reason === "expired" ? "That proposal has expired (they last 30 minutes). Call keepr_propose_card again, show the user the fresh summary, and apply that one." : "No such proposal. A token can be used once, and only in the session that made it. Call keepr_propose_card first.");
     }
     const proposal = taken.proposal;
     const what = proposal.kind === "change" ? "changed" : "created";
     if (String(args.confirm_collection_name ?? "").trim() !== proposal.collectionName) {
-      return fail(`confirm_collection_name does not match. The proposal was for "${proposal.collectionName}"; you sent "${args.confirm_collection_name ?? ""}". Nothing was ${what}. The proposal token has been spent \u2014 call keepr_propose_card again.`);
+      return fail(`confirm_collection_name does not match. The proposal was for "${cleanText(proposal.collectionName, 200)}"; you sent "${cleanText(String(args.confirm_collection_name ?? ""), 200)}". Nothing was ${what}. The proposal token has been spent \u2014 call keepr_propose_card again.`);
     }
+    if (proposal.kind === "setup" || proposal.kind === "bulk")
+      return fail("That token is not a card proposal.");
     if (proposal.kind === "change")
       return applyChange(proposal, args, ctx);
     if (proposal.blueprint)
@@ -26934,7 +27259,7 @@ var applyCardTool = {
       else if (card.parent?.kind === "proposal") {
         const made = created[card.parent.index];
         if (!made?.id) {
-          return fail(`Card "${card.name}" was to inherit from "${card.parent.name}", which was not created first. Nothing more was sent. ${created.length ? `Already created: ${created.map((c) => c.name).join(", ")}.` : ""}`);
+          return fail(`Card "${card.name}" was to inherit from "${card.parent.name}", which was not created first. Nothing more was sent. ${created.length ? `Already created: ${created.map((c2) => c2.name).join(", ")}.` : ""}`);
         }
         parent = { id: made.id, name: made.name };
       }
@@ -26961,7 +27286,7 @@ var applyCardTool = {
           return fail(ctx.cardsRefusal());
         const partial2 = created.length ? `
 
-${created.length} card${created.length === 1 ? "" : "s"} WAS already created before this failed: ${created.map((c) => c.name).join(", ")}. Do not re-propose those.` : "";
+${created.length} card${created.length === 1 ? "" : "s"} WAS already created before this failed: ${created.map((c2) => c2.name).join(", ")}. Do not re-propose those.` : "";
         return failFromResponse(res, `creating card "${card.name}"${partial2}`);
       }
       const stored = storedCardOf(res.body);
@@ -26976,30 +27301,30 @@ ${created.length} card${created.length === 1 ? "" : "s"} WAS already created bef
       });
     }
     const lines = [`CREATED ${created.length} card${created.length === 1 ? "" : "s"} in "${proposal.collectionName}".`, ""];
-    for (const c of created) {
-      lines.push(`  ${c.name}  key: ${c.key ?? "(none reported)"}  ${c.id || "(no id reported)"}${c.parent && c.parentStored ? `  \u2014 inherits from "${c.parent.name}"` : ""}`);
+    for (const c2 of created) {
+      lines.push(`  ${c2.name}  key: ${c2.key ?? "(none reported)"}  ${c2.id || "(no id reported)"}${c2.parent && c2.parentStored ? `  \u2014 inherits from "${c2.parent.name}"` : ""}`);
     }
-    const renamed = created.filter((c) => c.requestedKey && c.key && c.key !== c.requestedKey);
+    const renamed = created.filter((c2) => c2.requestedKey && c2.key && c2.key !== c2.requestedKey);
     if (renamed.length) {
-      lines.push("", ...renamed.map((c) => `KEY CHANGED: "${c.name}" was asked for key "${c.requestedKey}"; keepr stored "${c.key}" (it slugifies and de-duplicates keys). Write rows with "${c.key}".`));
+      lines.push("", ...renamed.map((c2) => `KEY CHANGED: "${c2.name}" was asked for key "${c2.requestedKey}"; keepr stored "${c2.key}" (it slugifies and de-duplicates keys). Write rows with "${c2.key}".`));
     }
-    const orphaned = created.filter((c) => !c.parentStored);
+    const orphaned = created.filter((c2) => !c2.parentStored);
     if (orphaned.length) {
-      lines.push("", ...orphaned.map((c) => `WARNING: "${c.name}" was created, but keepr did not store its parent "${c.parent?.name}". Tell the user; check the card in the web app.`));
+      lines.push("", ...orphaned.map((c2) => `WARNING: "${c2.name}" was created, but keepr did not store its parent "${c2.parent?.name}". Tell the user; check the card in the web app.`));
     }
     lines.push("", "Use the keys above when writing rows.");
     lines.push("", "NEXT: call keepr_schema to see the card as stored, then keepr_ingest with dry_run: true.");
     return ok(lines.join("\n"), {
       kind: "create",
-      created: created.map((c) => ({
-        key: c.key,
-        id: c.id,
-        name: c.name,
-        requestedKey: c.requestedKey,
-        parentCardId: c.parent && c.parentStored ? c.parent.id : null
+      created: created.map((c2) => ({
+        key: c2.key,
+        id: c2.id,
+        name: c2.name,
+        requestedKey: c2.requestedKey,
+        parentCardId: c2.parent && c2.parentStored ? c2.parent.id : null
       })),
       collectionId: proposal.collectionId,
-      ...orphaned.length ? { warnings: orphaned.map((c) => `${c.name}: parent not stored`) } : {}
+      ...orphaned.length ? { warnings: orphaned.map((c2) => `${c2.name}: parent not stored`) } : {}
     });
   }
 };
@@ -27029,19 +27354,19 @@ async function applyBlueprint(proposal, ctx) {
   }
   const out = res.body ?? {};
   const cards = out.cards ?? [];
-  const lines = [`CREATED ${cards.length} card${cards.length === 1 ? "" : "s"} in "${proposal.collectionName}".`, ""];
-  for (const c of cards)
-    lines.push(`  ${c.name}  key: ${c.key}  ${c.id}`);
+  const lines = [`CREATED ${cards.length} card${cards.length === 1 ? "" : "s"} in "${cleanText(proposal.collectionName, 200)}".`, ""];
+  for (const c2 of cards)
+    lines.push(`  ${c2.name}  key: ${c2.key}  ${c2.id}`);
   if (out.elementSets?.length)
     lines.push("", `ELEMENT SETS: ${out.elementSets.map((s) => `${s.name} (${s.key})`).join(", ")}`);
   if (out.filters?.length)
     lines.push("", `FILTERS: ${out.filters.map((f) => `"${f.name}"`).join(", ")}`);
   if (out.layouts?.length)
-    lines.push("", `LAYOUTS: ${out.layouts.map((l) => `${l.kind} for ${cards.find((c) => c.id === l.cardId)?.name ?? l.cardId}`).join(", ")}`);
+    lines.push("", `LAYOUTS: ${out.layouts.map((l) => `${l.kind} for ${cards.find((c2) => c2.id === l.cardId)?.name ?? l.cardId}`).join(", ")}`);
   if (out.members?.length)
     lines.push("", `ADDED TO THE COLLECTION: ${out.members.map((m) => `${m.name} (${m.key}), a global card`).join(", ")}`);
   if (out.tags?.length)
-    lines.push("", `TAGS: ${out.tags.map((t) => `"${t.name}"`).join(", ")}`);
+    lines.push("", `TAGS: ${out.tags.map((t3) => `"${t3.name}"`).join(", ")}`);
   if (out.rules?.length) {
     lines.push("", "APPLIED BY A RULE, PAUSED \u2014 nothing is tagged until the user resumes each in keepr (Settings \u2192 Tags):");
     for (const r of out.rules) {
@@ -27053,7 +27378,7 @@ async function applyBlueprint(proposal, ctx) {
   lines.push("", "NEXT: call keepr_schema to see the cards as stored, then keepr_ingest with dry_run: true.");
   return ok(lines.join("\n"), {
     kind: "create",
-    created: cards.map((c) => ({ key: c.key ?? null, id: c.id ?? "", name: c.name ?? "", localId: c.localId ?? null })),
+    created: cards.map((c2) => ({ key: c2.key ?? null, id: c2.id ?? "", name: c2.name ?? "", localId: c2.localId ?? null })),
     elementSets: out.elementSets ?? [],
     filters: out.filters ?? [],
     layouts: out.layouts ?? [],
@@ -27106,10 +27431,596 @@ async function applyChange(proposal, args, ctx) {
   });
 }
 
+// dist/src/tools/setup.js
+var t2 = (v, max = 200) => cleanText(v === null || v === void 0 ? "" : String(v), max);
+var WHERE_RULES = "in keepr, in the collection's Settings \u2192 Automations";
+var WHERE_NOTIFICATIONS = "in keepr, in the collection's Settings \u2192 Notifications";
+var whereFor = (kind) => kind === "notification" ? WHERE_NOTIFICATIONS : WHERE_RULES;
+function stable(value) {
+  if (Array.isArray(value))
+    return `[${value.map(stable).join(",")}]`;
+  if (value && typeof value === "object") {
+    const o = value;
+    return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stable(o[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value === void 0 ? null : value);
+}
+function changesOf(before, after) {
+  if (!before || !after)
+    return [];
+  const keys = [.../* @__PURE__ */ new Set([...Object.keys(before), ...Object.keys(after)])].filter((k) => stable(before[k]) !== stable(after[k])).sort();
+  return keys.map((k) => {
+    const b = before[k];
+    const a = after[k];
+    const scalar = (v) => v === void 0 || v === null || ["string", "number", "boolean"].includes(typeof v);
+    return scalar(b) && scalar(a) ? `${k}: ${t2(b ?? "(none)", 4e3)} \u2192 ${t2(a ?? "(none)", 4e3)}` : k;
+  });
+}
+function drawTile(body) {
+  const rows = body && typeof body === "object" && Array.isArray(body.rows) ? body.rows : [];
+  if (!rows.length)
+    return ["      (no rows)"];
+  return rows.map((row) => {
+    const cells = Array.isArray(row) ? row : [];
+    return `      | ${cells.map((c2) => {
+      const cell = c2 ?? {};
+      return `${t2(cell.element ?? cell.system ?? "?", 60)} (${Number(cell.span) || 1})`;
+    }).join(" | ")} |`;
+  });
+}
+function drawForm(body) {
+  const groups = body && typeof body === "object" && Array.isArray(body.groups) ? body.groups : [];
+  if (!groups.length)
+    return ["      (no groups)"];
+  return groups.map((g) => {
+    const group = g ?? {};
+    return `      [${t2(group.title ?? "Untitled", 80)}]${group.collapsed ? " (collapsed)" : ""}: ${(group.elements ?? []).map((e) => t2(e, 60)).join(", ") || "(empty)"}`;
+  });
+}
+function drawTable(body) {
+  const cols = body && typeof body === "object" && Array.isArray(body.columns) ? body.columns : [];
+  return [`      columns: ${cols.map((c2) => {
+    const col = c2 ?? {};
+    return t2(col.element ?? col.system ?? "?", 60);
+  }).join(", ") || "(none)"}`];
+}
+function drawPage(body) {
+  const b = body ?? {};
+  const blocks = Array.isArray(b.blocks) ? b.blocks.length : 0;
+  return [`      ${b.subject === "query" ? "a page of the records a query selects" : "one record per page"}${b.page?.size ? `, ${t2(b.page.size, 20)}` : ""}, ${blocks} block${blocks === 1 ? "" : "s"}`];
+}
+var changeWord = (s) => s.change === "changed" ? "CHANGES" : s.change === "unchanged" ? "unchanged" : "adds";
+function ruleLines(step) {
+  const lines = [];
+  const reasons = (step.arrives?.reasons ?? []).map((r) => t2(r.message ?? r.code, 120)).filter(Boolean);
+  const state = step.state === "paused" ? `PAUSED \u2014 waits for the person to turn it on${step.willPause ? " (this change pauses a rule that is running now)" : ""}${reasons.length ? `: ${reasons.join(" ")}` : ""}` : "ON \u2014 runs as soon as it is applied";
+  const label = step.kind === "notification" ? `NOTIFICATION "${t2(step.name)}" (key ${t2(step.key, 80)})` : `RULE "${t2(step.name)}"${step.ruleKind && step.ruleKind !== "rule" ? ` (${t2(step.ruleKind, 40)})` : ""}`;
+  lines.push(`  ${changeWord(step)} ${label} \u2014 ${step.change === "unchanged" ? step.state === "paused" ? "paused" : "on" : state}`);
+  const p = step.preview;
+  if (p && p.preview === null)
+    lines.push(`    ${t2(p.note ?? "checked when the setup is applied", 300)}`);
+  else if (p) {
+    if (p.summary)
+      lines.push(`    ${t2(p.summary, 400)}`);
+    for (const a of p.actions ?? []) {
+      const bits = [];
+      if (typeof a.matches === "number")
+        bits.push(`${a.matches} record${a.matches === 1 ? "" : "s"} match today`);
+      else if (a.matches === null || a.reason)
+        bits.push(t2(a.message ?? `not counted (${a.reason ?? "unknown"})`, 200));
+      if (a.rendered === false && a.message && !bits.length)
+        bits.push(t2(a.message, 200));
+      if (typeof a.recipientCount === "number")
+        bits.push(`reaches ${a.recipientCount} ${a.recipientCount === 1 ? "person" : "people"}`);
+      if (a.title)
+        bits.push(`says "${t2(a.title, 120)}"`);
+      if (bits.length)
+        lines.push(`    ${t2(a.type ?? "action", 40)}: ${bits.join("; ")}`);
+    }
+    const g = p.generate?.sources;
+    if (g && typeof g.matches === "number")
+      lines.push(`    makes work for ${g.matches}${g.truncated ? ` of ${g.total}` : ""} record${g.matches === 1 ? "" : "s"} a run`);
+    else if (g && g.matches === null)
+      lines.push(`    its records: ${t2(g.message ?? "not counted", 200)}`);
+    const next = (p.nextRuns ?? []).map((r) => t2(r.local, 40)).filter(Boolean);
+    if (next.length)
+      lines.push(`    next runs: ${next.join(", ")}`);
+    for (const w of p.warnings ?? [])
+      if (w.message)
+        lines.push(`    warning: ${t2(w.message, 300)}`);
+  }
+  if (step.change === "changed") {
+    const changes = changesOf(step.before, step.after);
+    if (changes.length)
+      lines.push(`    changes: ${changes.join("; ")}`);
+  }
+  return lines;
+}
+function describeSetup(body, setup, collectionName) {
+  const steps = body.steps ?? [];
+  const coll = setup.collection ?? {};
+  const layoutsSent = coll.cardLayouts ?? [];
+  const filtersSent = coll.savedFilters ?? [];
+  const cardNames = new Map(steps.filter((s) => s.kind === "card" && s.localId).map((s) => [s.localId, s.name ?? s.localId]));
+  const boardNames = new Map(steps.filter((s) => s.kind === "dashboard" && s.localId).map((s) => [s.localId, s.name ?? s.localId]));
+  const refText = (ref) => {
+    if (!ref)
+      return "every card";
+    if (typeof ref === "string")
+      return `"${t2(ref, 80)}"`;
+    if (ref.ref)
+      return `the new card "${t2(cardNames.get(ref.ref) ?? ref.ref, 80)}"`;
+    if (ref.key)
+      return `"${t2(ref.key, 80)}"`;
+    if (ref.globalKey)
+      return `the global card "${t2(ref.globalKey, 80)}"`;
+    return "?";
+  };
+  const lines = [`Collection: "${t2(collectionName)}"`, ...(body.summary ?? []).map((s) => `keepr: ${t2(s, 600)}`)];
+  const of = (kind) => steps.filter((s) => s.kind === kind);
+  const KNOWN = /* @__PURE__ */ new Set(["member", "elementSet", "card", "tag", "filter", "layout", "quickAdd", "automation", "notification", "tagRule", "chart", "dashboard", "overview"]);
+  for (const s of of("member"))
+    lines.push("", `ADDS the global card "${t2(s.name)}" (${t2(s.key, 80)}) to the collection`);
+  for (const s of of("elementSet"))
+    lines.push("", `adds ELEMENT SET "${t2(s.name)}" (key ${t2(s.key, 80)})`);
+  for (const s of of("card"))
+    lines.push("", `adds CARD "${t2(s.name)}" (key ${t2(s.key, 80)})${s.parent ? `, inheriting from ${refText(s.parent)}` : ""}`);
+  for (const s of of("tag"))
+    lines.push("", `adds TAG "${t2(s.name)}"`);
+  const filters = of("filter");
+  if (filters.length) {
+    lines.push("", "FILTERS (for everyone):");
+    filters.forEach((s, i) => {
+      if (s.change === "changed") {
+        const was = s.before?.name;
+        lines.push(`  CHANGES "${t2(s.name)}"${was && was !== s.name ? ` (was "${t2(was)}")` : ""}`);
+        const changes = changesOf(s.before, s.after);
+        if (changes.length)
+          lines.push(`    ${changes.join("; ")}`);
+      } else {
+        const q = s.after?.query ?? filtersSent[i]?.query;
+        lines.push(`  ${changeWord(s)} "${t2(s.name)}"${q ? ` \u2014 ${t2(q, 300)}` : ""}`);
+      }
+    });
+  }
+  const layouts = of("layout");
+  if (layouts.length) {
+    lines.push("", "LAYOUTS:");
+    layouts.forEach((s, i) => {
+      const sentBody = s.after?.body ?? layoutsSent[i]?.body;
+      const oldName = s.change === "changed" ? s.before?.name : void 0;
+      lines.push(`  ${changeWord(s)} the ${t2(s.layoutKind, 20)}${s.name ? ` "${t2(s.name)}"` : ""}${oldName && oldName !== s.name ? ` (was "${t2(oldName)}")` : ""} of ${refText(s.card)}${s.tier ? ` (${t2(s.tier, 20)} tier)` : ""}`);
+      if (s.change === "unchanged")
+        return;
+      if (s.layoutKind === "tile")
+        lines.push(...drawTile(sentBody));
+      else if (s.layoutKind === "form")
+        lines.push(...drawForm(sentBody));
+      else if (s.layoutKind === "table")
+        lines.push(...drawTable(sentBody));
+      else if (s.layoutKind === "page")
+        lines.push(...drawPage(sentBody));
+    });
+  }
+  const quick = of("quickAdd");
+  if (quick.length) {
+    lines.push("", "QUICK ADDS (for everyone):");
+    for (const s of quick) {
+      lines.push(`  ${changeWord(s)} "${t2(s.name)}" on ${refText(s.card)}`);
+      if (s.change === "changed") {
+        const changes = changesOf(s.before, s.after);
+        if (changes.length)
+          lines.push(`    changes: ${changes.join("; ")}`);
+        if (s.before?.defaultForDuplicate && !s.after?.defaultForDuplicate) {
+          lines.push("    it STOPS being the default for Duplicate");
+        }
+      }
+    }
+  }
+  const rules = [...of("automation"), ...of("notification")];
+  if (rules.length) {
+    lines.push("", "RULES AND NOTIFICATIONS:");
+    for (const s of rules)
+      lines.push(...ruleLines(s));
+  }
+  const tagRules = of("tagRule");
+  if (tagRules.length)
+    lines.push("", `APPLIED BY A RULE (arrives PAUSED): ${tagRules.map((s) => `"${t2(s.name)}" on ${refText(s.card)}${s.strict ? ", only the rule applies it" : ""}`).join("; ")}`);
+  const charts = of("chart");
+  if (charts.length)
+    lines.push("", `CHARTS (pinned for everyone): ${charts.map((s) => `"${t2(s.name)}"`).join(", ")}`);
+  const boards = of("dashboard");
+  if (boards.length)
+    lines.push("", `DASHBOARDS: ${boards.map((s) => `"${t2(s.name)}"`).join(", ")}`);
+  for (const s of of("overview"))
+    lines.push("", `the collection's Overview shows dashboard "${t2(boardNames.get(s.dashboard ?? "") ?? s.dashboard)}"`);
+  for (const s of steps.filter((x) => !KNOWN.has(x.kind)))
+    lines.push("", `also: ${t2(s.kind, 40)}${s.name ? ` "${t2(s.name)}"` : ""}${s.change ? ` (${t2(s.change, 20)})` : ""}`);
+  return lines;
+}
+function needsWrite(setup) {
+  const c2 = setup.collection ?? {};
+  return ["savedFilters", "quickAddTemplates", "tags", "automations", "notifications", "charts", "dashboards"].some((k) => Array.isArray(c2[k]) && c2[k].length > 0) || Boolean(c2.overview);
+}
+function asSent(setup) {
+  const copy = structuredClone(setup);
+  const c2 = copy.collection;
+  if (c2 && typeof c2 === "object") {
+    for (const k of ["automations", "notifications"])
+      if (Array.isArray(c2[k]) && !c2[k].length)
+        delete c2[k];
+  }
+  return copy;
+}
+var carriesRules = (setup) => {
+  const c2 = setup.collection ?? {};
+  return ["automations", "notifications"].some((k) => c2[k] !== void 0);
+};
+function fingerprint(steps) {
+  return stable(steps.map((s) => ({ kind: s.kind, name: s.name ?? null, key: s.key ?? null, change: s.change ?? null, id: s.id ?? null, state: s.state ?? null, willPause: !!s.willPause, layoutKind: s.layoutKind ?? null, tier: s.tier ?? null, before: s.before ?? null, after: s.after ?? null })));
+}
+var proposeSetupTool = {
+  name: "keepr_propose_setup",
+  description: "Work out what setting up a collection would do \u2014 new cards, and layouts (tile, table, page, form), saved filters, quick adds, element sets, tags, automations, notifications, charts and dashboards, on new cards or the cards the collection already has \u2014 WITHOUT changing anything. keepr previews it: each entry is added, changed (with what changes) or unchanged; a tile is drawn as its rows; each rule says what it does, how many records it would touch today, who it would notify, and whether it runs at once or arrives PAUSED. A rule that notifies, changes other records, creates records or runs on a schedule always arrives paused, and only the person can turn it on, in keepr. Returns a summary to show the user and a token; applying is keepr_apply_setup. Read keepr_schema first. For one card's elements, keepr_propose_card is simpler.",
+  inputSchema: {
+    collection: external_exports.string().describe("Collection id or name."),
+    setup: external_exports.record(external_exports.unknown()).describe('keepr\'s setup document (the contract\'s `setups`; docs: "Card blueprints"). {cards?: [{localId, name, key?, elements:[{name, label, dataType, options?}], parentRef?, elementSetRefs?}], elementSets?, collection?: {savedFilters?: [{id?, name, query}], cardLayouts?: [{kind: "tile"|"table"|"page"|"form", cardRef, scope?, name? (page), body}], quickAddTemplates?: [{id?, name, cardRef, defaults}], tags?, automations?: [{id?, name, kind?: "rule"|"threshold"|"expected-item"|"generate-items", trigger, actions, check?, generate?, watch?}], notifications?: [{id?, key, name, severity, category, trigger, audience, channels, template}], charts?, dashboards?, overview?}}. Name a card as {ref: localId} (one this setup makes), {key: "task"} (one the collection has) or {globalKey}; a rule\'s card_id takes the same. A tile body is {rows: [[{element, span}]]}; a form body {groups: [{id, title, elements: [names]}]}. An entry with the id or exact name of one that exists CHANGES it. Never send `enabled`.')
+  },
+  handler: async (args, ctx) => {
+    const raw = args.setup;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+      return fail("Give `setup`: keepr's setup document. Nothing was sent to keepr.");
+    const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+    if (!resolved.ok)
+      return fail(resolved.message);
+    const target = resolved.row;
+    const setup = asSent(raw);
+    if (!ctx.contract.hasEndpoint("blueprintPreview") || !ctx.contract.takesSetup) {
+      return fail("This keepr deployment cannot apply a setup to an existing collection yet (it predates setups). Propose new cards with keepr_propose_card, or ask the user to set this up in the web app. Nothing was sent to keepr.");
+    }
+    if (carriesRules(setup) && !ctx.contract.takesSetupRules) {
+      return fail("This keepr deployment cannot set up automations or notifications from here yet. Propose the setup without `automations` and `notifications`, and ask the user to add the rules in the web app (Settings \u2192 Automations). Nothing was sent to keepr.");
+    }
+    if (ctx.hasScope("cards") === false)
+      return fail(ctx.cardsRefusal());
+    if (needsWrite(setup) && ctx.hasScope("write") === false)
+      return fail(ctx.readOnlyRefusal());
+    const res = await ctx.http.request({
+      method: "POST",
+      path: `/api/collections/${target.id}/blueprints/preview`,
+      body: { blueprint: setup }
+    });
+    ctx.noteWriteAttempt(res, "cards");
+    if (!res.ok) {
+      if (res.status === 403 && ctx.hasScope("cards") === false)
+        return fail(ctx.cardsRefusal());
+      return failFromResponse(res, `checking the setup against "${t2(target.name)}"`);
+    }
+    const body = res.body ?? {};
+    const problems = body.problems ?? [];
+    if (body.wouldApply === false || problems.length) {
+      return fail(`keepr would refuse this setup \u2014 nothing was changed. Fix what each line names and propose again:
+
+${problems.map((p) => `  ${t2(p.path, 120)}: ${t2(p.message, 400)}${p.code ? ` (${t2(p.code, 60)})` : ""}`).join("\n")}`, { validation: { ok: false, problems } });
+    }
+    const steps = body.steps ?? [];
+    const paused = steps.filter((s) => (s.kind === "automation" || s.kind === "notification") && s.change !== "unchanged" && s.state === "paused");
+    const proposal = ctx.proposals.setup({ collectionId: target.id, collectionName: target.name, setup, paused: paused.map((s) => s.name ?? ""), fingerprint: fingerprint(steps) });
+    const lines = [
+      "PROPOSED \u2014 nothing has changed. Show this to the user and wait for a yes.",
+      "",
+      ...describeSetup(body, setup, target.name)
+    ];
+    const pausedRules = paused.filter((s) => s.kind === "automation").length;
+    const pausedNotes = paused.length - pausedRules;
+    if (pausedRules)
+      lines.push("", `${pausedRules} rule${pausedRules === 1 ? "" : "s"} will arrive PAUSED. Only the user can turn ${pausedRules === 1 ? "it" : "them"} on, ${WHERE_RULES}.`);
+    if (pausedNotes)
+      lines.push("", `${pausedNotes} notification${pausedNotes === 1 ? "" : "s"} will arrive PAUSED. Only the user can turn ${pausedNotes === 1 ? "it" : "them"} on, ${WHERE_NOTIFICATIONS}.`);
+    lines.push("", `NEXT: if the user agrees, call keepr_apply_setup with proposal_token "${proposal.token}" and confirm_collection_name "${t2(target.name)}". The token is good for 30 minutes and can be used once. The apply is all or nothing.`);
+    return ok(lines.join("\n"), {
+      kind: "setup",
+      proposalToken: proposal.token,
+      collectionId: target.id,
+      collectionName: target.name,
+      steps,
+      paused: paused.map((s) => s.name ?? ""),
+      summary: body.summary ?? [],
+      validation: { ok: true, problems: [] }
+    });
+  }
+};
+var applySetupTool = {
+  name: "keepr_apply_setup",
+  description: "Apply exactly what a keepr_propose_setup proposal previewed, all or nothing. It changes the collection's setup and cannot be undone from here. Only call it after showing the user the proposal and getting an explicit yes. If keepr's plan has changed since (something was added or renamed meanwhile), nothing is applied and you propose again. Rules and notifications that arrive paused stay paused: tell the user where to turn them on.",
+  writes: true,
+  scope: "cards",
+  inputSchema: {
+    proposal_token: external_exports.string().describe("The token from keepr_propose_setup."),
+    confirm_collection_name: external_exports.string().describe("The collection name exactly as the proposal reported it. A mismatch refuses.")
+  },
+  handler: async (args, ctx) => {
+    const taken = ctx.proposals.take(String(args.proposal_token ?? ""), ["setup"]);
+    if (!taken.ok && taken.reason === "wrong_kind") {
+      return fail(`That token is not a setup proposal: it goes to ${APPLIED_BY[taken.kind]}. Nothing was changed and the token is still good.`);
+    }
+    if (!taken.ok) {
+      if (taken.reason === "expired") {
+        return fail(taken.kind !== "setup" ? `That token has expired (they last 30 minutes); it was for ${APPLIED_BY[taken.kind]}. Start that again.` : "That proposal has expired (they last 30 minutes). Call keepr_propose_setup again, show the user the fresh summary, and apply that one.");
+      }
+      return fail("No such proposal. A token can be used once, and only in the session that made it. Call keepr_propose_setup first.");
+    }
+    const proposal = taken.proposal;
+    if (t2(args.confirm_collection_name) !== t2(proposal.collectionName)) {
+      return fail(`confirm_collection_name does not match. The proposal was for "${t2(proposal.collectionName)}"; you sent "${t2(args.confirm_collection_name)}". Nothing was changed. The token has been spent \u2014 call keepr_propose_setup again.`);
+    }
+    const again = await ctx.http.request({
+      method: "POST",
+      path: `/api/collections/${proposal.collectionId}/blueprints/preview`,
+      body: { blueprint: proposal.setup }
+    });
+    if (!again.ok)
+      return failFromResponse(again, `checking the setup again before applying it to "${t2(proposal.collectionName)}"`);
+    const now = again.body ?? {};
+    if (now.wouldApply === false || (now.problems ?? []).length || fingerprint(now.steps ?? []) !== proposal.fingerprint) {
+      return fail(`NOTHING WAS CHANGED: "${t2(proposal.collectionName)}" has changed since the user saw this proposal, so keepr's plan is no longer what they approved${(now.problems ?? []).length ? ` (${(now.problems ?? []).map((p) => t2(p.message, 200)).join("; ")})` : ""}. Call keepr_propose_setup again and show them the fresh summary. The token has been spent.`);
+    }
+    const res = await ctx.http.request({
+      method: "POST",
+      path: `/api/collections/${proposal.collectionId}/blueprints/apply`,
+      body: { blueprint: proposal.setup }
+    });
+    ctx.noteWriteAttempt(res, "cards");
+    if (!res.ok) {
+      if (res.status === 403 && ctx.hasScope("cards") === false)
+        return fail(ctx.cardsRefusal());
+      const failed = failFromResponse(res, `applying the setup to "${t2(proposal.collectionName)}"`);
+      const raw = res.body ?? {};
+      const extra = [];
+      if (raw.problems?.length)
+        extra.push("", ...raw.problems.map((p) => `  ${t2(p.path, 120)}: ${t2(p.message, 400)}${p.code ? ` (${t2(p.code, 60)})` : ""}`));
+      if (raw.blueprint) {
+        extra.push("", raw.blueprint.compensated ? "Nothing was kept: keepr undid everything this apply had made or changed. Fix what the message names and propose again." : `WARNING: keepr could not undo everything this apply did: ${(raw.blueprint.remaining ?? []).map((r) => `${t2(r.kind, 40)} ${t2(r.name ?? r.id, 120)}`).join(", ")}. Tell the user; they can check the collection in the web app.`);
+      } else if (res.status >= 500) {
+        extra.push("", "keepr failed part-way and did not say whether it undid what it had done. Tell the user to check the collection in the web app before trying again.");
+      }
+      const first = failed.content[0];
+      if (first && first.type === "text")
+        first.text += extra.join("\n");
+      failed.structuredContent = { ...failed.structuredContent ?? {}, ...raw.blueprint ? { blueprint: raw.blueprint } : {}, ...raw.problems ? { problems: raw.problems } : {} };
+      return failed;
+    }
+    const out = res.body ?? {};
+    const verb = (c2) => c2 ? "changed" : "added";
+    const lines = [`APPLIED the setup to "${t2(proposal.collectionName)}".`];
+    if (out.members?.length)
+      lines.push("", `ADDED TO THE COLLECTION: ${out.members.map((m) => `${t2(m.name)} (${t2(m.key, 80)}), a global card`).join(", ")}`);
+    if (out.elementSets?.length)
+      lines.push("", `ELEMENT SETS: ${out.elementSets.map((s) => `${t2(s.name)} (key ${t2(s.key, 80)})`).join(", ")}`);
+    if (out.cards?.length)
+      lines.push("", `CARDS: ${out.cards.map((c2) => `${t2(c2.name)} (key ${t2(c2.key, 80)})`).join(", ")}`);
+    if (out.filters?.length)
+      lines.push("", `FILTERS: ${out.filters.map((f) => `"${t2(f.name)}" ${verb(f.changed)}`).join(", ")}`);
+    if (out.layouts?.length)
+      lines.push("", `LAYOUTS: ${out.layouts.map((l) => `${t2(l.kind, 20)} ${verb(l.changed)}`).join(", ")}`);
+    if (out.quickAdds?.length)
+      lines.push("", `QUICK ADDS: ${out.quickAdds.map((q) => `"${t2(q.name)}" ${verb(q.changed)}`).join(", ")}`);
+    if (out.tags?.length)
+      lines.push("", `TAGS: ${out.tags.map((x) => `"${t2(x.name)}"`).join(", ")}`);
+    if (out.charts?.length)
+      lines.push("", `CHARTS: ${out.charts.map((c2) => `"${t2(c2.name)}"`).join(", ")}`);
+    if (out.dashboards?.length)
+      lines.push("", `DASHBOARDS: ${out.dashboards.map((d) => `"${t2(d.name)}"`).join(", ")}`);
+    if (out.overview?.dashboardId)
+      lines.push("", `OVERVIEW: the collection's Overview now shows ${t2((out.dashboards ?? []).find((d) => d.id === out.overview?.dashboardId)?.name ?? "the dashboard")} for everyone.`);
+    const rules = [...(out.automations ?? []).map((a) => ({ ...a, what: "rule" })), ...(out.notifications ?? []).map((n) => ({ ...n, what: "notification" }))];
+    const running = rules.filter((r) => r.enabled);
+    const waiting = rules.filter((r) => !r.enabled);
+    if (running.length)
+      lines.push("", `RUNNING NOW: ${running.map((r) => `${r.what} "${t2(r.name)}" ${verb(r.changed)}`).join(", ")}`);
+    for (const [what, where] of [["rule", WHERE_RULES], ["notification", WHERE_NOTIFICATIONS]]) {
+      const mine = waiting.filter((r) => r.what === what);
+      if (!mine.length)
+        continue;
+      lines.push("", `PAUSED \u2014 waiting for the user to turn ${mine.length === 1 ? "it" : "them"} on, ${where}:`);
+      for (const r of mine)
+        lines.push(`  ${what} "${t2(r.name)}" ${verb(r.changed)}`);
+    }
+    if (waiting.length)
+      lines.push("", "You cannot turn these on: keepr refuses a key or an assistant that tries. Tell the user, in those words, where they are.");
+    if ((out.rules ?? []).length)
+      lines.push("", `TAG RULES, PAUSED \u2014 resumed in keepr (Settings \u2192 Tags): ${(out.rules ?? []).map((r) => `"${t2(r.name)}"`).join(", ")}`);
+    return ok(lines.join("\n"), { kind: "setup", collectionId: proposal.collectionId, ...out, waiting: waiting.map((r) => ({ kind: r.what, id: r.id, name: r.name, where: whereFor(r.what) })) });
+  }
+};
+
+// dist/src/tools/automations.js
+var c = (v, max = 200) => cleanText(v === null || v === void 0 ? "" : String(v), max);
+var HEX246 = /^[0-9a-fA-F]{24}$/;
+var ONLY_YOU = "Only you can turn this on, in keepr \u203A Settings \u203A Automations.";
+var ONLY_YOU_NOTIFICATION = "Only you can turn this on, in keepr \u203A Settings \u203A Notifications.";
+var onlyYouFor = (kind) => kind === "notification" ? ONLY_YOU_NOTIFICATION : ONLY_YOU;
+var madeBy = (via) => !via ? "" : via.kind === "api-key" ? ", made by an API key" : via.kind === "oauth" ? ", made by an assistant" : ", made by a person";
+var stateOf = (r) => r.awaitingPerson ? "WAITING FOR YOU (paused until you turn it on)" : r.enabled === false ? "PAUSED" : "ON";
+var managedWord = (r) => r.kind === "tag-rule" ? " \u2014 an automatic tag's rule (change it on the tag)" : r.managed ? " \u2014 a calculated value (change it on its card)" : "";
+var automationsTool = {
+  name: "keepr_automations",
+  description: "A collection's automations (rules) and notifications. `list`: what each does, whether it is ON, PAUSED or WAITING for the person to turn it on, and who made it. `runs`: a rule's recent runs. `pause`: switch a rule or notification off. `turn_on`: switch one on \u2014 a rule that notifies, changes other records or runs on a schedule only the person can turn on, in keepr; if keepr says so, tell them exactly that. To make or change rules, use keepr_propose_setup. Needs manage on the collection.",
+  inputSchema: {
+    collection: external_exports.string().describe("Collection id or name."),
+    action: external_exports.enum(["list", "runs", "pause", "turn_on"]),
+    rule: external_exports.string().optional().describe("For runs / pause / turn_on: the rule or notification, by id, exact name, or a notification's key."),
+    limit: external_exports.number().int().min(1).max(50).optional().describe("For runs: how many, newest first (default 10).")
+  },
+  handler: async (args, ctx) => {
+    const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+    if (!resolved.ok)
+      return fail(resolved.message);
+    const target = resolved.row;
+    if (ctx.contract.isLive && !ctx.contract.hasEndpoint("automationList")) {
+      return fail("This keepr deployment does not show its automations to assistants yet. The person can see them in keepr, in the collection's Settings \u2192 Automations.");
+    }
+    const action = String(args.action ?? "list");
+    if ((action === "pause" || action === "turn_on") && ctx.hasScope("write") === false)
+      return fail(ctx.readOnlyRefusal());
+    const rulesRes = await ctx.http.request({ path: `/api/collections/${target.id}/automations`, query: { describe: "1" } });
+    if (!rulesRes.ok)
+      return failFromResponse(rulesRes, `reading the automations of "${c(target.name)}"`);
+    const rules = (rulesRes.body ?? []).filter((r) => !r.inherited);
+    const defsRes = await ctx.http.request({ path: "/api/notification-defs", query: { collection_id: target.id } });
+    const defs = defsRes.ok ? (defsRes.body?.defs ?? []).filter((d) => d.scope === "collection" || d.scope === "user" && d.collection_id) : [];
+    if (action === "list") {
+      const lines = [`AUTOMATIONS in "${c(target.name)}" (${rules.length} rule${rules.length === 1 ? "" : "s"}, ${defs.length} notification${defs.length === 1 ? "" : "s"}):`];
+      for (const r of rules) {
+        lines.push(`  "${c(r.name)}" [${c(r.kind ?? "rule", 40)}] \u2014 ${stateOf(r)}${madeBy(r.createdVia)}${managedWord(r)}  id ${r._id}`);
+        if (r.summary)
+          lines.push(`    ${c(r.summary, 400)}`);
+      }
+      for (const d of defs)
+        lines.push(`  notification "${c(d.name)}" (key ${c(d.key, 80)}${d.scope === "user" ? ", yours only" : ""}) \u2014 ${stateOf(d)}${madeBy(d.createdVia)}  id ${d._id}`);
+      const waitingRules = rules.filter((r) => r.awaitingPerson).length;
+      const waitingNotes = defs.filter((d) => d.awaitingPerson).length;
+      if (waitingRules)
+        lines.push("", `${waitingRules} rule${waitingRules === 1 ? " is" : "s are"} WAITING for the person. ${ONLY_YOU}`);
+      if (waitingNotes)
+        lines.push("", `${waitingNotes} notification${waitingNotes === 1 ? " is" : "s are"} WAITING for the person. ${ONLY_YOU_NOTIFICATION}`);
+      if (!rules.length && !defs.length)
+        lines.push("  (none)");
+      return ok(lines.join("\n"), {
+        rules: rules.map((r) => ({ id: r._id, name: r.name, kind: r.kind, enabled: r.enabled !== false, awaitingPerson: !!r.awaitingPerson, managed: !!r.managed, summary: r.summary ?? null, createdVia: r.createdVia ?? null })),
+        notifications: defs.map((d) => ({ id: d._id, key: d.key, name: d.name, scope: d.scope, enabled: d.enabled !== false, awaitingPerson: !!d.awaitingPerson, createdVia: d.createdVia ?? null }))
+      });
+    }
+    const ref = String(args.rule ?? "").trim();
+    if (!ref)
+      return fail(`Name the rule for ${action}: its id, exact name, or a notification's key. keepr_automations action "list" shows them.`);
+    const low = ref.toLowerCase();
+    const ruleHits = HEX246.test(ref) ? rules.filter((r) => r._id === ref) : rules.filter((r) => (r.name ?? "").toLowerCase() === low);
+    const defHits = HEX246.test(ref) ? defs.filter((d) => d._id === ref) : defs.filter((d) => (d.name ?? "").toLowerCase() === low || (d.key ?? "").toLowerCase() === low);
+    const hits = [...ruleHits.map((r) => ({ kind: "rule", r })), ...defHits.map((d) => ({ kind: "notification", r: d }))];
+    if (!hits.length)
+      return fail(`No rule or notification "${c(ref)}" in "${c(target.name)}". keepr_automations action "list" shows them.`);
+    if (hits.length > 1)
+      return fail(`"${c(ref)}" names ${hits.length}: ${hits.map((h) => `${h.kind} "${c(h.r.name)}" (id ${h.r._id})`).join(", ")}. Name one by id.`);
+    const hit = hits[0];
+    if (action === "runs") {
+      if (hit.kind !== "rule")
+        return fail("A notification has no run history here; its deliveries are in keepr, in the collection's Settings \u2192 Automations.");
+      const limit = typeof args.limit === "number" ? args.limit : 10;
+      const res2 = await ctx.http.request({ path: `/api/collections/${target.id}/automations/${hit.r._id}/runs`, query: { limit } });
+      if (!res2.ok)
+        return failFromResponse(res2, `reading the runs of "${c(hit.r.name)}"`);
+      const runs = (res2.body ?? []).map((run) => ({
+        startedAt: run.startedAt ?? null,
+        completedAt: run.completedAt ?? null,
+        status: run.status ?? null,
+        error: run.error ?? null,
+        actions: Array.isArray(run.results) ? run.results.length : 0
+      }));
+      const lines = [`RUNS of "${c(hit.r.name)}", newest first (${runs.length}):`];
+      for (const run of runs)
+        lines.push(`  ${run.startedAt ?? "?"}  ${c(run.status ?? "", 40)}${run.actions ? `  ${run.actions} action${run.actions === 1 ? "" : "s"}` : ""}${run.error ? `  error: ${c(run.error, 300)}` : ""}`);
+      if (!runs.length)
+        lines.push("  (it has not run yet)");
+      return ok(lines.join("\n"), { rule: hit.r._id, runs });
+    }
+    const on = action === "turn_on";
+    const res = hit.kind === "rule" ? await ctx.http.request({ method: "POST", path: `/api/collections/${target.id}/automations/${hit.r._id}/${on ? "enable" : "disable"}`, body: {} }) : await ctx.http.request({ method: "PATCH", path: `/api/notification-defs/${hit.r._id}`, body: { enabled: on } });
+    ctx.noteWriteAttempt(res);
+    if (!res.ok) {
+      const reason = res.body?.reason;
+      if (res.status === 403 && reason === "person_must_enable") {
+        return fail(`${onlyYouFor(hit.kind)} ("${c(hit.r.name)}" ${hit.kind === "notification" ? "reaches people" : "notifies people, changes other records or runs on a schedule"}, so keepr turns it on only for the person, signed in.)`, { code: "session_required", reason });
+      }
+      if (errorCode(res.body) === "email_unverified")
+        return failFromResponse(res, `${on ? "turning on" : "pausing"} "${c(hit.r.name)}"`);
+      if (res.status === 403 && ctx.keyScope === "read")
+        return fail(ctx.readOnlyRefusal());
+      return failFromResponse(res, `${on ? "turning on" : "pausing"} "${c(hit.r.name)}"`);
+    }
+    const after = res.body ?? {};
+    return ok(`${on ? "TURNED ON" : "PAUSED"} ${hit.kind} "${c(hit.r.name)}" in "${c(target.name)}". It is now ${stateOf(after)}.`, { id: hit.r._id, kind: hit.kind, enabled: after.enabled !== false });
+  }
+};
+var who = (a) => {
+  if (!a)
+    return "someone";
+  const person = c(a.user?.fullName ?? a.user?.name ?? "someone", 80);
+  if (a.type === "api-key")
+    return `${person}'s API key${a.keyName ? ` "${c(a.keyName, 80)}"` : ""}`;
+  if (a.type === "oauth")
+    return `${person}'s assistant`;
+  if (a.type === "automation")
+    return `the rule${a.automationName ? ` "${c(a.automationName, 120)}"` : ""}`;
+  if (a.type === "maintenance" || a.type === "system" || a.type === "scheduler")
+    return "keepr";
+  if (a.type === "public")
+    return "someone through a share link";
+  return person;
+};
+var historyTool = {
+  name: "keepr_history",
+  description: "Who changed what, and when: an item's, a card's or a collection's history in keepr, newest first. Give exactly one of `item` (an id), `card` (a key or id, with `collection`) or `collection` alone. Reads only: undoing a change is the person's, in keepr.",
+  inputSchema: {
+    item: external_exports.string().optional().describe("An item id."),
+    card: external_exports.string().optional().describe("A card, by key or id (a key needs `collection`)."),
+    collection: external_exports.string().optional().describe("A collection by id or name: its whole history, or where `card` is looked up."),
+    limit: external_exports.number().int().min(1).max(100).optional().describe("How many entries, newest first (default 20).")
+  },
+  handler: async (args, ctx) => {
+    const limit = typeof args.limit === "number" ? args.limit : 20;
+    const item = typeof args.item === "string" ? args.item.trim() : "";
+    const cardRef = typeof args.card === "string" ? args.card.trim() : "";
+    let path;
+    let what;
+    if (item) {
+      if (cardRef)
+        return fail("Give `item` or `card`, not both.");
+      if (!HEX246.test(item))
+        return fail(`"${c(item, 40)}" is not an item id. An id is 24 hex characters.`);
+      path = `/api/items/${item}/history`;
+      what = `item ${item}`;
+    } else if (cardRef) {
+      let cardId = HEX246.test(cardRef) ? cardRef : "";
+      if (!cardId) {
+        const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+        if (!resolved.ok)
+          return fail(`A card named by key needs \`collection\`. ${resolved.message}`);
+        const schema = await ctx.http.request({ path: `/api/collections/${resolved.row.id}/schema` });
+        if (!schema.ok)
+          return failFromResponse(schema, `reading the cards of "${c(resolved.row.name)}"`);
+        const hit = (schema.body?.cards ?? []).find((c2) => (c2.key ?? "").toLowerCase() === cardRef.toLowerCase() || (c2.name ?? "").toLowerCase() === cardRef.toLowerCase());
+        if (!hit)
+          return fail(`No card "${c(cardRef, 80)}" in "${c(resolved.row.name)}".`);
+        cardId = hit.id;
+      }
+      path = `/api/card-definitions/${cardId}/history`;
+      what = `card ${c(cardRef, 80)}`;
+    } else {
+      const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+      if (!resolved.ok)
+        return fail(`Give \`item\`, \`card\` or \`collection\`. ${resolved.message}`);
+      path = `/api/collections/${resolved.row.id}/history`;
+      what = `"${c(resolved.row.name)}"`;
+    }
+    const res = await ctx.http.request({ path, query: { limit } });
+    if (!res.ok)
+      return failFromResponse(res, `reading the history of ${what}`);
+    const rows = res.body ?? [];
+    const total = res.totalCount ?? rows.length;
+    const lines = [`HISTORY of ${what}, newest first (${rows.length} of ${total}):`];
+    for (const r of rows)
+      lines.push(`  ${r.at ?? "?"}  ${r.summary ? c(r.summary, 400) : `${who(r.actor)}: ${c(r.action, 80)}`}`);
+    if (!rows.length)
+      lines.push("  (nothing recorded)");
+    return ok(lines.join("\n"), { total, entries: rows.map((r) => ({ id: r._id, at: r.at, action: r.action, actor: r.actor?.type ?? null, summary: r.summary ?? null })) });
+  }
+};
+
 // dist/src/tools/attach.js
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
-var HEX245 = /^[0-9a-fA-F]{24}$/;
+var HEX247 = /^[0-9a-fA-F]{24}$/;
 var MAX_INLINE_BYTES = 1e6;
 var REFUSED_EXT = /* @__PURE__ */ new Set([
   "exe",
@@ -27156,7 +28067,7 @@ var attachFileTool = {
       }
       itemId = found.itemId;
     }
-    if (!HEX245.test(itemId)) {
+    if (!HEX247.test(itemId)) {
       return fail("No item given. Pass item_id (24 hex characters), or external_id from a committed keepr_ingest run in this session.");
     }
     const files = args.files ?? [];
@@ -27166,7 +28077,7 @@ var attachFileTool = {
     if (!item.ok)
       return failFromResponse(item, `reading item ${itemId}`);
     const collectionId = String(item.body?.collection_id ?? "");
-    const collection = ctx.knownCollections().find((c) => c.id === collectionId);
+    const collection = ctx.knownCollections().find((c2) => c2.id === collectionId);
     if (collection?.allowAttachments === false) {
       return fail(`Attachments are turned off for "${collection.name}". Every upload here is refused until someone enables them in the collection's settings in the web app.`);
     }
@@ -27180,7 +28091,7 @@ var attachFileTool = {
       const schema = await ctx.http.request({ path: `/api/collections/${collectionId}/schema` });
       if (!schema.ok)
         return failFromResponse(schema, "reading the elements of this item's collection");
-      const card = (schema.body?.cards ?? []).find((c) => c.id === String(item.body?.card_id ?? ""));
+      const card = (schema.body?.cards ?? []).find((c2) => c2.id === String(item.body?.card_id ?? ""));
       const fileElements = (card?.elements ?? []).filter((e) => e.dataType === "file");
       target = fileElements.find((e) => e.name === elementName) ?? null;
       if (!target) {
@@ -27443,6 +28354,147 @@ var disconnectTool = {
   }
 };
 
+// dist/src/tools/uploadRequests.js
+var HEX248 = /^[0-9a-fA-F]{24}$/;
+var MAX_ENTRIES = 1e3;
+var WAITING_SHOWN = 25;
+var entrySchema = external_exports.object({
+  item_id: external_exports.string().optional().describe("The item, 24 hex characters."),
+  external_id: external_exports.string().optional().describe("Instead of item_id: the external_id of a row keepr_ingest wrote in this session."),
+  run_id: external_exports.string().optional().describe("With external_id: the ingest runId it came from, when several runs used the same id."),
+  name: external_exports.string().optional().describe(`The file's exact name, e.g. "R-1042.pdf" (case does not matter). Not with pattern.`),
+  pattern: external_exports.string().optional().describe(`A pattern for the file's name with * and ?, e.g. "IMG_*.HEIC". Not with name. Leave both out to accept any file for this item.`),
+  element: external_exports.string().optional().describe("A file element on the item's card to put the file in (from keepr_schema). Leave out for the item's other attachments.")
+});
+var requestUploadTool = {
+  name: "keepr_request_upload",
+  description: "Ask the person to upload files to keepr themselves, through a link \u2014 for files you cannot send: photos and documents on their computer or phone that you cannot read, or anything bigger than keepr_attach_file can carry (about a megabyte). List the items waiting for files (and, when you know them, each file's name or a name pattern); keepr returns a link. Give the person the link: it opens keepr with those items waiting, they drop the files or pick photos, and keepr matches each file to its item. Then use keepr_upload_status to see what has arrived. Never ask the person to paste files into the chat for this.",
+  inputSchema: {
+    collection: external_exports.string().describe("The collection the items are in: its name or id."),
+    entries: external_exports.array(entrySchema).min(1).max(MAX_ENTRIES).describe("One entry per file expected. An item may appear more than once (two photos of one item)."),
+    note: external_exports.string().max(280).optional().describe('A short line for the person, shown on the page, e.g. "Receipts for the March expenses".'),
+    expires_in_days: external_exports.number().int().min(1).max(30).optional().describe("How long the link works. Default 7.")
+  },
+  writes: true,
+  handler: async (args, ctx) => {
+    if (!ctx.contract.hasEndpoint("uploadRequestCreate")) {
+      return fail(`This keepr (${ctx.config.baseUrl}) does not take upload requests yet: its contract names no uploadRequestCreate endpoint. Tell the person to attach the files in the web app, on each item or from the list's Attach files\u2026.`, { ok: false, status: 400, code: "upload_requests_not_offered" });
+    }
+    const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+    if (!resolved.ok)
+      return fail(resolved.message);
+    const row = resolved.row;
+    if (row.allowAttachments === false) {
+      return fail(`"${row.name}" does not take files: attachments are off in this collection. A manager can turn them on in the collection's settings. Nothing was sent.`, { ok: false, status: 403, code: "attachments_disabled" });
+    }
+    const specs = Array.isArray(args.entries) ? args.entries : [];
+    const entries = [];
+    const unresolved = [];
+    specs.forEach((spec, index) => {
+      let itemId = typeof spec.item_id === "string" ? spec.item_id.trim() : "";
+      if (itemId && spec.external_id) {
+        unresolved.push(`#${index}: give item_id or external_id, not both`);
+        return;
+      }
+      if (!itemId && spec.external_id) {
+        const found = ctx.ledger.resolveExternalId(spec.external_id, spec.run_id ?? null);
+        if (found)
+          itemId = found.itemId;
+        else
+          unresolved.push(`#${index}: no item in this session was written with external_id "${spec.external_id}"`);
+      }
+      if (!itemId && !spec.external_id)
+        unresolved.push(`#${index}: give item_id or external_id`);
+      if (itemId && !HEX248.test(itemId))
+        unresolved.push(`#${index}: "${itemId}" is not a 24-hex item id`);
+      const entry = { item_id: itemId };
+      if (spec.name)
+        entry.name = spec.name;
+      if (spec.pattern)
+        entry.pattern = spec.pattern;
+      if (spec.element)
+        entry.element = spec.element;
+      entries.push(entry);
+    });
+    if (unresolved.length) {
+      return fail(`Nothing was sent: ${unresolved.length} entr${unresolved.length === 1 ? "y" : "ies"} name no item.
+${unresolved.slice(0, 20).join("\n")}
+
+Use keepr_get_items to find the items and pass their item_id.`, { ok: false, status: 400, code: "invalid_entries" });
+    }
+    const body = { collection_id: row.id, entries };
+    if (typeof args.note === "string" && args.note.trim())
+      body.note = args.note.trim();
+    if (typeof args.expires_in_days === "number")
+      body.expiresInDays = args.expires_in_days;
+    const res = await ctx.http.request({ method: "POST", path: "/api/upload-requests", body });
+    ctx.noteWriteAttempt(res);
+    if (!res.ok) {
+      const b = res.body || {};
+      if (res.status === 400 && b.code === "entries_refused" && Array.isArray(b.failures)) {
+        const lines = b.failures.slice(0, 30).map((f) => `#${f.index} (${f.itemId ?? "no item"}): ${f.message}`);
+        const more = (b.failureCount ?? b.failures.length) - lines.length;
+        return fail(`keepr refused ${b.failureCount ?? b.failures.length} of ${entries.length} entries, so no request was made \u2014 it is all or nothing:
+${lines.join("\n")}${more > 0 ? `
+\u2026and ${more} more.` : ""}
+
+Leave those entries out (or fix them) and call keepr_request_upload again.`, { ok: false, status: 400, code: "entries_refused", failures: b.failures });
+      }
+      return failFromResponse(res, "creating the upload request");
+    }
+    const created = res.body;
+    return ok(`Upload request made for ${created.entries} file${created.entries === 1 ? "" : "s"} in "${row.name}".
+
+Give the person this link: ${created.url}
+
+It opens keepr with those items waiting for files. They drop the files there (on a phone they pick photos), keepr matches each file to its item, and they press Attach. Only they can use it, signed in to keepr, until ${created.expiresAt.slice(0, 10)}.
+
+To see what has arrived, call keepr_upload_status with request_id ${created._id}.`, { ok: true, request_id: created._id, url: created.url, expiresAt: created.expiresAt, entries: created.entries });
+  }
+};
+var uploadStatusTool = {
+  name: "keepr_upload_status",
+  description: "What has arrived for an upload request made with keepr_request_upload: how many of the expected files are attached, and which items are still waiting. Use it when the person says they have uploaded, or to remind them what is left.",
+  inputSchema: {
+    request_id: external_exports.string().describe("The request_id keepr_request_upload returned.")
+  },
+  handler: async (args, ctx) => {
+    if (!ctx.contract.hasEndpoint("uploadRequestRead")) {
+      return fail(`This keepr (${ctx.config.baseUrl}) does not take upload requests yet.`, { ok: false, status: 400, code: "upload_requests_not_offered" });
+    }
+    const id = String(args.request_id ?? "").trim();
+    if (!HEX248.test(id))
+      return fail("request_id is the 24-hex id keepr_request_upload returned.", { ok: false, status: 400, code: "invalid_request_id" });
+    const res = await ctx.http.request({ path: `/api/upload-requests/${id}` });
+    if (res.status === 404) {
+      return fail("No upload request with that id for this account: it has expired, was withdrawn, or was made by someone else. Make a new one with keepr_request_upload if files are still missing.", { ok: false, status: 404, code: "not_found" });
+    }
+    if (!res.ok)
+      return failFromResponse(res, "reading the upload request");
+    const b = res.body;
+    const waiting = b.entries.filter((e) => !e.fulfilled);
+    const label = (e) => `${e.title || e.itemId}${e.gone ? " (the item no longer exists)" : ""}${e.name ? ` \u2014 ${e.name}` : e.pattern ? ` \u2014 ${e.pattern}` : ""}`;
+    const lines = [
+      `${b.counts.fulfilled} of ${b.counts.entries} file${b.counts.entries === 1 ? "" : "s"} attached.`
+    ];
+    if (waiting.length) {
+      lines.push("", `Still waiting (${waiting.length}):`, ...waiting.slice(0, WAITING_SHOWN).map((e) => `- ${label(e)}`));
+      if (waiting.length > WAITING_SHOWN)
+        lines.push(`- \u2026and ${waiting.length - WAITING_SHOWN} more`);
+      lines.push("", `The link still works until ${b.expiresAt.slice(0, 10)}: ${b.url}`);
+    } else {
+      lines.push("", "Everything asked for has arrived.");
+    }
+    return ok(lines.join("\n"), {
+      ok: true,
+      counts: b.counts,
+      waiting: waiting.map((e) => ({ itemId: e.itemId, title: e.title, name: e.name, pattern: e.pattern, element: e.element })),
+      url: b.url,
+      expiresAt: b.expiresAt
+    });
+  }
+};
+
 // dist/src/tools/index.js
 var ALL_TOOLS = [
   collectionsTool,
@@ -27450,11 +28502,17 @@ var ALL_TOOLS = [
   getItemsTool,
   searchTool,
   chartTool,
+  historyTool,
   ingestTool,
   updateItemTool,
   proposeCardTool,
   applyCardTool,
-  attachFileTool
+  proposeSetupTool,
+  applySetupTool,
+  automationsTool,
+  attachFileTool,
+  requestUploadTool,
+  uploadStatusTool
 ];
 var LOCAL_TOOLS = [
   ...ALL_TOOLS,

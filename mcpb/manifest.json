@@ -2,7 +2,7 @@
 	"manifest_version": "0.3",
 	"name": "keepr",
 	"display_name": "keepr",
-	"version": "0.8.0",
+	"version": "0.9.0",
 	"description": "Read, add and change the records you keep in keepr, from Claude.",
 	"long_description": "Connects Claude to your keepr account through its API. Read your collections, add records from a sentence, a list or a spreadsheet, and propose changes to cards — each write is dry-run first and shown to you before anything is committed. No key needed: the first time, Claude opens keepr in your browser and you click Allow. Or paste an API key from keepr (My Profile → API keys); it is stored by Claude, never in a file.",
 	"author": {
@@ -71,12 +71,16 @@
 			"description": "Ask keepr for totals, counts and averages over a collection's items, answered as a table."
 		},
 		{
+			"name": "keepr_history",
+			"description": "Who changed what, and when: an item's, a card's or a collection's history in keepr, newest first."
+		},
+		{
 			"name": "keepr_ingest",
 			"description": "Write records into a keepr collection."
 		},
 		{
 			"name": "keepr_update_item",
-			"description": "Change specific elements on ONE existing keepr item, or add and take off its tags, addressed by its id."
+			"description": "Change specific elements on an existing keepr item, or add and take off its tags, addressed by its id."
 		},
 		{
 			"name": "keepr_propose_card",
@@ -87,8 +91,28 @@
 			"description": "Actually create or change the card(s) from a keepr_propose_card proposal."
 		},
 		{
+			"name": "keepr_propose_setup",
+			"description": "Work out what setting up a collection would do — new cards, and layouts (tile, table, page, form), saved filters, quick adds, element sets, tags, automations, notifications, charts and dashboards, on new cards or the cards the collection already has — WITHOUT changing anything."
+		},
+		{
+			"name": "keepr_apply_setup",
+			"description": "Apply exactly what a keepr_propose_setup proposal previewed, all or nothing."
+		},
+		{
+			"name": "keepr_automations",
+			"description": "A collection's automations (rules) and notifications."
+		},
+		{
 			"name": "keepr_attach_file",
 			"description": "Attach files to a keepr item."
+		},
+		{
+			"name": "keepr_request_upload",
+			"description": "Ask the person to upload files to keepr themselves, through a link — for files you cannot send: photos and documents on their computer or phone that you cannot read, or anything bigger than keepr_attach_file can carry (about a megabyte)."
+		},
+		{
+			"name": "keepr_upload_status",
+			"description": "What has arrived for an upload request made with keepr_request_upload: how many of the expected files are attached, and which items are still waiting."
 		},
 		{
 			"name": "keepr_connect",

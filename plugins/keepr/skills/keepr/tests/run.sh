@@ -4,3 +4,4 @@
 set -e
 cd "$(dirname "$0")/.."
 python3 tests/test_keepr.py "$@"
+python3 tests/test_review.py "$@"

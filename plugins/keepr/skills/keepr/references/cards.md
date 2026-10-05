@@ -219,3 +219,8 @@ card's own page in the web app (the card's menu there), and leave it to them.
 
 Renaming a card's **key**, moving a card between collections, and changing
 its scope are likewise web-app operations.
+
+A card's **layouts** (tile, table, form, page) and the **rules** that run on its
+records are not here either — they are a setup: `references/setup.md`. Rules are
+no longer out of reach for an assistant; a rule that notifies, changes other
+records or runs on a schedule arrives paused, and the person turns it on.
