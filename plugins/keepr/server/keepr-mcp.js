@@ -2232,8 +2232,8 @@ var require_resolve = __commonJS({
       }
       return count;
     }
-    function getFullPath(resolver, id = "", normalize2) {
-      if (normalize2 !== false)
+    function getFullPath(resolver, id = "", normalize) {
+      if (normalize !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -2981,7 +2981,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3008,7 +3008,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3828,7 +3828,7 @@ var require_fast_uri = __commonJS({
       }
       return decodedScheme;
     }
-    function normalize2(uri, options) {
+    function normalize(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         normalizeString(uri, options);
@@ -3838,7 +3838,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -4206,8 +4206,8 @@ var require_fast_uri = __commonJS({
     }
     var fastUri = {
       SCHEMES,
-      normalize: normalize2,
-      resolve,
+      normalize,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -13322,12 +13322,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve();
+        resolve2();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve2);
       }
     });
   }
@@ -13652,7 +13652,7 @@ var KeeprHttp = class {
     const target = new URL(url);
     const send = target.protocol === "https:" ? httpsRequest : httpRequest;
     const timeoutMs = (opts.timeoutMs ?? TIMEOUT_MS) + Math.ceil(file.length / (20 * 1024 * 1024)) * 6e4;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const req = send(target, {
         method,
         headers: { ...this.baseHeaders(opts, auth), "Content-Type": contentType, "Content-Length": String(length) }
@@ -13664,7 +13664,7 @@ var KeeprHttp = class {
           const status = res.statusCode ?? 0;
           try {
             const body = status === 204 || status === 205 || status === 304 ? null : Buffer.concat(chunks);
-            resolve(new Response(body, { status, headers: flatHeaders(res.headers) }));
+            resolve2(new Response(body, { status, headers: flatHeaders(res.headers) }));
           } catch (err) {
             reject(new Error(`keepr answered an unreadable response (HTTP ${status}): ${err.message}`));
           }
@@ -14262,8 +14262,8 @@ var LocalConnection = class {
     const { verifier, challenge } = pkcePair();
     const state = base64url2(randomBytes2(24));
     let finish;
-    const done = new Promise((resolve) => {
-      finish = resolve;
+    const done = new Promise((resolve2) => {
+      finish = resolve2;
     });
     let flow = null;
     const server = createServer((req, res) => {
@@ -14273,9 +14273,9 @@ var LocalConnection = class {
       }
       void this.onCallback(flow, req, res);
     });
-    await new Promise((resolve, reject) => {
+    await new Promise((resolve2, reject) => {
       server.once("error", reject);
-      server.listen(0, "127.0.0.1", () => resolve());
+      server.listen(0, "127.0.0.1", () => resolve2());
     });
     const addr = server.address();
     const port = addr && typeof addr === "object" ? addr.port : 0;
@@ -14481,8 +14481,8 @@ function holderIsDead(holder) {
 }
 async function within(promise, ms) {
   let timer;
-  const timeout = new Promise((resolve) => {
-    timer = setTimeout(() => resolve(null), Math.max(0, ms));
+  const timeout = new Promise((resolve2) => {
+    timer = setTimeout(() => resolve2(null), Math.max(0, ms));
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -21718,7 +21718,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -21735,7 +21735,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -21813,7 +21813,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -22074,12 +22074,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -23170,7 +23170,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -23871,7 +23871,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.11.0";
+var SERVER_VERSION = "0.11.1";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -28423,8 +28423,7 @@ var historyTool = {
 // dist/src/tools/attach.js
 import { createReadStream } from "node:fs";
 import { stat as stat2, realpath } from "node:fs/promises";
-import { basename as basename2, normalize, sep } from "node:path";
-import { homedir as homedir2 } from "node:os";
+import { basename as basename2 } from "node:path";
 
 // dist/src/fileRules.js
 var REFUSED_EXT = /* @__PURE__ */ new Set([
@@ -28524,9 +28523,10 @@ function storedName(name) {
 }
 
 // dist/src/agentPaths.js
+import { statSync as statSync2 } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join as join3, basename } from "node:path";
+import { homedir, userInfo } from "node:os";
+import { join as join3, basename, dirname as dirname2, resolve } from "node:path";
 function sessionsRoot(env = process.env) {
   return env.KEEPR_COWORK_SESSIONS || join3(homedir(), "Library", "Application Support", "Claude", "local-agent-mode-sessions");
 }
@@ -28621,6 +28621,116 @@ function pathProblem(given, code) {
     return `Nothing at ${given} on the computer this server runs on. This server reads that computer's own disk \u2014 from Claude Code that is the person's computer; from a sandbox (Cowork, claude.ai, a container) it is not the sandbox's files. Give the path as it is on this computer. ${link}`;
   }
   return `Could not read ${given}: ${code ?? "unknown error"}. ${link}`;
+}
+var HIDDEN = { kind: "hidden" };
+var TOO_LONG = { kind: "too-long" };
+function identity(p) {
+  try {
+    const st = statSync2(p, { bigint: true });
+    return { dev: st.dev, ino: st.ino };
+  } catch {
+    return null;
+  }
+}
+var same = (a, b) => !!a && !!b && a.dev === b.dev && a.ino === b.ino;
+function homes() {
+  const out = [homedir()];
+  try {
+    const passwd = userInfo().homedir;
+    if (passwd && passwd !== out[0])
+      out.push(passwd);
+  } catch {
+  }
+  return out;
+}
+function credentialStores(platform = process.platform, env = process.env) {
+  const stores = [];
+  if (platform === "win32") {
+    if (env.APPDATA?.trim())
+      stores.push({ label: "%APPDATA%", path: env.APPDATA.trim() });
+    if (env.LOCALAPPDATA?.trim())
+      stores.push({ label: "%LOCALAPPDATA%", path: env.LOCALAPPDATA.trim() });
+  }
+  for (const home of homes()) {
+    if (platform === "darwin")
+      stores.push({ label: "~/Library", path: join3(home, "Library") });
+    if (platform === "linux")
+      stores.push({ label: "~/snap", path: join3(home, "snap") });
+    if (platform === "win32") {
+      stores.push({ label: "%APPDATA%", path: join3(home, "AppData", "Roaming") });
+      stores.push({ label: "%LOCALAPPDATA%", path: join3(home, "AppData", "Local") });
+    }
+  }
+  return stores;
+}
+function cloudDrives(platform = process.platform) {
+  if (platform !== "darwin")
+    return [];
+  return homes().flatMap((home) => [join3(home, "Library", "CloudStorage"), join3(home, "Library", "Mobile Documents")]);
+}
+function storeMatcher(platform = process.platform, env = process.env) {
+  const stores = credentialStores(platform, env).map((s) => ({ label: s.label, id: identity(s.path) })).filter((s) => s.id);
+  return (p) => {
+    if (!stores.length)
+      return null;
+    const id = identity(p);
+    return stores.find((s) => same(s.id, id))?.label ?? null;
+  };
+}
+var MAX_PATH_CHARS = 4096;
+function pathLengthProblem(p) {
+  if (p.length <= MAX_PATH_CHARS)
+    return null;
+  return `That path is ${p.length.toLocaleString("en-US")} characters long \u2014 no file or folder on this computer has a path that long (${MAX_PATH_CHARS.toLocaleString("en-US")} at most). Give the path as it is on this computer's disk.`;
+}
+function secretPlace(p, platform = process.platform, env = process.env) {
+  if (p.length > MAX_PATH_CHARS)
+    return TOO_LONG;
+  const name = p.split(/[\\/]/).filter(Boolean).pop() ?? "";
+  if (name.startsWith("."))
+    return HIDDEN;
+  const homeIds = homes().map(identity).filter((h) => !!h);
+  const stores = credentialStores(platform, env).map((s) => ({ label: s.label, id: identity(s.path) })).filter((s) => s.id);
+  const clouds = cloudDrives(platform).map(identity).filter((c2) => !!c2);
+  let cur = resolve(p);
+  let child = "";
+  let inCloud = false;
+  for (; ; ) {
+    const id = identity(cur);
+    if (id) {
+      if (clouds.some((c2) => same(c2, id)))
+        inCloud = true;
+      const store = stores.find((s) => same(s.id, id));
+      if (store && !inCloud)
+        return { kind: "store", label: store.label };
+      if (homeIds.some((h) => same(h, id)) && child.startsWith("."))
+        return HIDDEN;
+    }
+    const up = dirname2(cur);
+    if (up === cur)
+      return null;
+    child = basename(cur);
+    cur = up;
+  }
+}
+function secretRefusal(given, kind, secret, real) {
+  const them = kind === "file" ? "it" : "its files";
+  if (secret.kind === "too-long")
+    return pathLengthProblem(real ?? given) ?? `${given} is too long a path.`;
+  if (secret.kind === "store") {
+    const where = `${secret.label}, where this computer keeps keys, passwords and app settings`;
+    return real ? `${given} leads to ${real}, inside ${where} \u2014 nothing there is attached from here.` : `${given} is inside ${where} \u2014 nothing there is attached from here. If the person wants ${them} attached, they can do it in keepr.`;
+  }
+  if (real)
+    return `${given} leads to a hidden ${kind} (${real}) \u2014 those are never attached from here.`;
+  return `${given} is a hidden ${kind} or inside a hidden folder \u2014 those are never attached from here. If the person wants ${them} attached, they can do it in keepr.`;
+}
+function remotePathProblem(p, platform = process.platform) {
+  if (platform !== "win32")
+    return null;
+  if (!/^[\\/]{2}/.test(p) && !/^\\\?\?\\/.test(p))
+    return null;
+  return `${p} is a network or device path, which this server never opens \u2014 opening one can send the person's Windows sign-in to another computer. Give the path of a file or folder on this computer's own disk.`;
 }
 
 // dist/src/tools/attach.js
@@ -28851,16 +28961,6 @@ function routesFor(names, itemId, collectionId, element, allowPath) {
   calls.push(request);
   return { lines, calls };
 }
-function secretPlace(p) {
-  const name = p.split(/[\\/]/).filter(Boolean).pop() ?? "";
-  if (name.startsWith("."))
-    return true;
-  const home = homedir2();
-  const norm3 = normalize(p);
-  if (!norm3.startsWith(home + sep))
-    return false;
-  return (norm3.slice(home.length + 1).split(sep)[0] ?? "").startsWith(".");
-}
 async function loadBytes(spec, allowPath) {
   if (spec.content_base64) {
     const name = spec.filename || "attachment";
@@ -28888,16 +28988,19 @@ async function loadBytes(spec, allowPath) {
         message: "this connector cannot read files by path \u2014 it runs on keepr's servers, not on the person's computer. A small file you hold: content_base64 with a filename (about a megabyte at most). Anything else: keepr_request_upload gives the person a link to upload it."
       };
     }
-    if (secretPlace(spec.path)) {
-      return { ok: false, filename: name, message: `${spec.path} is a hidden file or inside a hidden folder \u2014 those are never attached from here. If the person wants it attached, they can do it in keepr.` };
-    }
+    const remote = remotePathProblem(spec.path) ?? pathLengthProblem(spec.path);
+    if (remote)
+      return { ok: false, filename: name, message: remote };
+    const secret = secretPlace(spec.path);
+    if (secret)
+      return { ok: false, filename: name, message: secretRefusal(spec.path, "file", secret) };
     const { path } = await resolveAgentPath(spec.path);
     let size;
     try {
       const real = await realpath(path);
-      if (secretPlace(real)) {
-        return { ok: false, filename: name, message: `${spec.path} leads to a hidden file (${real}) \u2014 those are never attached from here.` };
-      }
+      const leadsTo = secretPlace(real);
+      if (leadsTo)
+        return { ok: false, filename: name, message: secretRefusal(spec.path, "file", leadsTo, real) };
       const st = await stat2(path);
       if (!st.isFile())
         return { ok: false, filename: name, message: `${spec.path} is not a file.` };
@@ -29140,7 +29243,7 @@ import { createHash as createHash3, randomBytes as randomBytes5 } from "node:cry
 
 // dist/src/folderMatch.js
 import { readdir as readdir2, stat as stat3, realpath as realpath2 } from "node:fs/promises";
-import { join as join4, relative, sep as sep2, basename as basename3, extname } from "node:path";
+import { join as join4, relative, sep, basename as basename3, extname } from "node:path";
 var MATCH_MODES = ["auto", "folder", "stem", "exact"];
 var COUNTER_SUFFIX = /[\s._-]*(?:\(\s*[0-9]+\s*\)|[0-9]+)$/;
 function stemOf(name) {
@@ -29176,21 +29279,22 @@ function keysFor(rel, mode) {
   return out;
 }
 function inside(root, p) {
-  return p === root || p.startsWith(root.endsWith(sep2) ? root : root + sep2);
+  return p === root || p.startsWith(root.endsWith(sep) ? root : root + sep);
 }
 function fenceProblem(rootReal, real) {
   if (!inside(rootReal, real))
     return `it is a link to ${real}, outside this folder`;
-  if (relative(rootReal, real).split(sep2).some((seg) => seg.startsWith(".")))
+  if (relative(rootReal, real).split(sep).some((seg) => seg.startsWith(".")))
     return `it is a link to a hidden file (${real})`;
   return null;
 }
-async function listFiles(root, limit = 2e4) {
+async function listFiles(root, limit = 2e4, checkedReal) {
   const files = [];
   const skipped = [];
   let truncated = false;
-  const rootReal = await realpath2(root);
-  const relOf = (p) => relative(root, p).split(sep2).join("/");
+  const rootReal = checkedReal ?? await realpath2(root);
+  const relOf = (p) => relative(root, p).split(sep).join("/");
+  const storeAt = storeMatcher();
   async function walk(dir, top) {
     if (truncated)
       return;
@@ -29203,7 +29307,12 @@ async function listFiles(root, limit = 2e4) {
       skipped.push({ rel: `${relOf(dir)}/`, reason: `this folder could not be read (${err.code ?? "error"}) \u2014 its files were left out` });
       return;
     }
-    const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name).sort();
+    const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name).sort().filter((d) => {
+      const store = storeAt(join4(dir, d));
+      if (store)
+        skipped.push({ rel: `${relOf(join4(dir, d))}/`, reason: `${store}, where this computer keeps keys, passwords and app settings \u2014 left out` });
+      return !store;
+    });
     const names = entries.filter((e) => (e.isFile() || e.isSymbolicLink()) && !e.name.startsWith(".")).map((e) => e.name).sort();
     for (const name of names) {
       const path = join4(dir, name);
@@ -29220,6 +29329,11 @@ async function listFiles(root, limit = 2e4) {
       const fenced = fenceProblem(rootReal, real);
       if (fenced) {
         skipped.push({ rel: relOf(path), reason: `${fenced} \u2014 left out` });
+        continue;
+      }
+      const secret = real !== path ? secretPlace(real) : null;
+      if (secret) {
+        skipped.push({ rel: relOf(path), reason: `it is a link to ${real}, ${secret.kind === "store" ? `inside ${secret.label}` : "a hidden place"} \u2014 left out` });
         continue;
       }
       if (files.length >= limit) {
@@ -29264,16 +29378,21 @@ function matchByKeys(files, mode, source) {
   const without = [...source.keys.entries()].filter(([, ids]) => !ids.some((id) => used.has(id))).map(([k]) => k);
   return { pairs, unmatched, itemsWithoutFile: without };
 }
-async function matchByMap(root, map, resolve) {
+async function matchByMap(root, map, resolve2, checkedReal) {
   const pairs = [];
   const unmatched = [];
-  const rootReal = await realpath2(root);
+  const rootReal = checkedReal ?? await realpath2(root);
   for (const [key, value] of Object.entries(map)) {
     const names = Array.isArray(value) ? value : [value];
-    const itemId = resolve(key);
+    const itemId = resolve2(key);
     for (const name of names) {
+      const remote = remotePathProblem(String(name)) ?? pathLengthProblem(String(name));
+      if (remote) {
+        unmatched.push({ file: { path: String(name), rel: String(name), name: basename3(String(name)) }, reason: remote });
+        continue;
+      }
       const path = String(name).startsWith("/") ? String(name) : join4(root, String(name));
-      const rel = relative(root, path).split(sep2).join("/");
+      const rel = relative(root, path).split(sep).join("/");
       const shown = { path, rel, name: basename3(path) };
       if (!itemId) {
         unmatched.push({ file: shown, reason: `no item for "${key}" \u2014 give an item id, or an external_id from a keepr_ingest run in this session` });
@@ -29299,6 +29418,11 @@ async function matchByMap(root, map, resolve) {
       const fenced = fenceProblem(rootReal, real);
       if (fenced) {
         unmatched.push({ file: shown, reason: `${fenced} \u2014 the map names files in the folder` });
+        continue;
+      }
+      const secret = secretPlace(real);
+      if (secret) {
+        unmatched.push({ file: shown, reason: secret.kind === "store" ? `inside ${secret.label}, where this computer keeps keys, passwords and app settings \u2014 nothing there is attached from here` : "a hidden file \u2014 never attached from here" });
         continue;
       }
       pairs.push({ file: { ...shown, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs, ino: st.ino }, itemId, key });
@@ -29559,15 +29683,15 @@ async function sendOne(ctx, job, f, now) {
   if (!present) {
     return settle(f, "failed", `keepr could not say what is already on "${item.info.title}", so it was not sent (it might have gone twice). Run the folder again.`);
   }
-  const same = (present.get(storedName(f.name)) ?? []).filter((p) => p.size === f.size);
+  const same2 = (present.get(storedName(f.name)) ?? []).filter((p) => p.size === f.size);
   const target = item.target;
-  if (same.length && !target)
+  if (same2.length && !target)
     return settle(f, "skipped", "already on the item (same name and size)");
-  if (same.length && target) {
+  if (same2.length && target) {
     const current = idsIn(item.info.elements[target.name]);
-    if (same.some((p) => p.element === target.name && current.includes(p.id)))
+    if (same2.some((p) => p.element === target.name && current.includes(p.id)))
       return settle(f, "skipped", `already in "${target.name}"`);
-    const free = same.find((p) => p.element === null && !item.toBind.includes(p.id));
+    const free = same2.find((p) => p.element === null && !item.toBind.includes(p.id));
     const replaces = !target.allowMultiple && current.length > 0;
     if (free && !replaces && (!target.allowMultiple || reserve(item))) {
       item.toBind.push(free.id);
@@ -29757,11 +29881,22 @@ var attachFolderTool = {
     if (typeof args.dry_run !== "boolean")
       return fail("dry_run is required: true to see the match first, then false to upload.");
     const given = String(args.folder ?? "").trim();
-    const { path: root, mappedFrom } = await resolveAgentPath(given);
+    const remote = remotePathProblem(given) ?? pathLengthProblem(given);
+    if (remote)
+      return fail(remote, { ok: false, code: "folder_refused" });
+    const secret = secretPlace(given);
+    if (secret)
+      return fail(secretRefusal(given, "folder", secret), { ok: false, code: "folder_refused" });
+    const { path: resolved, mappedFrom } = await resolveAgentPath(given);
+    let root;
     try {
-      const st = await stat5(root);
+      const st = await stat5(resolved);
       if (!st.isDirectory())
         return fail(`${given} is a file, not a folder. Give its folder \u2014 or use keepr_attach_file for a single file.`);
+      root = await realpath4(resolved);
+      const leadsTo = secretPlace(root);
+      if (leadsTo)
+        return fail(secretRefusal(given, "folder", leadsTo, root), { ok: false, code: "folder_refused" });
     } catch (err) {
       return fail(pathProblem(given, err.code), { ok: false, code: "folder_unreadable" });
     }
@@ -29783,12 +29918,12 @@ var attachFolderTool = {
     if (args.map && typeof args.map === "object") {
       const runId = typeof args.run_id === "string" ? args.run_id : null;
       const byExt = (k) => [k, k.normalize("NFC"), k.normalize("NFD")].map((v) => ctx.ledger.resolveExternalId(v, runId)?.itemId ?? null).find(Boolean) ?? null;
-      matched = await matchByMap(root, args.map, (k) => HEX249.test(k) ? k : byExt(k));
+      matched = await matchByMap(root, args.map, (k) => HEX249.test(k) ? k : byExt(k), root);
       sourceLabel = "the map";
     } else {
       let walk;
       try {
-        walk = await listFiles(root);
+        walk = await listFiles(root, void 0, root);
       } catch (err) {
         return fail(pathProblem(given, err.code), { ok: false, code: "folder_unreadable" });
       }
@@ -29821,7 +29956,7 @@ Try another match mode, a \`map\` naming the files per item, or match_element wi
       `${going.length} file${going.length === 1 ? "" : "s"} (${mb(bytes)}) \u2192 ${new Set(going.map((f) => f.itemId)).size} item${new Set(going.map((f) => f.itemId)).size === 1 ? "" : "s"}` + (element ? ` \xB7 into "${element}"` : "") + (refused.length ? ` \xB7 ${refused.length} refused` : "") + (matched.unmatched.length ? ` \xB7 ${matched.unmatched.length} unmatched` : "") + (matched.itemsWithoutFile.length ? ` \xB7 ${matched.itemsWithoutFile.length} item${matched.itemsWithoutFile.length === 1 ? "" : "s"} without a file` : "")
     ];
     if (mappedFrom)
-      header.push(`(Read from ${root} \u2014 the computer's copy of ${mappedFrom}.)`);
+      header.push(`(Read from ${resolved} \u2014 the computer's copy of ${mappedFrom}.)`);
     if (truncated)
       header.push("Only the first 20,000 files were read; pick a smaller folder for the rest.");
     if (sourceNote)
@@ -29883,7 +30018,7 @@ ${refused.slice(0, 20).map((f) => `  ${f.file.rel}: ${f.refused}`).join("\n")}`)
       return fail(`The folder or the match changed since the dry run (${going.length} file${going.length === 1 ? "" : "s"} would go now), so nothing was sent. Run the dry run again and show the person the new match.`, { ok: false, code: "match_changed" });
     }
     confirms.delete(token);
-    const job = startJob(ctx, plan, root, { rootReal: await realpath4(root) });
+    const job = startJob(ctx, plan, root, { rootReal: root });
     return ok([
       ...header,
       "",

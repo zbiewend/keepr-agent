@@ -3,6 +3,12 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.9.1 — 2026-10-06
+
+Skill 2.9.1, keepr-mcp 0.11.1. A security fix: update the plugin and the desktop extension.
+
+- **The folder and file tools refuse secret places.** `keepr_attach_folder` no longer reads a hidden folder given as the folder itself (such as `~/.ssh`), and neither `keepr_attach_folder` nor `keepr_attach_file` opens anything under `~/Library` (iCloud Drive and cloud-storage drives such as Dropbox still work), `%APPDATA%` or `%LOCALAPPDATA%`, or `~/snap`. A Windows network path is refused before anything touches it, so your sign-in is never sent to another computer, and so is a path over 4,096 characters. The refusal says which place it was.
+
 ## 2.9.0 — 2026-10-06
 
 Skill 2.9.0, keepr-mcp 0.11.0. Also the first release of 2.8.0 and 2.8.1, below.
