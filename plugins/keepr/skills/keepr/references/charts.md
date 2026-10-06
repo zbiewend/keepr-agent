@@ -101,7 +101,11 @@ each element, each choice in a filter — comes from it.
    previous period, add `"compare": "previous"` to `time` and
    `"show": { "type": "number" }` (one figure) or `{ "type": "line" }` (by a
    date bucket).
-7. A `filter` narrows the items, in the KQL `kql.md` describes.
+7. A `filter` narrows the items, in the KQL `kql.md` describes. keepr stores
+   it with element ids, so the answer may show your `status != lost` as
+   `#k7f3q2xa != lost`, with the element named beneath it (`kql.md`,
+   "Element ids"). An id in a chart's filter must be one of its card's own
+   elements.
 
 ## A worked example
 

@@ -3,6 +3,24 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.9.0 — 2026-10-06
+
+Skill 2.9.0, keepr-mcp 0.11.0. Also the first release of 2.8.0 and 2.8.1, below.
+
+- **Your assistant can read element ids.** keepr now names an element in a filter it stores by its permanent id, written `#k7f3q2xa`, so one card's element can't be confused with another card's element of the same name. `keepr_schema` shows each element's id beside its name. Every stored filter that `keepr_schema`, `keepr_chart`, `keepr_automations` and `keepr_propose_setup` print keeps keepr's own text, with a line beneath naming each id's element and card. The skill explains how to read them and when to write one.
+
+## 2.8.1 — 2026-10-05
+
+Skill 2.8.1, keepr-mcp 0.10.1.
+
+- **A file too big to send inline is no longer a dead end.** `keepr_attach_file` names the way that works for your connector, ready to call: the file's path or `keepr_attach_folder` from the extension and the plugin, or `keepr_request_upload`'s link for you anywhere. It never suggests shrinking the file to fit.
+
+## 2.8.0 — 2026-10-05
+
+Skill 2.8.0, keepr-mcp 0.10.0.
+
+- **Attach a whole folder from your computer in one step.** `keepr_attach_folder` matches each file to its record (from this session's import, a map, or a value the filenames carry, such as a receipt number), shows you the match first, then uploads the originals in the background, streamed from disk, up to 100 MB each. `keepr_attach_status` reports what arrived and what is still missing. Running the same folder again sends only what is new. These two tools are in the desktop extension and the Claude Code plugin, where the assistant can read your files.
+
 ## 2.7.2 — 2026-10-05
 
 Skill 2.7.2, keepr-mcp 0.9.2.

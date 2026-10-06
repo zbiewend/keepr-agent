@@ -205,7 +205,25 @@ equivalent for a change to many items. Items with an external id are better chan
 ## Attachments — files onto the items you just made
 
 Only when the collection has attachments on (`schema` says so; otherwise every
-upload is a 403). One item, one or more files:
+upload is a 403).
+
+**A folder on the person's computer: `keepr_attach_folder`.** It matches the
+files to their items, shows you the match, and then uploads the originals in
+the background, streamed from disk — up to 100 MB a file, nothing through the
+conversation:
+
+```
+keepr_attach_folder  { folder: "/Users/…/photos", dry_run: true }                      # show this to the person → confirm
+keepr_attach_folder  { folder: "/Users/…/photos", dry_run: false, confirm: "…" }       # same arguments → job id
+keepr_attach_status  { job_id: "att-…" }                                   # every minute or so, then once at the end
+```
+
+It matches against this session's `keepr_ingest` external ids by default, or a
+`map`, or `collection` + `match_element` for records that already exist (the
+filenames carry, say, a receipt number). The folder must be one the server can
+read: from Claude Code, a path on the person's computer; in Cowork, a folder
+the person selected for the session. If it cannot read it, it says why — then
+ask the person for the files instead (below). Without MCP:
 
 ```bash
 python3 scripts/keepr.py attach --item <24-hex item id> --file receipt.pdf --file back.jpg
@@ -240,10 +258,17 @@ Files find their record by **external id**, in whichever layout the user has:
 | layout | matches |
 | --- | --- |
 | `photos/molly-blake/front.jpg`, `.../back.jpg` | the subfolder names the record |
+| `receipts/R-1042.pdf` | the whole filename names the record |
 | `photos/molly-blake.jpg`, `molly-blake-2.jpg`, `molly blake (3).jpg` | the filename, trailing counter stripped |
-| anything else | `--map map.json` — `{"molly-blake": ["IMG_4471.jpg", "IMG_4472.jpg"]}` |
+| anything else | `--map map.json` (MCP: `map`) — `{"molly-blake": ["IMG_4471.jpg", "IMG_4472.jpg"]}` |
 
-Force one with `--match folder|stem|exact` when the guess is wrong.
+By default a file in a subfolder belongs to the record that folder names —
+and to nothing else: a folder that names no record leaves its files
+unmatched (`Unit 12/1.jpg` is never unit 1). A file at the top tries its
+whole filename, then its filename without a counter, so `R-1042.pdf` finds
+the record `R-1042`. Force one with `--match folder|stem|exact` (MCP:
+`match`) when the guess is wrong — `exact` reads the filename whatever folder
+it is in.
 
 This is why the external id matters for an import with photos: it is the
 only thing linking a file on disk to a record in keepr. **Choose ids the
@@ -257,8 +282,11 @@ Rules the command already follows, so you don't have to:
   nothing. Show that to the user before uploading.
 - **A file matching no record is never guessed at** — it is reported and the
   command exits non-zero.
-- **Re-running skips what is already there**, comparing filenames on the item,
-  so a re-run after adding three photos uploads three photos.
+- **Re-running skips what is already there** (`keepr_attach_folder`: the same
+  name AND size on the item; `keepr.py`: the same name), so a re-run after
+  adding three photos uploads three photos.
+- **A file that changes or disappears while it runs** fails by name, and the
+  rest still go.
 - Executables and scripts are refused by the platform; images, PDFs and
   documents are fine.
 
@@ -269,7 +297,8 @@ Rules the command already follows, so you don't have to:
 2. Build rows whose `source.externalId` is the thing that also identifies the
    photos — the subject's slug, the file stem, the folder name.
 3. `ingest --dry-run`, fix, `ingest`.
-4. `attach --results … --dir … --dry-run`, check the pairing, then attach.
+4. `keepr_attach_folder` with `dry_run: true` (or `attach --results … --dir …
+   --dry-run`), check the pairing with the person, then run it.
 5. Report: items created, photos attached, and **anything unmatched**, by name.
 
 ### When the files are the person's, not yours

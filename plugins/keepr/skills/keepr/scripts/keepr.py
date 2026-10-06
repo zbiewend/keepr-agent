@@ -78,6 +78,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import unicodedata
 import uuid
 
 DEFAULT_URL = "https://api.keepr.cloud"
@@ -582,9 +583,79 @@ def shown_as(el, n=42):
     return f"{el.get('prefix') or ''}{digits}"
 
 
-def describe_element(el):
-    """One line per element: what the write path will accept for it."""
-    bits = [el.get("dataType", "?")]
+# An element's id (KPR-168): eight [a-z0-9] characters, minted by keepr and
+# unique across the platform. Stored KQL names an element by it, `#k7f3q2xa` —
+# a lookup's filter, a chart's, a saved filter — whatever the element is called
+# now. `schema` prints each element's id, and names the ids a lookup's filter
+# holds (KPR-238): the filter as keepr stores it, the element beneath it.
+ELEMENT_ID_RE = re.compile(r"[a-z0-9]{8}")
+_ELEMENT_ID_RUN_RE = re.compile(r"[A-Za-z0-9_-]*")
+
+
+def element_ids_in(kql):
+    """The `#id`s a KQL text names, in order, once each. Never inside quoted
+    text — a quoted "#k7f3q2xa" is text, and \\" and \\\\ are its only
+    escapes — and never a `#` that does not open exactly eight lower-case
+    letters or digits (utils/kql/kql.js reads the same)."""
+    if not isinstance(kql, str) or "#" not in kql:
+        return []
+    out, i, n = [], 0, len(kql)
+    while i < n:
+        ch = kql[i]
+        if ch == '"':
+            i += 1
+            while i < n and kql[i] != '"':
+                i += 2 if kql[i] == "\\" else 1
+            i += 1
+            continue
+        if ch == "#":
+            run = _ELEMENT_ID_RUN_RE.match(kql, i + 1).group(0)
+            if ELEMENT_ID_RE.fullmatch(run) and "#" + run not in out:
+                out.append("#" + run)
+            i += 1 + len(run)
+            continue
+        i += 1
+    return out
+
+
+def element_vocabulary(cards):
+    """Element id -> {name, label, cards}: every id the schema's cards hold. One
+    id on several cards (a parent's element, a set's) is one element."""
+    vocab = {}
+    for card in cards or []:
+        holder = card.get("key") or card.get("id") or "?"
+        for el in card.get("elements") or []:
+            el_id = el.get("id")
+            if not isinstance(el_id, str) or not ELEMENT_ID_RE.fullmatch(el_id):
+                continue
+            if el_id in vocab:
+                if holder not in vocab[el_id]["cards"]:
+                    vocab[el_id]["cards"].append(holder)
+                continue
+            name = el.get("name") or ""
+            label = el["label"] if isinstance(el.get("label"), str) and el["label"] else name
+            vocab[el_id] = {"name": name, "label": label, "cards": [holder]}
+    return vocab
+
+
+def describe_element_id(el_id, vocab):
+    """`#k7f3q2xa is element status ("State") on card task` — the label only
+    where it says more than the name; an id the schema lacks said as such."""
+    bare = el_id.lstrip("#")
+    hit = vocab.get(bare)
+    if not hit:
+        return f"#{bare} is no element this collection's schema lists (removed, or on a card this key cannot read)"
+    label = f' ("{hit["label"]}")' if hit["label"].strip().lower() != hit["name"].strip().lower() else ""
+    cards = hit["cards"]
+    held = ", ".join(cards[:4]) + (f" and {len(cards) - 4} more" if len(cards) > 4 else "")
+    return f"#{bare} is element {hit['name']}{label} on card{'' if len(cards) == 1 else 's'} {held}"
+
+
+def describe_element(el, vocab=None):
+    """One line per element: what the write path will accept for it — and,
+    given the schema's ids, a line naming each element its lookup filter names."""
+    el_id = el.get("id")
+    bits = ([f"#{el_id}"] if isinstance(el_id, str) and ELEMENT_ID_RE.fullmatch(el_id) else []) + [el.get("dataType", "?")]
     if el.get("required"):
         bits.append("required")
     elif el.get("requiredWhen"):
@@ -640,7 +711,10 @@ def describe_element(el):
         bits.append(f"precision {el['precision']}")
     if el.get("help"):
         bits.append(f"help: {el['help']}")
-    return f"    {el.get('name', '?'):<26} {' · '.join(bits)}"
+    line = f"    {el.get('name', '?'):<26} {' · '.join(bits)}"
+    if vocab is not None and el.get("filter"):
+        line += "".join(f"\n      where {describe_element_id(i, vocab)}" for i in element_ids_in(el["filter"]))
+    return line
 
 
 def cmd_schema(a):
@@ -655,6 +729,7 @@ def cmd_schema(a):
     if coll.get("status") == "archived":
         print("  NOTE: archived collections are read-only for everyone. Writes will 403.")
     cards = schema.get("cards", [])
+    vocab = element_vocabulary(cards)
     if not cards:
         print("\n  No cards are writable here for this key.")
     for card in cards:
@@ -670,7 +745,7 @@ def cmd_schema(a):
             print(f"    {'every item' if card['itemTags'] == 'every' else 'chosen items'} of this card can be used as tags — "
                   "find one with `search --q <title> --types tags` and send its id in a row's \"tags\"")
         for el in card.get("elements", []):
-            print(describe_element(el))
+            print(describe_element(el, vocab))
     print_tag_vocabulary(schema.get("tags"))
     wc = schema.get("writeContract", {})
     print(f"\n  write contract: up to {wc.get('maxBatch', MAX_BATCH)} rows per call · "
@@ -1192,7 +1267,10 @@ def cmd_upload_status(a):
 # Several photos of one subject are usually named for it with a counter:
 # molly-blake.jpg, molly-blake-2.jpg, molly-blake_3.JPG, "molly blake (4).jpg".
 # Everything after the last separator, if it is only digits, is the counter.
-COUNTER_SUFFIX = re.compile(r"[\s._-]*(?:\(\s*\d+\s*\)|\d+)$")
+# [0-9], not \d (Unicode digits in Python, ASCII in JavaScript); \s stays
+# Unicode on both sides (a no-break space before the counter). keepr-mcp's
+# keysFor is the same pattern.
+COUNTER_SUFFIX = re.compile(r"[\s._-]*(?:\(\s*[0-9]+\s*\)|[0-9]+)$")
 
 
 def external_id_for(file_path, base, mode):
@@ -1200,9 +1278,11 @@ def external_id_for(file_path, base, mode):
     (photos/molly-blake/*.jpg), `exact` the whole filename stem, `stem` the stem
     with a trailing counter removed. Default tries folder first, then stem —
     the two layouts people actually have."""
-    rel = os.path.relpath(file_path, base)
+    # NFC: macOS hands out decomposed names (Cafe + U+0301); an id typed or
+    # imported is composed. Both sides fold the same way (KPR-182).
+    rel = unicodedata.normalize("NFC", os.path.relpath(file_path, base))
     parent = os.path.dirname(rel)
-    stem = os.path.splitext(os.path.basename(file_path))[0]
+    stem = os.path.splitext(os.path.basename(rel))[0]
     if mode == "folder":
         return parent.split(os.sep)[0] if parent else None
     if mode == "exact":
@@ -1213,6 +1293,28 @@ def external_id_for(file_path, base, mode):
     if parent:
         return parent.split(os.sep)[0]
     return COUNTER_SUFFIX.sub("", stem) or stem
+
+
+def candidate_ids(file_path, base, mode):
+    """The ids a file might name, most specific first; the first one an item has
+    wins. In `auto`, a file inside a subfolder names that folder and nothing else
+    (a folder that names no record leaves its files unmatched — never guessed
+    from camera numbers like 1.jpg); a file at the top names its whole stem, then
+    its stem without a trailing counter, so R-1042.pdf finds "R-1042" before the
+    counter rule reads it as "R" plus 1042. keepr-mcp's keysFor
+    (mcp/src/folderMatch.ts) is the same rule; both run tests/attach_vectors.json
+    (KPR-182)."""
+    if mode != "auto":
+        found = external_id_for(file_path, base, mode)
+        return [found] if found else []
+    if os.path.dirname(os.path.relpath(file_path, base)):
+        return [external_id_for(file_path, base, "folder")]
+    out = []
+    for m in ("exact", "stem"):
+        found = external_id_for(file_path, base, m)
+        if found and found not in out:
+            out.append(found)
+    return out
 
 
 def list_files(directory):
@@ -1233,7 +1335,9 @@ def existing_attachment_names(item_id):
     if status >= 400:
         return None                      # unknown: let the upload decide
     rows = body if isinstance(body, list) else (body or {}).get("attachments") or []
-    return {str(r.get("filename") or r.get("name") or "") for r in rows if isinstance(r, dict)}
+    # keepr serializes the name as `originalName`; reading only filename/name
+    # meant the skip never fired against a real server (KPR-182 review).
+    return {str(r.get("originalName") or r.get("filename") or r.get("name") or "") for r in rows if isinstance(r, dict)}
 
 
 def upload(item_id, file_path):
@@ -1264,7 +1368,9 @@ def attach_plan(a):
             results = json.load(fh)
     except (FileNotFoundError, ValueError) as e:
         die(f"cannot read {a.results}: {e}")
-    items = results.get("items") or {}
+    # NFC, like the filenames (external_id_for): an id copied from a Mac
+    # filename is decomposed (KPR-182 review).
+    items = {unicodedata.normalize("NFC", k): v for k, v in (results.get("items") or {}).items()}
     if not items:
         die(f"{a.results} records no item ids. Commit the ingest first (a dry run writes nothing).")
 
@@ -1277,6 +1383,7 @@ def attach_plan(a):
         except (FileNotFoundError, ValueError) as e:
             die(f"cannot read {a.map}: {e}")
         for external, files in mapping.items():
+            external = unicodedata.normalize("NFC", external)
             for name in ([files] if isinstance(files, str) else files):
                 full = name if os.path.isabs(name) else os.path.join(base, name)
                 if external not in items:
@@ -1292,11 +1399,13 @@ def attach_plan(a):
     if not os.path.isdir(a.dir):
         die(f"No such folder: {a.dir}")
     for full in list_files(a.dir):
-        external = external_id_for(full, a.dir, a.match)
-        if external and external in items:
+        candidates = candidate_ids(full, a.dir, a.match)
+        external = next((c for c in candidates if c in items), None)
+        if external:
             pairs.append((external, items[external], full))
         else:
-            unmatched.append((full, f"no item matches {external!r}" if external else "could not derive an id"))
+            unmatched.append((full, "no item matches " + " or ".join(repr(c) for c in candidates)
+                              if candidates else "could not derive an id"))
     return pairs, unmatched
 
 

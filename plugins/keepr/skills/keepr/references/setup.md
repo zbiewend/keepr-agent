@@ -78,7 +78,9 @@ setup's charts by `chartRef` (its `localId`) or a chart the collection already
 shows by `chartId`. The preview marks every entry `adds`, `CHANGES` (with
 what changes, before and after) or `unchanged`; an unchanged one is not
 written. An entry says the whole of what it sets: give every key you mean to
-keep.
+keep. A filter keepr stores may name an element by its id (`#k7f3q2xa`,
+`kql.md`): `keepr_propose_setup` names each one at the end of its preview, and
+with the CLI you find it in `schema`. Tell the person the element, not the id.
 
 ## Layouts
 

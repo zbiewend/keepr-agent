@@ -26,7 +26,7 @@ not status = done
 ## Paths
 
 The **first segment** is either a system field or an element **name** (the
-slug the schema prints — `read-on`, not "Read on"):
+slug the schema prints — `read-on`, not "Read on") or its id (below):
 
 | system field | what it matches |
 | --- | --- |
@@ -50,6 +50,28 @@ Up to three hops.
 lookup element, whatever it is called: `@person = "Molly Blake"`,
 `@truck in (…)`, `@person is empty`. Only `=`, `!=`, `in`, `not in`,
 `is empty`, `is not empty` may follow a facet, and it takes no dot-walk.
+
+## Element ids — `#k7f3q2xa`
+
+Text keepr **stores** can name an element by its id instead of its name:
+`#k7f3q2xa != done`. An id is `#` and eight lower-case letters or digits, and
+it names exactly **one element of one card**, whatever that element is called
+and whatever other card has an element of the same name. You meet ids in
+lookup filters, chart filters and saved filters.
+
+- `schema` lists each element's id beside its name: `status  #k7f3q2xa`.
+- The MCP tools print a stored filter as it is and name each id beneath it:
+  `where #k7f3q2xa is element status ("State") on card task`. With the CLI,
+  find the id in `schema`.
+- A stored filter runs as written. Pass it on as `q` unchanged, and never put
+  a name or a label in place of an id to make it readable: tell the person
+  the element's label instead.
+- You may write an id yourself where a name could mean another card's
+  element — say two cards here have `status` and you mean the task's. Take it
+  from `schema`. It stands wherever a name does: after a dot-walk
+  (`#e1e1e1e1.#p4a5e6x7`) and before a part of a date (`#d8d8d8d8.weekday`).
+- Names still work in what you type: `status = open` in `q` is fine.
+- Quoted, `"#k7f3q2xa"` is text, not an id.
 
 ## Operators
 
@@ -154,7 +176,7 @@ reached only through publishing or a link have no author, so
 
 ## What does not error
 
-An element name the collection does not have, a card key nobody uses, or a
+An element name or id the collection does not have, a card key nobody uses, or a
 type-incompatible comparison compiles to a **no-match** — the query runs and
 answers zero. So does a value a date part cannot read: `created.weekday =
 funday` and `created.hour = 24` match nothing (and `!=` them, everything).

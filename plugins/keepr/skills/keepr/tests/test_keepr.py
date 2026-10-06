@@ -37,16 +37,19 @@ SCHEMA = {
              {"name": "author", "label": "Author", "dataType": "text-small"},
              {"name": "rating", "label": "Rating", "dataType": "rating", "max": 5},
              {"name": "read-on", "label": "Read on", "dataType": "date"},
-             {"name": "status", "label": "Status", "dataType": "choice",
+             # Element ids (KPR-168): stored KQL names an element by its id, and
+             # a lookup's filter reads its TARGET card's elements (KPR-238).
+             {"id": "st4tus00", "name": "status", "label": "Status", "dataType": "choice",
               "choices": [{"value": "reading", "label": "Reading"}, {"value": "done", "label": "Done"}]},
-             {"name": "shelf", "label": "Shelf", "dataType": "card-lookup", "lookupCardKey": "shelf"},
+             {"id": "sh3lf000", "name": "shelf", "label": "Shelf", "dataType": "card-lookup", "lookupCardKey": "shelf",
+              "filter": "#n4m3sh3f ~ fiction and #gonegone = x", "strict": False},
              {"name": "added", "label": "Added", "dataType": "date", "driven": True},
              {"name": "genres", "label": "Genres", "dataType": "choice", "allowMultiple": True,
               "choices": [{"value": "fantasy", "label": "Fantasy"}, {"value": "mystery", "label": "Mystery"}]},
          ]},
         {"id": "75a1b2c3d4e5f6a7b8c9d0e2", "key": "shelf", "name": "Shelf", "parentCardId": None,
          "itemTags": "chosen", "applyWhereReferenced": True,
-         "elements": [{"name": "name", "label": "Name", "dataType": "text-small", "isTitle": True}]},
+         "elements": [{"id": "n4m3sh3f", "name": "name", "label": "Name", "dataType": "text-small", "isTitle": True}]},
     ],
     # The collection's tag vocabulary (keepr T8): the only tags a row may name.
     "tags": [
@@ -287,8 +290,9 @@ class Stub(BaseHTTPRequestHandler):
             CALLS.append(("UPLOAD", item, filename))
             if filename.endswith(".exe"):
                 return self._send(415, {"message": "Files of type .exe cannot be attached."})
-            ATTACHED.setdefault(item, []).append({"_id": "att" + str(len(CALLS)), "filename": filename})
-            return self._send(201, {"_id": "att" + str(len(CALLS)), "filename": filename})
+            # keepr's own shape (serializeAttachment): the name is `originalName`.
+            ATTACHED.setdefault(item, []).append({"_id": "att" + str(len(CALLS)), "originalName": filename})
+            return self._send(201, {"_id": "att" + str(len(CALLS)), "originalName": filename})
         length = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(length) or b"{}")
         CALLS.append(("POST", self.path, body))
@@ -694,6 +698,28 @@ class KeeprScriptTest(unittest.TestCase):
         self.assertIn("links to card 'shelf'", result.stdout)
         self.assertIn("driven — do not send", result.stdout)
         self.assertIn("required", result.stdout)
+
+    def test_schema_prints_each_element_id_and_names_the_ids_a_lookup_filter_holds(self):
+        out = run("schema", "--collection", COLLECTION)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertRegex(out.stdout, r"\n    status\s+#st4tus00 · choice · one of: reading, done")
+        self.assertRegex(out.stdout, r"\n    title\s+text-small")                 # no id yet: the name alone
+        # The filter exactly as keepr stores it, then each id it names — the
+        # target card's element, and one the schema does not list.
+        self.assertIn("preferring records where #n4m3sh3f ~ fiction and #gonegone = x\n"
+                      "      where #n4m3sh3f is element name on card shelf\n"
+                      "      where #gonegone is no element this collection's schema lists (removed, or on a card this key cannot read)",
+                      out.stdout)
+
+    def test_element_ids_are_read_outside_quoted_text_and_only_when_well_formed(self):
+        keepr = load_module()
+        self.assertEqual(keepr.element_ids_in('#st4tus00 = done and note = "say \\"#n4m3sh3f\\"" and #st4tus00 != x '
+                                              'or #K7F3Q2XA = 1 or #st4tus001 = 2 or #abc = 3'), ["#st4tus00"])
+        self.assertEqual(keepr.element_ids_in("#e1e1e1e1.#n4m3sh3f = x"), ["#e1e1e1e1", "#n4m3sh3f"])
+        self.assertEqual(keepr.element_ids_in(None), [])
+        vocab = keepr.element_vocabulary([{"key": "work-item", "elements": [{"id": "st4tus00", "name": "status", "label": "State"}]},
+                                          {"key": "bug", "elements": [{"id": "st4tus00", "name": "status", "label": "State"}]}])
+        self.assertEqual(keepr.describe_element_id("#st4tus00", vocab), '#st4tus00 is element status ("State") on cards work-item, bug')
 
     def test_schema_states_the_condition_of_a_conditional_requirement(self):
         keepr = load_module()
@@ -1319,6 +1345,68 @@ class KeeprScriptTest(unittest.TestCase):
         results = self.results_file({"molly-blake": "item-molly"})
         out = run("attach", "--results", results, "--dir", self.path("photos"), "--dry-run")
         self.assertIn("2 file(s) → 1 item(s)", out.stdout)
+
+    def test_a_name_with_digits_matches_its_record_before_the_counter_rule(self):
+        # R-1042.pdf is the record "R-1042", not "R" with a counter (KPR-182).
+        self.photo("receipts", "R-1042.pdf")
+        self.photo("receipts", "R-1043.pdf")
+        results = self.results_file({"R-1042": "item-a", "R-1043": "item-b"})
+        out = run("attach", "--results", results, "--dir", self.path("receipts"), "--dry-run")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("2 file(s) → 2 item(s)", out.stdout)
+        self.assertNotIn("UNMATCHED", out.stderr)
+
+    def test_an_id_copied_from_a_mac_filename_still_matches(self):
+        # A decomposed (NFD) id in the results and a decomposed filename: both fold to NFC (KPR-182 review).
+        nfd = "Zoe\u0308 Cafe\u0301"
+        self.photo("photos", nfd + ".jpg")
+        results = self.results_file({nfd: "item-zoe"})
+        out = run("attach", "--results", results, "--dir", self.path("photos"), "--dry-run")
+        self.assertIn("1 file(s) → 1 item(s)", out.stdout)
+        self.assertNotIn("UNMATCHED", out.stderr)
+
+    def test_a_folder_that_names_no_record_leaves_its_files_unmatched(self):
+        # Unit 12/1.jpg is never unit "1" (KPR-182 review): a subfolder names the record or nothing.
+        self.photo("units", "Unit 12", "1.jpg")
+        self.photo("units", "Unit 12", "2.jpg")
+        results = self.results_file({"1": "item-1", "2": "item-2", "Unit 3": "item-3"})
+        out = run("attach", "--results", results, "--dir", self.path("units"), "--dry-run")
+        self.assertIn("0 file(s) → 0 item(s)", out.stdout)
+        self.assertIn("UNMATCHED 1.jpg: no item matches 'Unit 12'", out.stderr)
+
+    def test_the_skill_never_advises_shrinking_a_file_to_fit(self):
+        # KPR-184: agents offered to resize and convert photos to fit inline, which
+        # loses the originals. The skill says never, and nowhere says otherwise.
+        root = os.path.normpath(os.path.join(HERE, ".."))
+        with open(os.path.join(root, "SKILL.md"), encoding="utf-8") as fh:
+            self.assertIn("Never resize, re-encode or convert", fh.read())
+        verbs = re.compile(r"\b(resiz|re-?encod|compress|downscal|downsampl|shrink)", re.I)
+        refusal = re.compile(r"\b(never|not|don't|do not)\b", re.I)
+        scanned = 0
+        for dirpath, dirs, names in os.walk(root):
+            dirs[:] = [d for d in dirs if d != "tests"]
+            for name in names:
+                if not name.endswith(".md"):
+                    continue
+                scanned += 1
+                with open(os.path.join(dirpath, name), encoding="utf-8") as fh:
+                    for n, line in enumerate(fh, 1):
+                        if verbs.search(line):
+                            with self.subTest(file=name, line=n):
+                                self.assertRegex(line, refusal, f"{name}:{n} mentions shrinking a file without saying never: {line.strip()}")
+        self.assertGreaterEqual(scanned, 8, "the scan must actually read the skill's pages")
+
+    def test_the_folder_matching_rule_is_the_shared_vectors(self):
+        # keepr-mcp's keysFor runs the same file (mcp/test/folderMatch.test.ts).
+        with open(os.path.join(HERE, "attach_vectors.json"), encoding="utf-8") as fh:
+            cases = json.load(fh)["cases"]
+        module = load_module()
+        base = os.path.join(os.sep, "base")
+        for case in cases:
+            full = os.path.join(base, *case["rel"].split("/"))
+            with self.subTest(rel=case["rel"], mode=case["mode"]):
+                self.assertEqual(module.external_id_for(full, base, case["mode"]), case["key"])
+                self.assertEqual(module.candidate_ids(full, base, case["mode"]), case["candidates"])
 
     def test_a_file_matching_no_record_is_reported_not_guessed(self):
         self.photo("photos", "molly-blake.jpg")

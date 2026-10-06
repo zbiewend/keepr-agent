@@ -1,0 +1,966 @@
+{
+ "_comment": [
+  "Shared by keepr.py (skills/keepr/tests/test_keepr.py) and keepr-mcp (mcp/test/folderMatch.test.ts), KPR-182.",
+  "Which record key(s) a file's place in a folder names, per --match mode: `key` is external_id_for / keyFor, `candidates`",
+  "is candidate_ids / keysFor (tried in order; the first an item has wins). In auto a file in a subfolder names only the folder.",
+  "keepr.py is the source: change the rule there and in mcp/src/folderMatch.ts together, then regenerate these from keepr.py."
+ ],
+ "cases": [
+  {
+   "rel": "molly-blake/front.jpg",
+   "mode": "auto",
+   "key": "molly-blake",
+   "candidates": [
+    "molly-blake"
+   ]
+  },
+  {
+   "rel": "molly-blake/front.jpg",
+   "mode": "folder",
+   "key": "molly-blake",
+   "candidates": [
+    "molly-blake"
+   ]
+  },
+  {
+   "rel": "molly-blake/front.jpg",
+   "mode": "stem",
+   "key": "front",
+   "candidates": [
+    "front"
+   ]
+  },
+  {
+   "rel": "molly-blake/front.jpg",
+   "mode": "exact",
+   "key": "front",
+   "candidates": [
+    "front"
+   ]
+  },
+  {
+   "rel": "molly-blake/back.jpg",
+   "mode": "auto",
+   "key": "molly-blake",
+   "candidates": [
+    "molly-blake"
+   ]
+  },
+  {
+   "rel": "molly-blake/back.jpg",
+   "mode": "folder",
+   "key": "molly-blake",
+   "candidates": [
+    "molly-blake"
+   ]
+  },
+  {
+   "rel": "molly-blake/back.jpg",
+   "mode": "stem",
+   "key": "back",
+   "candidates": [
+    "back"
+   ]
+  },
+  {
+   "rel": "molly-blake/back.jpg",
+   "mode": "exact",
+   "key": "back",
+   "candidates": [
+    "back"
+   ]
+  },
+  {
+   "rel": "molly-blake/2024/side.jpg",
+   "mode": "auto",
+   "key": "molly-blake",
+   "candidates": [
+    "molly-blake"
+   ]
+  },
+  {
+   "rel": "molly-blake/2024/side.jpg",
+   "mode": "folder",
+   "key": "molly-blake",
+   "candidates": [
+    "molly-blake"
+   ]
+  },
+  {
+   "rel": "molly-blake/2024/side.jpg",
+   "mode": "stem",
+   "key": "side",
+   "candidates": [
+    "side"
+   ]
+  },
+  {
+   "rel": "molly-blake/2024/side.jpg",
+   "mode": "exact",
+   "key": "side",
+   "candidates": [
+    "side"
+   ]
+  },
+  {
+   "rel": "leah-park.jpg",
+   "mode": "auto",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah-park.jpg",
+   "mode": "stem",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park.jpg",
+   "mode": "exact",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park-2.jpg",
+   "mode": "auto",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park-2",
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park-2.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah-park-2.jpg",
+   "mode": "stem",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park-2.jpg",
+   "mode": "exact",
+   "key": "leah-park-2",
+   "candidates": [
+    "leah-park-2"
+   ]
+  },
+  {
+   "rel": "leah-park_3.JPG",
+   "mode": "auto",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park_3",
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park_3.JPG",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah-park_3.JPG",
+   "mode": "stem",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park_3.JPG",
+   "mode": "exact",
+   "key": "leah-park_3",
+   "candidates": [
+    "leah-park_3"
+   ]
+  },
+  {
+   "rel": "leah-park (3).jpg",
+   "mode": "auto",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park (3)",
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park (3).jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah-park (3).jpg",
+   "mode": "stem",
+   "key": "leah-park",
+   "candidates": [
+    "leah-park"
+   ]
+  },
+  {
+   "rel": "leah-park (3).jpg",
+   "mode": "exact",
+   "key": "leah-park (3)",
+   "candidates": [
+    "leah-park (3)"
+   ]
+  },
+  {
+   "rel": "leah park (12).jpeg",
+   "mode": "auto",
+   "key": "leah park",
+   "candidates": [
+    "leah park (12)",
+    "leah park"
+   ]
+  },
+  {
+   "rel": "leah park (12).jpeg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah park (12).jpeg",
+   "mode": "stem",
+   "key": "leah park",
+   "candidates": [
+    "leah park"
+   ]
+  },
+  {
+   "rel": "leah park (12).jpeg",
+   "mode": "exact",
+   "key": "leah park (12)",
+   "candidates": [
+    "leah park (12)"
+   ]
+  },
+  {
+   "rel": "R-1042.pdf",
+   "mode": "auto",
+   "key": "R",
+   "candidates": [
+    "R-1042",
+    "R"
+   ]
+  },
+  {
+   "rel": "R-1042.pdf",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "R-1042.pdf",
+   "mode": "stem",
+   "key": "R",
+   "candidates": [
+    "R"
+   ]
+  },
+  {
+   "rel": "R-1042.pdf",
+   "mode": "exact",
+   "key": "R-1042",
+   "candidates": [
+    "R-1042"
+   ]
+  },
+  {
+   "rel": "R-1042 back.pdf",
+   "mode": "auto",
+   "key": "R-1042 back",
+   "candidates": [
+    "R-1042 back"
+   ]
+  },
+  {
+   "rel": "R-1042 back.pdf",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "R-1042 back.pdf",
+   "mode": "stem",
+   "key": "R-1042 back",
+   "candidates": [
+    "R-1042 back"
+   ]
+  },
+  {
+   "rel": "R-1042 back.pdf",
+   "mode": "exact",
+   "key": "R-1042 back",
+   "candidates": [
+    "R-1042 back"
+   ]
+  },
+  {
+   "rel": "IMG_0042.HEIC",
+   "mode": "auto",
+   "key": "IMG",
+   "candidates": [
+    "IMG_0042",
+    "IMG"
+   ]
+  },
+  {
+   "rel": "IMG_0042.HEIC",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "IMG_0042.HEIC",
+   "mode": "stem",
+   "key": "IMG",
+   "candidates": [
+    "IMG"
+   ]
+  },
+  {
+   "rel": "IMG_0042.HEIC",
+   "mode": "exact",
+   "key": "IMG_0042",
+   "candidates": [
+    "IMG_0042"
+   ]
+  },
+  {
+   "rel": "2024-03-01.pdf",
+   "mode": "auto",
+   "key": "2024-03",
+   "candidates": [
+    "2024-03-01",
+    "2024-03"
+   ]
+  },
+  {
+   "rel": "2024-03-01.pdf",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "2024-03-01.pdf",
+   "mode": "stem",
+   "key": "2024-03",
+   "candidates": [
+    "2024-03"
+   ]
+  },
+  {
+   "rel": "2024-03-01.pdf",
+   "mode": "exact",
+   "key": "2024-03-01",
+   "candidates": [
+    "2024-03-01"
+   ]
+  },
+  {
+   "rel": "inv-7.png",
+   "mode": "auto",
+   "key": "inv",
+   "candidates": [
+    "inv-7",
+    "inv"
+   ]
+  },
+  {
+   "rel": "inv-7.png",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "inv-7.png",
+   "mode": "stem",
+   "key": "inv",
+   "candidates": [
+    "inv"
+   ]
+  },
+  {
+   "rel": "inv-7.png",
+   "mode": "exact",
+   "key": "inv-7",
+   "candidates": [
+    "inv-7"
+   ]
+  },
+  {
+   "rel": "plain",
+   "mode": "auto",
+   "key": "plain",
+   "candidates": [
+    "plain"
+   ]
+  },
+  {
+   "rel": "plain",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "plain",
+   "mode": "stem",
+   "key": "plain",
+   "candidates": [
+    "plain"
+   ]
+  },
+  {
+   "rel": "plain",
+   "mode": "exact",
+   "key": "plain",
+   "candidates": [
+    "plain"
+   ]
+  },
+  {
+   "rel": "a.tar.gz",
+   "mode": "auto",
+   "key": "a.tar",
+   "candidates": [
+    "a.tar"
+   ]
+  },
+  {
+   "rel": "a.tar.gz",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "a.tar.gz",
+   "mode": "stem",
+   "key": "a.tar",
+   "candidates": [
+    "a.tar"
+   ]
+  },
+  {
+   "rel": "a.tar.gz",
+   "mode": "exact",
+   "key": "a.tar",
+   "candidates": [
+    "a.tar"
+   ]
+  },
+  {
+   "rel": "Report final.v2.docx",
+   "mode": "auto",
+   "key": "Report final.v",
+   "candidates": [
+    "Report final.v2",
+    "Report final.v"
+   ]
+  },
+  {
+   "rel": "Report final.v2.docx",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "Report final.v2.docx",
+   "mode": "stem",
+   "key": "Report final.v",
+   "candidates": [
+    "Report final.v"
+   ]
+  },
+  {
+   "rel": "Report final.v2.docx",
+   "mode": "exact",
+   "key": "Report final.v2",
+   "candidates": [
+    "Report final.v2"
+   ]
+  },
+  {
+   "rel": "café-crème.jpg",
+   "mode": "auto",
+   "key": "café-crème",
+   "candidates": [
+    "café-crème"
+   ]
+  },
+  {
+   "rel": "café-crème.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "café-crème.jpg",
+   "mode": "stem",
+   "key": "café-crème",
+   "candidates": [
+    "café-crème"
+   ]
+  },
+  {
+   "rel": "café-crème.jpg",
+   "mode": "exact",
+   "key": "café-crème",
+   "candidates": [
+    "café-crème"
+   ]
+  },
+  {
+   "rel": "000123.jpg",
+   "mode": "auto",
+   "key": "000123",
+   "candidates": [
+    "000123"
+   ]
+  },
+  {
+   "rel": "000123.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "000123.jpg",
+   "mode": "stem",
+   "key": "000123",
+   "candidates": [
+    "000123"
+   ]
+  },
+  {
+   "rel": "000123.jpg",
+   "mode": "exact",
+   "key": "000123",
+   "candidates": [
+    "000123"
+   ]
+  },
+  {
+   "rel": "notes (draft).txt",
+   "mode": "auto",
+   "key": "notes (draft)",
+   "candidates": [
+    "notes (draft)"
+   ]
+  },
+  {
+   "rel": "notes (draft).txt",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "notes (draft).txt",
+   "mode": "stem",
+   "key": "notes (draft)",
+   "candidates": [
+    "notes (draft)"
+   ]
+  },
+  {
+   "rel": "notes (draft).txt",
+   "mode": "exact",
+   "key": "notes (draft)",
+   "candidates": [
+    "notes (draft)"
+   ]
+  },
+  {
+   "rel": "x-1-2.jpg",
+   "mode": "auto",
+   "key": "x-1",
+   "candidates": [
+    "x-1-2",
+    "x-1"
+   ]
+  },
+  {
+   "rel": "x-1-2.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "x-1-2.jpg",
+   "mode": "stem",
+   "key": "x-1",
+   "candidates": [
+    "x-1"
+   ]
+  },
+  {
+   "rel": "x-1-2.jpg",
+   "mode": "exact",
+   "key": "x-1-2",
+   "candidates": [
+    "x-1-2"
+   ]
+  },
+  {
+   "rel": "2024/R-1042.pdf",
+   "mode": "auto",
+   "key": "2024",
+   "candidates": [
+    "2024"
+   ]
+  },
+  {
+   "rel": "2024/R-1042.pdf",
+   "mode": "folder",
+   "key": "2024",
+   "candidates": [
+    "2024"
+   ]
+  },
+  {
+   "rel": "2024/R-1042.pdf",
+   "mode": "stem",
+   "key": "R",
+   "candidates": [
+    "R"
+   ]
+  },
+  {
+   "rel": "2024/R-1042.pdf",
+   "mode": "exact",
+   "key": "R-1042",
+   "candidates": [
+    "R-1042"
+   ]
+  },
+  {
+   "rel": "Unit 12/1.jpg",
+   "mode": "auto",
+   "key": "Unit 12",
+   "candidates": [
+    "Unit 12"
+   ]
+  },
+  {
+   "rel": "Unit 12/1.jpg",
+   "mode": "folder",
+   "key": "Unit 12",
+   "candidates": [
+    "Unit 12"
+   ]
+  },
+  {
+   "rel": "Unit 12/1.jpg",
+   "mode": "stem",
+   "key": "1",
+   "candidates": [
+    "1"
+   ]
+  },
+  {
+   "rel": "Unit 12/1.jpg",
+   "mode": "exact",
+   "key": "1",
+   "candidates": [
+    "1"
+   ]
+  },
+  {
+   "rel": "Unit 12/2.jpg",
+   "mode": "auto",
+   "key": "Unit 12",
+   "candidates": [
+    "Unit 12"
+   ]
+  },
+  {
+   "rel": "Unit 12/2.jpg",
+   "mode": "folder",
+   "key": "Unit 12",
+   "candidates": [
+    "Unit 12"
+   ]
+  },
+  {
+   "rel": "Unit 12/2.jpg",
+   "mode": "stem",
+   "key": "2",
+   "candidates": [
+    "2"
+   ]
+  },
+  {
+   "rel": "Unit 12/2.jpg",
+   "mode": "exact",
+   "key": "2",
+   "candidates": [
+    "2"
+   ]
+  },
+  {
+   "rel": "Café.jpg",
+   "mode": "auto",
+   "key": "Café",
+   "candidates": [
+    "Café"
+   ]
+  },
+  {
+   "rel": "Café.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "Café.jpg",
+   "mode": "stem",
+   "key": "Café",
+   "candidates": [
+    "Café"
+   ]
+  },
+  {
+   "rel": "Café.jpg",
+   "mode": "exact",
+   "key": "Café",
+   "candidates": [
+    "Café"
+   ]
+  },
+  {
+   "rel": "Café/photo.jpg",
+   "mode": "auto",
+   "key": "Café",
+   "candidates": [
+    "Café"
+   ]
+  },
+  {
+   "rel": "Café/photo.jpg",
+   "mode": "folder",
+   "key": "Café",
+   "candidates": [
+    "Café"
+   ]
+  },
+  {
+   "rel": "Café/photo.jpg",
+   "mode": "stem",
+   "key": "photo",
+   "candidates": [
+    "photo"
+   ]
+  },
+  {
+   "rel": "Café/photo.jpg",
+   "mode": "exact",
+   "key": "photo",
+   "candidates": [
+    "photo"
+   ]
+  },
+  {
+   "rel": "leah-park-２.jpg",
+   "mode": "auto",
+   "key": "leah-park-２",
+   "candidates": [
+    "leah-park-２"
+   ]
+  },
+  {
+   "rel": "leah-park-２.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah-park-２.jpg",
+   "mode": "stem",
+   "key": "leah-park-２",
+   "candidates": [
+    "leah-park-２"
+   ]
+  },
+  {
+   "rel": "leah-park-２.jpg",
+   "mode": "exact",
+   "key": "leah-park-２",
+   "candidates": [
+    "leah-park-２"
+   ]
+  },
+  {
+   "rel": "a\\b.jpg",
+   "mode": "auto",
+   "key": "a\\b",
+   "candidates": [
+    "a\\b"
+   ]
+  },
+  {
+   "rel": "a\\b.jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "a\\b.jpg",
+   "mode": "stem",
+   "key": "a\\b",
+   "candidates": [
+    "a\\b"
+   ]
+  },
+  {
+   "rel": "a\\b.jpg",
+   "mode": "exact",
+   "key": "a\\b",
+   "candidates": [
+    "a\\b"
+   ]
+  },
+  {
+   "rel": "r-77 (٣).pdf",
+   "mode": "auto",
+   "key": "r-77 (٣)",
+   "candidates": [
+    "r-77 (٣)"
+   ]
+  },
+  {
+   "rel": "r-77 (٣).pdf",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "r-77 (٣).pdf",
+   "mode": "stem",
+   "key": "r-77 (٣)",
+   "candidates": [
+    "r-77 (٣)"
+   ]
+  },
+  {
+   "rel": "r-77 (٣).pdf",
+   "mode": "exact",
+   "key": "r-77 (٣)",
+   "candidates": [
+    "r-77 (٣)"
+   ]
+  },
+  {
+   "rel": "leah park (2).jpg",
+   "mode": "auto",
+   "key": "leah park",
+   "candidates": [
+    "leah park (2)",
+    "leah park"
+   ]
+  },
+  {
+   "rel": "leah park (2).jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah park (2).jpg",
+   "mode": "stem",
+   "key": "leah park",
+   "candidates": [
+    "leah park"
+   ]
+  },
+  {
+   "rel": "leah park (2).jpg",
+   "mode": "exact",
+   "key": "leah park (2)",
+   "candidates": [
+    "leah park (2)"
+   ]
+  },
+  {
+   "rel": "Screenshot 2026-10-05 at 9.41.02 AM.png",
+   "mode": "auto",
+   "key": "Screenshot 2026-10-05 at 9.41.02 AM",
+   "candidates": [
+    "Screenshot 2026-10-05 at 9.41.02 AM"
+   ]
+  },
+  {
+   "rel": "Screenshot 2026-10-05 at 9.41.02 AM.png",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "Screenshot 2026-10-05 at 9.41.02 AM.png",
+   "mode": "stem",
+   "key": "Screenshot 2026-10-05 at 9.41.02 AM",
+   "candidates": [
+    "Screenshot 2026-10-05 at 9.41.02 AM"
+   ]
+  },
+  {
+   "rel": "Screenshot 2026-10-05 at 9.41.02 AM.png",
+   "mode": "exact",
+   "key": "Screenshot 2026-10-05 at 9.41.02 AM",
+   "candidates": [
+    "Screenshot 2026-10-05 at 9.41.02 AM"
+   ]
+  },
+  {
+   "rel": "leah park　(3).jpg",
+   "mode": "auto",
+   "key": "leah park",
+   "candidates": [
+    "leah park　(3)",
+    "leah park"
+   ]
+  },
+  {
+   "rel": "leah park　(3).jpg",
+   "mode": "folder",
+   "key": null,
+   "candidates": []
+  },
+  {
+   "rel": "leah park　(3).jpg",
+   "mode": "stem",
+   "key": "leah park",
+   "candidates": [
+    "leah park"
+   ]
+  },
+  {
+   "rel": "leah park　(3).jpg",
+   "mode": "exact",
+   "key": "leah park　(3)",
+   "candidates": [
+    "leah park　(3)"
+   ]
+  }
+ ]
+}

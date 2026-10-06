@@ -2232,8 +2232,8 @@ var require_resolve = __commonJS({
       }
       return count;
     }
-    function getFullPath(resolver, id = "", normalize) {
-      if (normalize !== false)
+    function getFullPath(resolver, id = "", normalize2) {
+      if (normalize2 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -3828,7 +3828,7 @@ var require_fast_uri = __commonJS({
       }
       return decodedScheme;
     }
-    function normalize(uri, options) {
+    function normalize2(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         normalizeString(uri, options);
@@ -3871,49 +3871,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative, options, skipNormalization) {
+    function resolveComponent(base, relative2, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative = parse3(serialize(relative, options), options);
+        relative2 = parse3(serialize(relative2, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative.scheme) {
-        target.scheme = relative.scheme;
-        target.userinfo = relative.userinfo;
-        target.host = relative.host;
-        target.port = relative.port;
-        target.path = removeDotSegments(relative.path || "");
-        target.query = relative.query;
+      if (!options.tolerant && relative2.scheme) {
+        target.scheme = relative2.scheme;
+        target.userinfo = relative2.userinfo;
+        target.host = relative2.host;
+        target.port = relative2.port;
+        target.path = removeDotSegments(relative2.path || "");
+        target.query = relative2.query;
       } else {
-        if (relative.userinfo !== void 0 || relative.host !== void 0 || relative.port !== void 0) {
-          target.userinfo = relative.userinfo;
-          target.host = relative.host;
-          target.port = relative.port;
-          target.path = removeDotSegments(relative.path || "");
-          target.query = relative.query;
+        if (relative2.userinfo !== void 0 || relative2.host !== void 0 || relative2.port !== void 0) {
+          target.userinfo = relative2.userinfo;
+          target.host = relative2.host;
+          target.port = relative2.port;
+          target.path = removeDotSegments(relative2.path || "");
+          target.query = relative2.query;
         } else {
-          if (!relative.path) {
+          if (!relative2.path) {
             target.path = base.path;
-            if (relative.query !== void 0) {
-              target.query = relative.query;
+            if (relative2.query !== void 0) {
+              target.query = relative2.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative.path[0] === "/") {
-              target.path = removeDotSegments(relative.path);
+            if (relative2.path[0] === "/") {
+              target.path = removeDotSegments(relative2.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative.path;
+                target.path = "/" + relative2.path;
               } else if (!base.path) {
-                target.path = relative.path;
+                target.path = relative2.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative2.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative.query;
+            target.query = relative2.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3921,7 +3921,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative.fragment;
+      target.fragment = relative2.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -4206,7 +4206,7 @@ var require_fast_uri = __commonJS({
     }
     var fastUri = {
       SCHEMES,
-      normalize,
+      normalize: normalize2,
       resolve,
       resolveComponent,
       equal,
@@ -13463,8 +13463,8 @@ function loadKeyConfig(env) {
   const stored = fromEnv ? {} : readStoredCredentials(env);
   const baseUrl = (env.KEEPR_URL || stored.url || "https://api.keepr.cloud").trim().replace(/\/+$/, "");
   const raw = fromEnv || (stored.key ?? "").trim();
-  const keySource = fromEnv ? "env" : raw ? "file" : null;
-  const where = keySource === "file" ? `The key in ~/${CREDENTIALS_RELATIVE.join("/")}` : "KEEPR_API_KEY";
+  const keySource2 = fromEnv ? "env" : raw ? "file" : null;
+  const where = keySource2 === "file" ? `The key in ~/${CREDENTIALS_RELATIVE.join("/")}` : "KEEPR_API_KEY";
   if (stored.problem) {
     return { baseUrl, apiKey: null, keyProblem: stored.problem, keySource: null };
   }
@@ -13480,7 +13480,7 @@ function loadKeyConfig(env) {
       keySource: null
     };
   }
-  return { baseUrl, apiKey: raw, keyProblem: null, keySource };
+  return { baseUrl, apiKey: raw, keyProblem: null, keySource: keySource2 };
 }
 function keyDisplayPrefix(key) {
   return key.slice(0, 10);
@@ -13488,11 +13488,28 @@ function keyDisplayPrefix(key) {
 
 // dist/src/http.js
 import { setTimeout as sleep } from "node:timers/promises";
+import { randomBytes } from "node:crypto";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 var RETRY_STATUSES = /* @__PURE__ */ new Set([429, 502, 503, 504]);
 var RETRIES = 3;
 var TIMEOUT_MS = 12e4;
 var PACE_BELOW_REMAINING = 5;
 var PACE_MAX_WAIT_MS = 65e3;
+var FileChangedError = class extends Error {
+  expected;
+  sent;
+  kind;
+  constructor(message, expected, sent, kind = "changed") {
+    super(message);
+    this.expected = expected;
+    this.sent = sent;
+    this.kind = kind;
+    this.name = "FileChangedError";
+  }
+};
 var KeeprTransportError = class extends Error {
   url;
   cause;
@@ -13568,8 +13585,11 @@ var KeeprHttp = class {
     for (let attempt = 0; attempt < attempts; attempt++) {
       let res;
       try {
-        res = await this.fetchImpl(url, this.init(method, opts, auth));
+        res = opts.stream ? await this.sendStream(url, method, opts, opts.stream, auth) : await this.fetchImpl(url, this.init(method, opts, auth));
       } catch (err) {
+        const changed = fileChanged(err);
+        if (changed)
+          throw changed;
         lastError = err;
         if (attempt < attempts - 1) {
           await this.sleepImpl(2 ** attempt * 1e3);
@@ -13610,12 +13630,56 @@ var KeeprHttp = class {
     }
     throw new KeeprTransportError(`Cannot reach ${this.baseUrl}.`, url, lastError);
   }
-  init(method, opts, auth) {
+  baseHeaders(opts, auth) {
     const headers = { Accept: "application/json" };
     if (auth && !opts.anonymous)
       headers.Authorization = `Bearer ${auth}`;
     if (this.client)
       headers["X-Keepr-Client"] = this.client;
+    return headers;
+  }
+  /**
+   * A streamed upload, over node:http rather than fetch. MEASURED (KPR-182,
+   * Node 24, a 300 MB file to a reader slowed to 100 MB/s): fetch's request
+   * body ignores backpressure and the process grew by the whole file (333
+   * MB), with a ReadableStream body and with openAsBlob alike; node:http
+   * piping grew by 58 MB, flat. So the file goes through pipeline(), which
+   * reads the next chunk only when the socket has taken the last one.
+   * Answers a Response, so the retry and parsing above do not care which.
+   */
+  sendStream(url, method, opts, file, auth) {
+    const { parts, contentType, length } = multipartParts(file);
+    const target = new URL(url);
+    const send = target.protocol === "https:" ? httpsRequest : httpRequest;
+    const timeoutMs = (opts.timeoutMs ?? TIMEOUT_MS) + Math.ceil(file.length / (20 * 1024 * 1024)) * 6e4;
+    return new Promise((resolve, reject) => {
+      const req = send(target, {
+        method,
+        headers: { ...this.baseHeaders(opts, auth), "Content-Type": contentType, "Content-Length": String(length) }
+      }, (res) => {
+        const chunks = [];
+        res.on("data", (c2) => chunks.push(c2));
+        res.on("error", reject);
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          try {
+            const body = status === 204 || status === 205 || status === 304 ? null : Buffer.concat(chunks);
+            resolve(new Response(body, { status, headers: flatHeaders(res.headers) }));
+          } catch (err) {
+            reject(new Error(`keepr answered an unreadable response (HTTP ${status}): ${err.message}`));
+          }
+        });
+      });
+      req.setTimeout(timeoutMs, () => req.destroy(new Error(`no answer within ${Math.round(timeoutMs / 1e3)} s`)));
+      req.on("error", reject);
+      pipeline(Readable.from(parts()), req).catch((err) => {
+        req.destroy(err);
+        reject(err);
+      });
+    });
+  }
+  init(method, opts, auth) {
+    const headers = this.baseHeaders(opts, auth);
     let body;
     if (opts.formData) {
       body = opts.formData;
@@ -13657,6 +13721,57 @@ var KeeprHttp = class {
     this.lastRateLimit = null;
   }
 };
+function fileChanged(err) {
+  let e = err;
+  for (let depth = 0; e && depth < 4; depth++) {
+    if (e instanceof FileChangedError)
+      return e;
+    e = e.cause;
+  }
+  return null;
+}
+function headerFilename(name) {
+  return name.replace(/"/g, "%22").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+}
+function flatHeaders(h) {
+  const out = {};
+  for (const [k, v] of Object.entries(h))
+    if (v !== void 0)
+      out[k] = Array.isArray(v) ? v.join(", ") : String(v);
+  return out;
+}
+function multipartParts(file) {
+  const boundary = `----keepr${randomBytes(12).toString("hex")}`;
+  const head = Buffer.from(`--${boundary}\r
+Content-Disposition: form-data; name="${file.field ?? "file"}"; filename="${headerFilename(file.filename)}"\r
+Content-Type: ${file.contentType || "application/octet-stream"}\r
+\r
+`, "utf8");
+  const tail = Buffer.from(`\r
+--${boundary}--\r
+`, "utf8");
+  async function* parts() {
+    yield head;
+    let sent = 0;
+    try {
+      for await (const chunk of file.open()) {
+        sent += chunk.length;
+        if (sent > file.length)
+          throw new FileChangedError(`${file.filename} grew while it was being sent`, file.length, sent);
+        yield chunk;
+      }
+    } catch (err) {
+      if (err instanceof FileChangedError)
+        throw err;
+      const code = err?.code ?? err?.message;
+      throw new FileChangedError(`${file.filename} could not be read (${code})`, file.length, sent, "unreadable");
+    }
+    if (sent !== file.length)
+      throw new FileChangedError(`${file.filename} shrank while it was being sent`, file.length, sent);
+    yield tail;
+  }
+  return { parts, contentType: `multipart/form-data; boundary=${boundary}`, length: head.length + file.length + tail.length };
+}
 function errorCode(body) {
   if (body && typeof body === "object" && "code" in body) {
     const c2 = body.code;
@@ -13678,7 +13793,7 @@ function errorMessage(body, fallback) {
 
 // dist/src/oauthLocal.js
 import { spawn } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes as randomBytes2 } from "node:crypto";
 import { mkdirSync, readFileSync as readFileSync2, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { hostname as hostname2 } from "node:os";
@@ -13751,7 +13866,7 @@ function writeDoc(file, doc) {
     return;
   }
   mkdirSync(dirname(file), { recursive: true, mode: 448 });
-  const tmp = `${file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  const tmp = `${file}.${process.pid}.${randomBytes2(4).toString("hex")}.tmp`;
   writeFileSync(tmp, `${JSON.stringify(doc, null, 2)}
 `, { mode: 384, flag: "wx" });
   renameSync(tmp, file);
@@ -13760,7 +13875,7 @@ function base64url2(buf) {
   return buf.toString("base64url");
 }
 function pkcePair() {
-  const verifier = base64url2(randomBytes(32));
+  const verifier = base64url2(randomBytes2(32));
   return { verifier, challenge: base64url2(createHash("sha256").update(verifier).digest()) };
 }
 function openInBrowser(url) {
@@ -13933,7 +14048,7 @@ var LocalConnection = class {
     if (!file)
       return fn();
     const lock = `${file}.lock`;
-    const owner = `${hostname2()}:${process.pid}:${randomBytes(12).toString("hex")}`;
+    const owner = `${hostname2()}:${process.pid}:${randomBytes2(12).toString("hex")}`;
     const deadline = Date.now() + this.lockWaitMs;
     for (; ; ) {
       try {
@@ -14145,7 +14260,7 @@ var LocalConnection = class {
   }
   async openFlow(meta, clientId) {
     const { verifier, challenge } = pkcePair();
-    const state = base64url2(randomBytes(24));
+    const state = base64url2(randomBytes2(24));
     let finish;
     const done = new Promise((resolve) => {
       finish = resolve;
@@ -15429,12 +15544,16 @@ var RunLedger = class {
   /** Most recent first, so a bare externalId resolves to the newest import. */
   resolveExternalId(externalId, runId) {
     const pool = runId ? this.runs.filter((r) => r.runId === runId) : this.runs;
-    for (const run of pool) {
-      const itemId = run.itemsByExternalId[externalId];
+    for (const run2 of pool) {
+      const itemId = run2.itemsByExternalId[externalId];
       if (itemId)
-        return { itemId, run };
+        return { itemId, run: run2 };
     }
     return null;
+  }
+  /** Every remembered run, most recent first. */
+  all() {
+    return [...this.runs];
   }
   get size() {
     return this.runs.length;
@@ -15445,7 +15564,7 @@ var RunLedger = class {
 };
 
 // dist/src/proposals.js
-import { randomBytes as randomBytes2 } from "node:crypto";
+import { randomBytes as randomBytes3 } from "node:crypto";
 var TTL_MS2 = 30 * 6e4;
 var MAX_OPEN = 20;
 var MAX_TOMBSTONES = 100;
@@ -15482,7 +15601,7 @@ var ProposalStore = class {
     }
     const proposal = {
       ...spec,
-      token: `prop_${randomBytes2(9).toString("hex")}`,
+      token: `prop_${randomBytes3(9).toString("hex")}`,
       createdAt: Date.now()
     };
     this.open.set(proposal.token, proposal);
@@ -23752,7 +23871,7 @@ function nextStep(outcome, dryRun, failed) {
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.9.2";
+var SERVER_VERSION = "0.11.0";
 var WEBSITE_URL = "https://keepr.cloud";
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
   const base = publicUrl.replace(/\/+$/, "");
@@ -23765,7 +23884,7 @@ function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.kee
 function neededScope(def) {
   return def.scope ?? (def.writes ? "write" : null);
 }
-function guard(def, ctx, args, run) {
+function guard(def, ctx, args, run2) {
   const signature = `${def.name}:${stableStringify(args)}`;
   if (ctx.breaker.isTripped(signature)) {
     return Promise.resolve(fail(ctx.breaker.trippedMessage(signature)));
@@ -23780,7 +23899,7 @@ This is a transport problem, not a keepr outage. If the keepr skill is loaded, r
   const needed = neededScope(def);
   if (needed && ctx.hasScope(needed) === false)
     return Promise.resolve(fail(ctx.refusalFor(needed)));
-  return run().then((result) => {
+  return run2().then((result) => {
     if (result.isError) {
       const status = Number(result.structuredContent?.status ?? 0);
       if (status === 401 && ctx.usesConnection) {
@@ -24294,715 +24413,6 @@ var collectionsTool = {
   }
 };
 
-// dist/src/tools/schema.js
-var norm = (s) => String(s ?? "").trim().toLowerCase();
-function clauseValue(v) {
-  if (Array.isArray(v))
-    return `(${v.map(clauseValue).join(", ")})`;
-  if (v && typeof v === "object" && "amount" in v) {
-    const m = v;
-    return `${String(m.amount)} ${String(m.currency ?? "")}`.trim();
-  }
-  if (typeof v === "string")
-    return v;
-  return JSON.stringify(v);
-}
-function describeRequiredWhen(clauses) {
-  return clauses.map((c2) => {
-    const el = c2.element ?? "?";
-    switch (c2.op) {
-      case "eq":
-        return `${el} = ${clauseValue(c2.value)}`;
-      case "ne":
-        return `${el} != ${clauseValue(c2.value)}`;
-      case "in":
-        return `${el} in ${Array.isArray(c2.value) ? clauseValue(c2.value) : `(${clauseValue(c2.value)})`}`;
-      case "not-in":
-        return `${el} not in ${Array.isArray(c2.value) ? clauseValue(c2.value) : `(${clauseValue(c2.value)})`}`;
-      case "empty":
-        return `${el} is empty`;
-      case "not-empty":
-        return `${el} is not empty`;
-      case "gt":
-        return `${el} > ${clauseValue(c2.value)}`;
-      case "lt":
-        return `${el} < ${clauseValue(c2.value)}`;
-      default:
-        return `${el} ${c2.op ?? "?"} ${clauseValue(c2.value)}`;
-    }
-  }).join(" and ");
-}
-function sequenceExample(el, n = 42) {
-  const digits = typeof el.leadingZeros === "number" && el.leadingZeros > 0 ? String(n).padStart(el.leadingZeros, "0") : String(n);
-  return `${el.prefix ?? ""}${digits}`;
-}
-function templateText(raw) {
-  if (!raw)
-    return null;
-  const str = String(raw).trim();
-  if (str.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(str);
-      if (Array.isArray(parsed.segments)) {
-        return parsed.segments.map((s) => s.type === "element" ? `{{${s.name}}}` : String(s.value ?? "")).join("");
-      }
-    } catch {
-    }
-  }
-  return str;
-}
-function primaryDateText(pd) {
-  if (!pd || !pd.kind)
-    return null;
-  const one = (e) => e.kind === "element" ? String(e.name) : `${e.kind} date`;
-  if (pd.kind === "ordered" && Array.isArray(pd.entries))
-    return `the first of ${pd.entries.map(one).join(", ")} that has a value`;
-  return one(pd);
-}
-var schemaTool = {
-  name: "keepr_schema",
-  description: "What a keepr collection accepts: its cards (record types), every element (field) on each, the data type each element wants, which elements are written by the server and must never be sent, and the tags its items can carry. Call this before building any rows. Never guess a shape.",
-  inputSchema: {
-    collection: external_exports.string().describe("Collection id, or its name. A name is matched exactly, then by unique substring; an ambiguous name is refused rather than guessed."),
-    card: external_exports.string().optional().describe("Narrow to one card, by key or id."),
-    include_json_schema: external_exports.boolean().optional().describe("Include the rendered JSON Schema per card. Verbose \u2014 ask for it when generating rows programmatically, not to read."),
-    include_layouts: external_exports.boolean().optional().describe("Include each card's layouts \u2014 tile, table, page, form \u2014 and the tier each is set at. Read it before proposing a layout change with keepr_propose_setup.")
-  },
-  handler: async (args, ctx) => {
-    const resolved = ctx.resolveCollection(String(args.collection ?? ""));
-    if (!resolved.ok)
-      return fail(resolved.message);
-    const target = resolved.row;
-    const res = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
-    if (!res.ok)
-      return failFromResponse(res, `reading the schema of "${target.name}"`);
-    await ctx.contract.noteVersionSeen(res.body?.writeContract?.contractVersion);
-    const body = res.body;
-    const wanted = String(args.card ?? "").trim().toLowerCase();
-    const allCards = body.cards ?? [];
-    const cards = allCards.filter((c2) => !wanted || c2.key?.toLowerCase() === wanted || c2.id === args.card);
-    if (wanted && !cards.length) {
-      const keys = (body.cards ?? []).map((c2) => c2.key).join(", ") || "(none)";
-      return fail(`No card "${args.card}" in "${target.name}". Cards here: ${keys}.`);
-    }
-    const warnings = [];
-    const attestGated = [];
-    if (target.archived)
-      warnings.push("This collection is ARCHIVED: it is read-only for everyone, including the owner. Writes will be refused.");
-    if (body.collection?.allowAttachments === false)
-      warnings.push("Attachments are off for this collection; every attachment call will be refused with a 403.");
-    if (!target.writable)
-      warnings.push(`This key cannot write here: ${target.blockedReason ?? "insufficient access"}.`);
-    if (!ctx.contract.isLive)
-      warnings.push("The live contract could not be fetched; element notes come from a build-time snapshot.");
-    const lines = [`Collection "${body.collection?.name ?? target.name}" (${target.id}) \u2014 ${cards.length} card${cards.length === 1 ? "" : "s"}.`];
-    const outCards = cards.map((card) => {
-      const attest = card.record?.attest ?? null;
-      if (attest)
-        attestGated.push(card.key);
-      lines.push("", `CARD ${card.key}  "${card.name}"${attest ? "  [REQUIRES A SIGNED WRITE \u2014 NOT WRITABLE BY THIS KEY]" : ""}`);
-      if (attest) {
-        lines.push(`  Records on this card must be signed by a person (${attest.mode ?? "pin"}). An API key cannot do that.`);
-        lines.push("  Items of this card have to be created in the keepr web app. Do not build rows for it.");
-      }
-      if (card.record?.lock && card.record.lock.after && card.record.lock.after !== "never") {
-        lines.push(`  Entries freeze after ${card.record.lock.after === "create" ? "creation" : `${card.record.lock.minutes ?? "?"} minutes`} and are corrected rather than edited.`);
-      }
-      const parent = card.parentCardId ? allCards.find((c2) => c2.id === card.parentCardId) : void 0;
-      const parentKey = parent?.key ?? null;
-      if (card.parentCardId)
-        lines.push(`  Inherits from ${parent ? `card ${parent.key} ("${parent.name}")` : `card ${card.parentCardId}`}; its elements are listed below with this card's own.`);
-      if (card.elementSets?.length)
-        lines.push(`  Attaches ${card.elementSets.length} element set${card.elementSets.length === 1 ? "" : "s"}; their elements are listed below too.`);
-      const title = templateText(card.displayTemplate);
-      if (title)
-        lines.push(`  Items are titled ${title}`);
-      const sortedBy = primaryDateText(card.primaryDate);
-      if (sortedBy)
-        lines.push(`  Items sort by ${sortedBy}.`);
-      if (card.itemTags === "chosen" || card.itemTags === "every") {
-        lines.push(`  ${card.itemTags === "every" ? "Every item" : "Chosen items"} of this card can be used as tags. Find one with keepr_search (types: ["tags"]) and apply it by its id.`);
-      }
-      const outElements = (card.elements ?? []).map((el) => {
-        const serverAssigned = el.serverAssigned ?? Boolean(el.driven || el.sequence);
-        const form = ctx.contract.formOf(el.dataType);
-        const bits = [el.dataType];
-        const requiredWhen = Array.isArray(el.requiredWhen) && el.requiredWhen.length ? el.requiredWhen : null;
-        if (el.required)
-          bits.push("REQUIRED");
-        else if (requiredWhen)
-          bits.push(`REQUIRED WHEN ${describeRequiredWhen(requiredWhen)}`);
-        if (el.allowMultiple)
-          bits.push("accepts an array");
-        if (serverAssigned) {
-          bits.push(el.sequence ? `SERVER-NUMBERED \u2014 never send; stored as a number, shown as ${sequenceExample(el)} \u2014 filter and match by the number (42), never the shown form` : "SERVER-COMPUTED \u2014 never send");
-        } else if (el.prefix || el.leadingZeros) {
-          bits.push(`shown as ${sequenceExample(el)} for 42 \u2014 send the number`);
-        }
-        if (el.isTitle)
-          bits.push("title");
-        if (el.choices?.length) {
-          bits.push(`choices: ${el.choices.map((c2) => c2.label && norm(c2.label) !== norm(c2.value) ? `${c2.value} ("${c2.label}")` : c2.value).join(" | ")}`);
-        }
-        if (el.lookupCardKey)
-          bits.push(`looks up card "${el.lookupCardKey}"`);
-        if (el.filter) {
-          bits.push(el.strict ? `ONLY records where ${el.filter} \u2014 any other is refused (lookup_filtered_out); a value the item already holds is kept` : `offers records where ${el.filter} first \u2014 any record of the card is accepted`);
-        }
-        if (el.measure)
-          bits.push(`measure ${el.measure}, default unit ${el.defaultUnit ?? "?"}`);
-        if (el.min !== void 0 && el.min !== null && el.min !== "")
-          bits.push(`min ${clauseValue(el.min)}`);
-        if (el.max !== void 0 && el.max !== null && el.max !== "")
-          bits.push(`max ${clauseValue(el.max)}`);
-        if (typeof el.decimals === "number")
-          bits.push(`${el.decimals} decimal${el.decimals === 1 ? "" : "s"}`);
-        if (el.nonNegative)
-          bits.push("not negative");
-        if (el.percent === true)
-          bits.push("a percent \u2014 send the number shown (12.5 for 12.5 %), never a fraction");
-        if (el.thousands === true)
-          bits.push("shown grouped (1,234,567) \u2014 send the plain number");
-        if (el.precision)
-          bits.push(`precision ${el.precision}`);
-        lines.push(`  ${el.name}  [${bits.join(", ")}]`);
-        if (form)
-          lines.push(`      send ${form.send}${form.note ? ` \u2014 ${form.note}` : ""}`);
-        if (el.help)
-          lines.push(`      help: ${el.help}`);
-        const labels = (el.choices ?? []).filter((c2) => c2.label && norm(c2.label) !== norm(c2.value));
-        return {
-          name: el.name,
-          label: el.label ?? el.name,
-          dataType: el.dataType,
-          writable: !serverAssigned,
-          ...serverAssigned ? { notWritableReason: el.sequence ? "sequence" : "driven" } : {},
-          required: Boolean(el.required),
-          ...requiredWhen ? { requiredWhen } : {},
-          isTitle: Boolean(el.isTitle),
-          allowMultiple: Boolean(el.allowMultiple),
-          ...el.choices ? { choices: el.choices.map((c2) => c2.value) } : {},
-          ...labels.length ? { choiceLabels: Object.fromEntries(labels.map((c2) => [c2.value, c2.label])) } : {},
-          ...el.lookupCardKey ? { lookupCardKey: el.lookupCardKey } : {},
-          ...el.filter ? { filter: el.filter, strict: Boolean(el.strict) } : {},
-          ...el.measure ? { measure: el.measure, defaultUnit: el.defaultUnit, units: el.units } : {},
-          ...el.min !== void 0 && el.min !== null && el.min !== "" ? { min: el.min } : {},
-          ...el.max !== void 0 && el.max !== null && el.max !== "" ? { max: el.max } : {},
-          ...typeof el.decimals === "number" ? { decimals: el.decimals } : {},
-          ...el.nonNegative ? { nonNegative: true } : {},
-          ...el.prefix ? { prefix: el.prefix } : {},
-          ...typeof el.leadingZeros === "number" ? { leadingZeros: el.leadingZeros } : {},
-          ...el.percent === true ? { percent: true } : {},
-          ...el.thousands === true ? { thousands: true } : {},
-          ...el.precision ? { precision: el.precision } : {},
-          ...el.help ? { help: el.help } : {},
-          ...form ? { accepts: form.send } : {}
-        };
-      });
-      return {
-        key: card.key,
-        id: card.id,
-        name: card.name,
-        parentCardId: card.parentCardId ?? null,
-        parentKey,
-        elementSets: card.elementSets ?? [],
-        displayTemplate: title,
-        primaryDate: card.primaryDate ?? null,
-        allowPrivateItems: Boolean(card.allowPrivateItems),
-        ...card.itemTags ? { itemTags: card.itemTags, applyWhereReferenced: card.applyWhereReferenced !== false } : {},
-        writable: !attest && target.writable,
-        ...attest ? { notWritableReason: "attest", attest } : {},
-        ...card.record ? { record: card.record } : {},
-        elements: outElements,
-        ...args.include_json_schema === true ? { jsonSchema: card.jsonSchema } : {}
-      };
-    });
-    let savedFilters = [];
-    const sf = await ctx.http.request({
-      path: `/api/collections/${target.id}/saved-filters`
-    });
-    if (sf.ok && Array.isArray(sf.body?.filters)) {
-      savedFilters = sf.body.filters.map((f) => ({ id: f._id, name: f.name, q: f.query ?? null }));
-      if (savedFilters.length) {
-        lines.push("", `SAVED FILTERS (ready-made queries the user already named): ${savedFilters.map((f) => `"${f.name}"`).join(", ")}`);
-      }
-    }
-    const tags = Array.isArray(body.tags) ? body.tags : null;
-    if (tags) {
-      if (!tags.length) {
-        lines.push("", "TAGS: this collection has none. keepr never creates a tag from here \u2014 if the person wants one, they add it in keepr.");
-      } else {
-        lines.push("", "TAGS \u2014 name them like this in a row's `tags` or keepr_update_item (the path, or the name when it is unique). keepr never creates a tag from here:");
-        for (const tag of tags) {
-          const bits = [];
-          if (tag.aliases?.length)
-            bits.push(`also: ${tag.aliases.join(", ")}`);
-          if (tag.restricted)
-            bits.push("restricted \u2014 only a manager, signed in to keepr, puts it on or takes it off; never from here");
-          if (tag.rule?.strict)
-            bits.push("applied by a rule only \u2014 never send it");
-          else if (tag.rule)
-            bits.push("a rule applies it too");
-          if (tag.inheritedFrom)
-            bits.push(`from "${tag.inheritedFrom.name}", the collection above`);
-          lines.push(`  ${tag.path ?? tag.name}${bits.length ? `  [${bits.join("; ")}]` : ""}`);
-          if (tag.description)
-            lines.push(`      ${tag.description}`);
-        }
-      }
-    }
-    let automations = [];
-    if (!ctx.contract.isLive || ctx.contract.hasEndpoint("automationList")) {
-      const ar = await ctx.http.request({
-        path: `/api/collections/${target.id}/automations`,
-        query: { describe: "1" }
-      });
-      if (ar.ok && Array.isArray(ar.body)) {
-        automations = ar.body.filter((r) => !r.inherited).map((r) => ({
-          id: r._id,
-          name: r.name ?? "",
-          kind: r.kind ?? "rule",
-          state: r.awaitingPerson ? "waiting for the person" : r.enabled === false ? "paused" : "on",
-          summary: r.summary ?? null
-        }));
-        if (automations.length) {
-          lines.push("", "AUTOMATIONS (keepr_automations reads and switches them; keepr_propose_setup changes them):");
-          for (const a of automations)
-            lines.push(`  "${a.name}" [${a.state}]${a.summary ? ` \u2014 ${a.summary}` : ""}`);
-        }
-      }
-    }
-    const layouts = [];
-    if (args.include_layouts === true) {
-      const kinds = ["tile", "table", "page", "form"];
-      const unread = [];
-      await Promise.all(outCards.map(async (card) => Promise.all(kinds.map(async (kind) => {
-        const lr = await ctx.http.request({
-          path: `/api/card-definitions/${card.id}/layouts`,
-          query: { kind, collection_id: target.id }
-        });
-        if (!lr.ok) {
-          unread.push(`${card.key ?? card.id} ${kind}`);
-          return;
-        }
-        const rows = kind === "form" ? lr.body?.resolved ? [lr.body.resolved] : [] : lr.body?.layouts ?? [];
-        for (const l of rows) {
-          if (l.scope === "user")
-            continue;
-          layouts.push({ card: String(card.key ?? card.id), kind, tier: l.scope ?? "card", ...l.name ? { name: l.name } : {} });
-        }
-      }))));
-      if (unread.length)
-        warnings.push(`Some layouts could not be read (${unread.join(", ")}), so the list below may be missing them.`);
-      lines.push("", "LAYOUTS (by card, kind and tier \u2014 a missing kind means keepr arranges it automatically):");
-      for (const card of outCards) {
-        const mine = layouts.filter((l) => l.card === String(card.key ?? card.id));
-        lines.push(`  ${card.key ?? card.id}: ${mine.length ? mine.map((l) => `${l.kind}${l.name ? ` "${l.name}"` : ""} (${l.tier} tier)`).join(", ") : "(automatic)"}`);
-      }
-    }
-    if (attestGated.length) {
-      warnings.push(`These cards require a signed write and CANNOT be written by an API key: ${attestGated.join(", ")}. They have to be created in the web app.`);
-    }
-    if (warnings.length)
-      lines.push("", ...warnings.map((w) => `WARNING: ${w}`));
-    lines.push("", 'NEXT: build rows using the element NAMES above, omit anything marked "never send", and call keepr_ingest with dry_run: true.');
-    return ok(lines.join("\n"), {
-      collection: {
-        id: target.id,
-        name: body.collection?.name ?? target.name,
-        archived: target.archived,
-        writable: target.writable,
-        allowAttachments: body.collection?.allowAttachments ?? null
-      },
-      cards: outCards,
-      ...tags ? { tags } : {},
-      writeContract: body.writeContract ?? null,
-      savedFilters,
-      automations,
-      ...args.include_layouts === true ? { layouts } : {},
-      warnings
-    });
-  }
-};
-
-// dist/src/tags.js
-var HEX24 = /^[0-9a-fA-F]{24}$/;
-function normalizeKey(raw) {
-  return String(raw ?? "").normalize("NFKC").toLowerCase().normalize("NFKC").replace(/\s+/gu, " ").trim();
-}
-function candidatesOf(vocabulary) {
-  const byId = new Map(vocabulary.map((t3) => [t3.id.toLowerCase(), t3]));
-  return vocabulary.map((tag) => {
-    const chain = [tag];
-    const seen = /* @__PURE__ */ new Set([tag.id.toLowerCase()]);
-    let parent = tag.parentId ? String(tag.parentId).toLowerCase() : "";
-    for (let i = 0; parent && i < 6; i++) {
-      const up = byId.get(parent);
-      if (!up || seen.has(parent))
-        break;
-      seen.add(parent);
-      chain.unshift(up);
-      parent = up.parentId ? String(up.parentId).toLowerCase() : "";
-    }
-    const keys = chain.map((t3) => /* @__PURE__ */ new Set([normalizeKey(t3.name), ...(t3.aliases ?? []).map(normalizeKey)]));
-    return { tag, keys, label: tag.path ?? chain.map((t3) => t3.name).join("/") };
-  });
-}
-function answers(candidate, segments) {
-  if (segments.length > candidate.keys.length)
-    return false;
-  for (let i = 1; i <= segments.length; i++) {
-    if (!candidate.keys[candidate.keys.length - i].has(segments[segments.length - i]))
-      return false;
-  }
-  return true;
-}
-function resolveTagNames(vocabulary, values) {
-  const candidates = candidatesOf(vocabulary);
-  const ids = [];
-  const problems = [];
-  for (const value of values) {
-    const raw = typeof value === "string" ? value.trim() : "";
-    if (!raw) {
-      problems.push(`${JSON.stringify(value)} is not a tag name, path or id.`);
-      continue;
-    }
-    if (HEX24.test(raw)) {
-      ids.push(raw.toLowerCase());
-      continue;
-    }
-    const segments = normalizeKey(raw).split("/").map((s) => s.trim());
-    const hits = segments.every(Boolean) ? candidates.filter((c2) => answers(c2, segments)) : [];
-    if (!hits.length) {
-      problems.push(`"${raw}" is not a tag in this collection. keepr never creates a tag from here \u2014 ask the person whether it should exist (they add it in keepr), or use one keepr_schema lists. An item used as a tag goes by its id (keepr_search with types: ["tags"]).`);
-    } else if (hits.length > 1) {
-      problems.push(`"${raw}" could be more than one tag: ${hits.map((c2) => c2.label).join(", ")}. Send the path or the id.`);
-    } else {
-      ids.push(hits[0].tag.id.toLowerCase());
-    }
-  }
-  return { ids, problems };
-}
-var lower = (v) => String(v ?? "").toLowerCase();
-function shownTags(item) {
-  const titles = {};
-  for (const [id, entry] of Object.entries(item?.tagTitles ?? {}))
-    titles[lower(id)] = entry;
-  const hand = (item?.tagIds ?? []).map(lower);
-  const rule = new Set((item?.tagAutoIds ?? []).map(lower));
-  const handSet = new Set(hand);
-  const order = [...hand, ...[...rule].filter((id) => !handSet.has(id))];
-  const tags = order.map((id) => {
-    const t3 = titles[id];
-    const appliedBy = handSet.has(id) && rule.has(id) ? "both" : rule.has(id) ? "rule" : "hand";
-    if (!t3)
-      return { id, kind: null, name: null, appliedBy };
-    if (t3.kind === "tag")
-      return { id, kind: "collection", name: t3.name ?? null, appliedBy, ...t3.restricted ? { restricted: true } : {} };
-    return { id, kind: "item", name: t3.unavailable ? null : t3.title ?? null, appliedBy, ...t3.unavailable ? { unavailable: true } : {} };
-  });
-  const myTags = (item?.myTags ?? []).map((m) => {
-    const id = lower(m.tagId);
-    if (m.kind === "item") {
-      const t3 = titles[id];
-      return { id, kind: "item", name: t3 && !t3.unavailable ? t3.title ?? null : null, ...m.fromCollection ? { fromCollection: true } : {}, ...!t3 || t3.unavailable ? { unavailable: true } : {} };
-    }
-    return { id, kind: "private", name: m.name ?? null, ...m.fromCollection ? { fromCollection: true } : {} };
-  });
-  return { tags, myTags };
-}
-function word(t3, id) {
-  if (t3.name)
-    return t3.name;
-  return t3.unavailable ? `(no longer available, ${id})` : `(a tag this key cannot name, ${id})`;
-}
-function tagsLine(shown) {
-  const parts = [];
-  if (shown.tags.length) {
-    parts.push(`tags: ${shown.tags.map((t3) => `${word(t3, t3.id)}${t3.appliedBy === "rule" ? " (by a rule)" : t3.appliedBy === "both" ? " (by hand and by a rule)" : ""}`).join(", ")}`);
-  }
-  if (shown.myTags.length) {
-    parts.push(`my tags: ${shown.myTags.map((t3) => `${word(t3, t3.id)}${t3.fromCollection ? " (on the collection)" : ""}`).join(", ")}`);
-  }
-  return parts.join(" \xB7 ");
-}
-
-// dist/src/tools/getItems.js
-var HEX242 = /^[0-9a-fA-F]{24}$/;
-var API_LIST_MAX = 200;
-var IDS_MAX = 100;
-var EXPORT_MAX = 1e3;
-var IDS_NO_TAGS = "Fetching by ids returns elements only \u2014 no tags and no timestamps. Fetch one item_id, or list with q, to see an item's tags.";
-var EXPORT_TAG_IDS = "Past 200 items the bulk path gives tag ids without their names; list 200 or fewer, or fetch an item_id, to see the names.";
-var getItemsTool = {
-  name: "keepr_get_items",
-  description: "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id. Each item comes with its tags by name (and your own private tags). Filter by tag with q, e.g. `tags = Urgent`. Use this when you know which collection to look in; use keepr_search when you do not. To total, average or break items down by month or by category, ask keepr_chart instead of listing them.",
-  inputSchema: {
-    collection: external_exports.string().optional().describe("Collection id or name. Required unless you are fetching by item_id or ids."),
-    card: external_exports.string().optional().describe("Narrow to one card type, by key or id."),
-    q: external_exports.string().optional().describe("A KQL filter, e.g. `status = open and created > -30d`. Requires `collection`."),
-    ids: external_exports.array(external_exports.string()).optional().describe(`Fetch these item ids (24-hex). At most ${IDS_MAX}.`),
-    item_id: external_exports.string().optional().describe("Fetch exactly one item by id."),
-    mode: external_exports.enum(["list", "count"]).optional().describe("`count` returns only the number of matches \u2014 much cheaper than listing."),
-    limit: external_exports.number().int().min(1).max(EXPORT_MAX).optional().describe(`Default 25. Above ${API_LIST_MAX} the bulk export path is used, hard-capped at ${EXPORT_MAX}.`),
-    skip: external_exports.number().int().min(0).optional(),
-    sort_field: external_exports.string().optional().describe("`primaryDate` (default), `createdAt`, `updatedAt`, or an element name."),
-    sort_direction: external_exports.enum(["asc", "desc"]).optional(),
-    include_descendants: external_exports.boolean().optional().describe("With `card`, also match cards that inherit from it.")
-  },
-  handler: async (args, ctx) => {
-    if (typeof args.item_id === "string" && args.item_id) {
-      if (!HEX242.test(args.item_id))
-        return fail(`"${args.item_id}" is not an item id. An id is 24 hex characters.`);
-      const res2 = await ctx.http.request({ path: `/api/items/${args.item_id}` });
-      if (!res2.ok)
-        return failFromResponse(res2, `reading item ${args.item_id}`);
-      return ok(describeItems([res2.body], 1, false).join("\n"), { mode: "list", total: 1, returned: 1, items: [shape(res2.body)] });
-    }
-    if (Array.isArray(args.ids) && args.ids.length) {
-      const wanted = args.ids.map(String);
-      const bad = wanted.filter((id) => !HEX242.test(id));
-      if (bad.length)
-        return fail(`These are not item ids (an id is 24 hex characters): ${bad.join(", ")}.`);
-      if (wanted.length > IDS_MAX)
-        return fail(`${wanted.length} ids requested; the API resolves at most ${IDS_MAX} per call and silently ignores the rest. Split the request.`);
-      const res2 = await ctx.http.request({ path: "/api/items", query: { ids: wanted.join(",") } });
-      if (!res2.ok)
-        return failFromResponse(res2, "resolving items by id");
-      const got = Array.isArray(res2.body) ? res2.body : [];
-      const omitted = wanted.filter((id) => !got.some((i) => i._id === id));
-      const lines2 = describeItems(got, got.length, false);
-      if (got.length)
-        lines2.push("", IDS_NO_TAGS);
-      if (omitted.length) {
-        lines2.push("", `NOT RETURNED (${omitted.length}): ${omitted.join(", ")}`, "These ids are not readable by this key \u2014 wrong id, deleted, or outside the key's allowlist. A short response from this endpoint is NOT an error, which is why they are named here.");
-      }
-      return ok(lines2.join("\n"), { mode: "list", total: got.length, returned: got.length, items: got.map(shape), omittedIds: omitted });
-    }
-    const collectionRef = String(args.collection ?? "");
-    if (!collectionRef) {
-      return fail("No collection given. Reading items needs one \u2014 call keepr_collections to see what this key can reach, or keepr_search if you do not know where the thing lives.");
-    }
-    const resolved = ctx.resolveCollection(collectionRef);
-    if (!resolved.ok)
-      return fail(resolved.message);
-    const target = resolved.row;
-    let cardId = null;
-    if (args.card !== void 0 && args.card !== null && String(args.card).trim() !== "") {
-      const ref = String(args.card).trim();
-      if (HEX242.test(ref))
-        cardId = ref;
-      else {
-        const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
-        if (!schema.ok)
-          return failFromResponse(schema, `reading the schema of "${target.name}" to find card "${ref}"`);
-        const cards = schema.body?.cards ?? [];
-        const low = ref.toLowerCase();
-        const hit = cards.find((c2) => (c2.key ?? "").toLowerCase() === low) ?? cards.find((c2) => (c2.name ?? "").toLowerCase() === low);
-        if (!hit) {
-          return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.map((c2) => c2.key ?? c2.id).join(", ") || "(none)"}. Nothing was counted or listed.`);
-        }
-        cardId = hit.id;
-      }
-    }
-    const query = {
-      collection_id: target.id,
-      ...args.q ? { q: String(args.q) } : {},
-      ...cardId ? { card_id: cardId } : {},
-      ...args.include_descendants ? { include_descendants: "true" } : {},
-      ...args.sort_field ? { sort_field: String(args.sort_field) } : {},
-      ...args.sort_direction ? { sort_direction: String(args.sort_direction) } : {}
-    };
-    if (args.mode === "count") {
-      const res2 = await ctx.http.request({ path: "/api/items/count", query });
-      if (!res2.ok)
-        return failFromResponse(res2, `counting items in "${target.name}"`);
-      const count = res2.body?.count ?? res2.totalCount ?? 0;
-      return ok(`${count} item${count === 1 ? "" : "s"} match in "${target.name}".`, { mode: "count", total: count, collectionId: target.id });
-    }
-    const limit = Math.min(Number(args.limit ?? 25), EXPORT_MAX);
-    const skip = Number(args.skip ?? 0);
-    if (limit > API_LIST_MAX) {
-      const res2 = await ctx.http.request({ path: "/api/items/export", query: { ...query, format: "json" } });
-      if (!res2.ok)
-        return failFromResponse(res2, `exporting items from "${target.name}"`);
-      const items2 = Array.isArray(res2.body) ? res2.body.slice(0, limit) : [];
-      const truncated = items2.length >= EXPORT_MAX;
-      const lines2 = describeItems(items2, res2.totalCount ?? items2.length, truncated);
-      if (items2.some((i) => (i.tagIds?.length ?? 0) + (i.tagAutoIds?.length ?? 0) > 0))
-        lines2.push("", EXPORT_TAG_IDS);
-      if (truncated)
-        lines2.push("", `TRUNCATED at the export cap of ${EXPORT_MAX}. Narrow with \`q\` rather than paging \u2014 the export path does not paginate.`);
-      return ok(lines2.join("\n"), { mode: "list", total: res2.totalCount ?? items2.length, returned: items2.length, truncated, items: items2.map(shape), collectionId: target.id });
-    }
-    const res = await ctx.http.request({ path: "/api/items", query: { ...query, limit, skip } });
-    if (!res.ok)
-      return failFromResponse(res, `listing items in "${target.name}"`);
-    const items = Array.isArray(res.body) ? res.body : [];
-    const total = res.totalCount ?? items.length;
-    const lines = describeItems(items, total, false);
-    const nextSkip = skip + items.length < total ? skip + items.length : null;
-    if (nextSkip !== null)
-      lines.push("", `${total - (skip + items.length)} more match. Call again with skip: ${nextSkip} to continue.`);
-    return ok(lines.join("\n"), {
-      mode: "list",
-      total,
-      returned: items.length,
-      nextSkip,
-      items: items.map(shape),
-      collectionId: target.id
-    });
-  }
-};
-function shape(item) {
-  if (!item)
-    return null;
-  const { tags, myTags } = shownTags(item);
-  return {
-    id: item._id,
-    displayValue: item.displayValue ?? null,
-    // The item's short web link (keepr-api docs/SCHEMA.md § Record codes) —
-    // the one to show a person; null when keepr has not given it a code yet.
-    url: itemUrl(item),
-    cardId: item.card_id ?? null,
-    externalId: item.source?.externalId ?? null,
-    elements: item.elements ?? {},
-    ...item.notes ? { notes: item.notes } : {},
-    // Absent when the item has none: a read that carries no tag fields
-    // (the ids path) must not claim the item has no tags.
-    ...tags.length ? { tags } : {},
-    ...myTags.length ? { myTags } : {},
-    createdAt: item.createdAt ?? null,
-    updatedAt: item.updatedAt ?? null
-  };
-}
-function itemUrl(item) {
-  const code = item?.code;
-  if (typeof code !== "string" || !/^[0-9a-hjkmnp-tv-z]{7,16}$/.test(code))
-    return null;
-  const base = (process.env.KEEPR_WEB_URL || WEBSITE_URL).trim().replace(/\/+$/, "");
-  return `${base}/i/${code}`;
-}
-function describeItems(items, total, truncated) {
-  const real = items.filter(Boolean);
-  if (!real.length)
-    return ["No items matched."];
-  const lines = [`${real.length} of ${total} item${total === 1 ? "" : "s"}${truncated ? " (truncated)" : ""}:`];
-  for (const item of real) {
-    const tags = tagsLine(shownTags(item));
-    const url = itemUrl(item);
-    lines.push(`  ${item._id}  ${item.displayValue ?? "(no title)"}${item.source?.externalId ? `  [externalId ${item.source.externalId}]` : ""}${tags ? `  \xB7 ${tags}` : ""}${url ? `  ${url}` : ""}`);
-  }
-  return lines;
-}
-
-// dist/src/tools/search.js
-var PER_BUCKET_MAX = 50;
-var searchTool = {
-  name: "keepr_search",
-  description: "Find something by text across every keepr collection this key can reach \u2014 collections, card types, items, and tags (tags by name, and items used as tags by title, with the id to apply them by). Use when you do not know where a thing lives. Once you know the collection, keepr_get_items is more precise.",
-  inputSchema: {
-    q: external_exports.string().min(2).describe("Text to look for. At least 2 characters. Matched as a case-insensitive substring, not a KQL query."),
-    types: external_exports.array(external_exports.enum(["collections", "cards", "items", "tags"])).optional().describe('Which buckets to search \u2014 all four by default. Name some to narrow it: ["tags"] for tags alone (and items used as tags, with the id to apply them by), ["items"] for items alone.'),
-    limit: external_exports.number().int().min(1).max(PER_BUCKET_MAX).optional().describe(`Results per bucket, default 10, max ${PER_BUCKET_MAX}.`)
-  },
-  handler: async (args, ctx) => {
-    const q = String(args.q ?? "").trim();
-    if (q.length < 2)
-      return fail("Search needs at least 2 characters after trimming.");
-    const limit = Math.min(Number(args.limit ?? 10), PER_BUCKET_MAX);
-    const asked = Array.isArray(args.types) && args.types.length ? args.types : null;
-    const wantsTags = !asked || asked.includes("tags");
-    const plain = asked ? asked.filter((t3) => t3 !== "tags") : null;
-    let body = { query: q };
-    if (!plain || plain.length) {
-      const res = await ctx.http.request({ path: "/api/search", query: { q, limit, types: plain ? plain.join(",") : void 0 } });
-      if (!res.ok)
-        return failFromResponse(res, `searching for "${q}"`);
-      body = res.body ?? { query: q };
-    }
-    let tagHits = [];
-    let moreTags = false;
-    if (wantsTags) {
-      const res = await ctx.http.request({ path: "/api/tags/search", query: { q, limit } });
-      if (!res.ok)
-        return failFromResponse(res, `searching tags for "${q}"`);
-      tagHits = res.body?.results ?? [];
-      moreTags = Boolean(res.body?.more);
-    }
-    const collections = body.collections ?? [];
-    const cards = body.cards ?? [];
-    const items = body.items ?? [];
-    const byId = new Map(ctx.knownCollections().map((c2) => [c2.id, c2.name]));
-    const lines = [];
-    if (collections.length) {
-      lines.push(`COLLECTIONS (${collections.length}):`);
-      for (const c2 of collections)
-        lines.push(`  ${c2.name}${c2.status === "archived" ? "  [archived]" : ""}  ${c2._id}`);
-    }
-    if (cards.length) {
-      lines.push(lines.length ? "" : "", `CARD TYPES (${cards.length}):`);
-      for (const c2 of cards)
-        lines.push(`  ${c2.key ?? c2._id}  "${c2.name}"  in ${byId.get(String(c2.collection_id)) ?? c2.collection_id}`);
-    }
-    if (items.length) {
-      lines.push(lines.length ? "" : "", `ITEMS (${items.length}):`);
-      for (const i of items) {
-        const title = firstText(i.elements) ?? i.notes ?? "(no title)";
-        lines.push(`  ${i._id}  ${truncate(title, 70)}  in ${byId.get(String(i.collection_id)) ?? i.collection_id}`);
-      }
-    }
-    if (tagHits.length) {
-      lines.push(lines.length ? "" : "", `TAGS (${tagHits.length}):`);
-      for (const hit of tagHits) {
-        const where = hit.collection ? `  in ${hit.collection.name ?? byId.get(String(hit.collection._id)) ?? hit.collection._id}` : "";
-        if (hit.kind === "item")
-          lines.push(`  ${hit.tag._id}  ${truncate(hit.tag.title ?? "(untitled)", 60)}  [an item used as a tag \u2014 apply it by this id]${where}`);
-        else if (hit.kind === "private")
-          lines.push(`  ${hit.tag._id}  ${(hit.tag.path ?? [hit.tag.name]).join("/")}  [your private tag \u2014 only you see it; it is not applied from here]`);
-        else
-          lines.push(`  ${hit.tag._id}  ${(hit.tag.path ?? [hit.tag.name]).join("/")}  [tag${hit.tag.restricted ? ", restricted" : ""}${hit.tag.rule?.strict ? ", applied by a rule only" : ""}]${where}`);
-      }
-    }
-    if (!lines.length) {
-      return ok(`Nothing matched "${q}".
-
-Search is a literal substring, not a fuzzy match and not KQL \u2014 a shorter or differently-spelled fragment may find it.`, { query: q, buckets: { collections: [], cards: [], items: [], ...wantsTags ? { tags: [] } : {} }, truncated: false });
-    }
-    const truncated = [collections.length, cards.length, items.length].some((n) => n >= limit) || moreTags;
-    if (truncated)
-      lines.push("", `At least one bucket hit the limit of ${limit} and this endpoint does not paginate. Narrow the text, or switch to keepr_get_items with a KQL filter.`);
-    lines.push("", "NEXT: call keepr_schema for the collection you want, then keepr_get_items to read precisely.");
-    return ok(lines.join("\n"), {
-      query: q,
-      buckets: {
-        collections: collections.map((c2) => ({ id: c2._id, name: c2.name })),
-        cards: cards.map((c2) => ({ id: c2._id, key: c2.key ?? null, name: c2.name, collectionId: c2.collection_id ?? null })),
-        items: items.map((i) => ({ id: i._id, collectionId: i.collection_id ?? null, cardId: i.card_id ?? null })),
-        ...wantsTags ? {
-          tags: tagHits.map((h) => ({
-            id: h.tag._id,
-            kind: h.kind,
-            name: h.kind === "item" ? h.tag.title ?? null : (h.tag.path ?? [h.tag.name]).join("/"),
-            collectionId: h.collection?._id ?? null
-          }))
-        } : {}
-      },
-      truncated
-    });
-  }
-};
-function firstText(elements) {
-  for (const v of Object.values(elements ?? {})) {
-    if (typeof v === "string" && v.trim())
-      return v.trim();
-  }
-  return null;
-}
-function truncate(s, n) {
-  return s.length <= n ? s : `${s.slice(0, n - 1)}\u2026`;
-}
-
 // dist/src/chartTable.js
 var MAX_ROWS = 200;
 var MAX_CELLS = 4e3;
@@ -25422,6 +24832,830 @@ function tableText(table) {
   return { lines, shown, total: table.rows.length, from };
 }
 
+// dist/src/elementIds.js
+var ELEMENT_ID = /^[a-z0-9]{8}$/;
+var ID_RUN = /[A-Za-z0-9_-]*/y;
+function elementIdsIn(kql) {
+  if (typeof kql !== "string" || !kql.includes("#"))
+    return [];
+  const out = [];
+  const n = kql.length;
+  let i = 0;
+  while (i < n) {
+    const ch = kql[i];
+    if (ch === '"') {
+      i++;
+      while (i < n && kql[i] !== '"')
+        i += kql[i] === "\\" ? 2 : 1;
+      i++;
+      continue;
+    }
+    if (ch === "#") {
+      ID_RUN.lastIndex = i + 1;
+      const run2 = ID_RUN.exec(kql)?.[0] ?? "";
+      if (ELEMENT_ID.test(run2) && !out.includes(`#${run2}`))
+        out.push(`#${run2}`);
+      i += 1 + run2.length;
+      continue;
+    }
+    i++;
+  }
+  return out;
+}
+var KQL_KEYS = /* @__PURE__ */ new Set(["kql", "query", "filter", "q"]);
+function elementIdsInDocument(doc, depth = 0) {
+  const out = [];
+  const add = (ids) => {
+    for (const id of ids)
+      if (!out.includes(id))
+        out.push(id);
+  };
+  if (depth > 12 || !doc || typeof doc !== "object")
+    return out;
+  if (Array.isArray(doc)) {
+    for (const v of doc)
+      add(elementIdsInDocument(v, depth + 1));
+    return out;
+  }
+  for (const [k, v] of Object.entries(doc)) {
+    if (typeof v === "string") {
+      if (KQL_KEYS.has(k))
+        add(elementIdsIn(v));
+    } else
+      add(elementIdsInDocument(v, depth + 1));
+  }
+  return out;
+}
+function vocabularyOf(cards) {
+  const out = /* @__PURE__ */ new Map();
+  for (const card of Array.isArray(cards) ? cards : []) {
+    const cardName = String(card?.key ?? card?.id ?? "?");
+    for (const el of Array.isArray(card?.elements) ? card.elements : []) {
+      const id = typeof el?.id === "string" && ELEMENT_ID.test(el.id) ? el.id : null;
+      if (!id)
+        continue;
+      const hit = out.get(id);
+      if (hit) {
+        if (!hit.cards.includes(cardName))
+          hit.cards.push(cardName);
+        continue;
+      }
+      const name = String(el.name ?? "");
+      out.set(id, { id, name, label: typeof el.label === "string" && el.label ? el.label : name, cards: [cardName] });
+    }
+  }
+  return out;
+}
+var MAX_CARDS = 4;
+var said = (v, max = 80) => cleanText(v, max);
+function describeElementId(id, vocab) {
+  const bare = id.replace(/^#/, "");
+  const hit = vocab.get(bare);
+  if (!hit)
+    return `#${bare} is no element this collection's schema lists (removed, or on a card this key cannot read)`;
+  const label = hit.label && hit.label.trim().toLowerCase() !== hit.name.trim().toLowerCase() ? ` ("${said(hit.label)}")` : "";
+  const cards = hit.cards.slice(0, MAX_CARDS).map((c2) => said(c2)).join(", ");
+  const more = hit.cards.length > MAX_CARDS ? ` and ${hit.cards.length - MAX_CARDS} more` : "";
+  return `#${bare} is element ${said(hit.name)}${label} on card${hit.cards.length === 1 ? "" : "s"} ${cards}${more}`;
+}
+function idLegend(ids, vocab, indent) {
+  if (!ids.length)
+    return [];
+  if (!vocab)
+    return [`${indent}where ${ids.join(", ")} ${ids.length === 1 ? "is an element id" : "are element ids"}: keepr_schema lists each element's id (the schema could not be read just now)`];
+  return ids.map((id) => `${indent}where ${describeElementId(id, vocab)}`);
+}
+function legendFor(texts, vocab, indent) {
+  const ids = [];
+  for (const t3 of texts)
+    for (const id of elementIdsIn(t3))
+      if (!ids.includes(id))
+        ids.push(id);
+  return idLegend(ids, vocab, indent);
+}
+
+// dist/src/tools/schema.js
+var norm = (s) => String(s ?? "").trim().toLowerCase();
+function clauseValue(v) {
+  if (Array.isArray(v))
+    return `(${v.map(clauseValue).join(", ")})`;
+  if (v && typeof v === "object" && "amount" in v) {
+    const m = v;
+    return `${String(m.amount)} ${String(m.currency ?? "")}`.trim();
+  }
+  if (typeof v === "string")
+    return v;
+  return JSON.stringify(v);
+}
+function describeRequiredWhen(clauses) {
+  return clauses.map((c2) => {
+    const el = c2.element ?? "?";
+    switch (c2.op) {
+      case "eq":
+        return `${el} = ${clauseValue(c2.value)}`;
+      case "ne":
+        return `${el} != ${clauseValue(c2.value)}`;
+      case "in":
+        return `${el} in ${Array.isArray(c2.value) ? clauseValue(c2.value) : `(${clauseValue(c2.value)})`}`;
+      case "not-in":
+        return `${el} not in ${Array.isArray(c2.value) ? clauseValue(c2.value) : `(${clauseValue(c2.value)})`}`;
+      case "empty":
+        return `${el} is empty`;
+      case "not-empty":
+        return `${el} is not empty`;
+      case "gt":
+        return `${el} > ${clauseValue(c2.value)}`;
+      case "lt":
+        return `${el} < ${clauseValue(c2.value)}`;
+      default:
+        return `${el} ${c2.op ?? "?"} ${clauseValue(c2.value)}`;
+    }
+  }).join(" and ");
+}
+function sequenceExample(el, n = 42) {
+  const digits = typeof el.leadingZeros === "number" && el.leadingZeros > 0 ? String(n).padStart(el.leadingZeros, "0") : String(n);
+  return `${el.prefix ?? ""}${digits}`;
+}
+function templateText(raw) {
+  if (!raw)
+    return null;
+  const str = String(raw).trim();
+  if (str.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(str);
+      if (Array.isArray(parsed.segments)) {
+        return parsed.segments.map((s) => s.type === "element" ? `{{${s.name}}}` : String(s.value ?? "")).join("");
+      }
+    } catch {
+    }
+  }
+  return str;
+}
+function primaryDateText(pd) {
+  if (!pd || !pd.kind)
+    return null;
+  const one = (e) => e.kind === "element" ? String(e.name) : `${e.kind} date`;
+  if (pd.kind === "ordered" && Array.isArray(pd.entries))
+    return `the first of ${pd.entries.map(one).join(", ")} that has a value`;
+  return one(pd);
+}
+var schemaTool = {
+  name: "keepr_schema",
+  description: "What a keepr collection accepts: its cards (record types), every element (field) on each with its id (#k7f3q2xa \u2014 how keepr's stored filters name it), the data type each element wants, which elements are written by the server and must never be sent, and the tags its items can carry. Call this before building any rows. Never guess a shape.",
+  inputSchema: {
+    collection: external_exports.string().describe("Collection id, or its name. A name is matched exactly, then by unique substring; an ambiguous name is refused rather than guessed."),
+    card: external_exports.string().optional().describe("Narrow to one card, by key or id."),
+    include_json_schema: external_exports.boolean().optional().describe("Include the rendered JSON Schema per card. Verbose \u2014 ask for it when generating rows programmatically, not to read."),
+    include_layouts: external_exports.boolean().optional().describe("Include each card's layouts \u2014 tile, table, page, form \u2014 and the tier each is set at. Read it before proposing a layout change with keepr_propose_setup.")
+  },
+  handler: async (args, ctx) => {
+    const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+    if (!resolved.ok)
+      return fail(resolved.message);
+    const target = resolved.row;
+    const res = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
+    if (!res.ok)
+      return failFromResponse(res, `reading the schema of "${target.name}"`);
+    await ctx.contract.noteVersionSeen(res.body?.writeContract?.contractVersion);
+    const body = res.body;
+    const wanted = String(args.card ?? "").trim().toLowerCase();
+    const allCards = body.cards ?? [];
+    const cards = allCards.filter((c2) => !wanted || c2.key?.toLowerCase() === wanted || c2.id === args.card);
+    if (wanted && !cards.length) {
+      const keys = (body.cards ?? []).map((c2) => c2.key).join(", ") || "(none)";
+      return fail(`No card "${args.card}" in "${target.name}". Cards here: ${keys}.`);
+    }
+    const warnings = [];
+    const attestGated = [];
+    if (target.archived)
+      warnings.push("This collection is ARCHIVED: it is read-only for everyone, including the owner. Writes will be refused.");
+    if (body.collection?.allowAttachments === false)
+      warnings.push("Attachments are off for this collection; every attachment call will be refused with a 403.");
+    if (!target.writable)
+      warnings.push(`This key cannot write here: ${target.blockedReason ?? "insufficient access"}.`);
+    if (!ctx.contract.isLive)
+      warnings.push("The live contract could not be fetched; element notes come from a build-time snapshot.");
+    const lines = [`Collection "${body.collection?.name ?? target.name}" (${target.id}) \u2014 ${cards.length} card${cards.length === 1 ? "" : "s"}.`];
+    const vocab = vocabularyOf(allCards);
+    const outCards = cards.map((card) => {
+      const attest = card.record?.attest ?? null;
+      if (attest)
+        attestGated.push(card.key);
+      lines.push("", `CARD ${card.key}  "${card.name}"${attest ? "  [REQUIRES A SIGNED WRITE \u2014 NOT WRITABLE BY THIS KEY]" : ""}`);
+      if (attest) {
+        lines.push(`  Records on this card must be signed by a person (${attest.mode ?? "pin"}). An API key cannot do that.`);
+        lines.push("  Items of this card have to be created in the keepr web app. Do not build rows for it.");
+      }
+      if (card.record?.lock && card.record.lock.after && card.record.lock.after !== "never") {
+        lines.push(`  Entries freeze after ${card.record.lock.after === "create" ? "creation" : `${card.record.lock.minutes ?? "?"} minutes`} and are corrected rather than edited.`);
+      }
+      const parent = card.parentCardId ? allCards.find((c2) => c2.id === card.parentCardId) : void 0;
+      const parentKey = parent?.key ?? null;
+      if (card.parentCardId)
+        lines.push(`  Inherits from ${parent ? `card ${parent.key} ("${parent.name}")` : `card ${card.parentCardId}`}; its elements are listed below with this card's own.`);
+      if (card.elementSets?.length)
+        lines.push(`  Attaches ${card.elementSets.length} element set${card.elementSets.length === 1 ? "" : "s"}; their elements are listed below too.`);
+      const title = templateText(card.displayTemplate);
+      if (title)
+        lines.push(`  Items are titled ${title}`);
+      const sortedBy = primaryDateText(card.primaryDate);
+      if (sortedBy)
+        lines.push(`  Items sort by ${sortedBy}.`);
+      if (card.itemTags === "chosen" || card.itemTags === "every") {
+        lines.push(`  ${card.itemTags === "every" ? "Every item" : "Chosen items"} of this card can be used as tags. Find one with keepr_search (types: ["tags"]) and apply it by its id.`);
+      }
+      const outElements = (card.elements ?? []).map((el) => {
+        const serverAssigned = el.serverAssigned ?? Boolean(el.driven || el.sequence);
+        const form = ctx.contract.formOf(el.dataType);
+        const bits = [el.dataType];
+        const requiredWhen = Array.isArray(el.requiredWhen) && el.requiredWhen.length ? el.requiredWhen : null;
+        if (el.required)
+          bits.push("REQUIRED");
+        else if (requiredWhen)
+          bits.push(`REQUIRED WHEN ${describeRequiredWhen(requiredWhen)}`);
+        if (el.allowMultiple)
+          bits.push("accepts an array");
+        if (serverAssigned) {
+          bits.push(el.sequence ? `SERVER-NUMBERED \u2014 never send; stored as a number, shown as ${sequenceExample(el)} \u2014 filter and match by the number (42), never the shown form` : "SERVER-COMPUTED \u2014 never send");
+        } else if (el.prefix || el.leadingZeros) {
+          bits.push(`shown as ${sequenceExample(el)} for 42 \u2014 send the number`);
+        }
+        if (el.isTitle)
+          bits.push("title");
+        if (el.choices?.length) {
+          bits.push(`choices: ${el.choices.map((c2) => c2.label && norm(c2.label) !== norm(c2.value) ? `${c2.value} ("${c2.label}")` : c2.value).join(" | ")}`);
+        }
+        if (el.lookupCardKey)
+          bits.push(`looks up card "${el.lookupCardKey}"`);
+        if (el.filter) {
+          bits.push(el.strict ? `ONLY records where ${el.filter} \u2014 any other is refused (lookup_filtered_out); a value the item already holds is kept` : `offers records where ${el.filter} first \u2014 any record of the card is accepted`);
+        }
+        if (el.measure)
+          bits.push(`measure ${el.measure}, default unit ${el.defaultUnit ?? "?"}`);
+        if (el.min !== void 0 && el.min !== null && el.min !== "")
+          bits.push(`min ${clauseValue(el.min)}`);
+        if (el.max !== void 0 && el.max !== null && el.max !== "")
+          bits.push(`max ${clauseValue(el.max)}`);
+        if (typeof el.decimals === "number")
+          bits.push(`${el.decimals} decimal${el.decimals === 1 ? "" : "s"}`);
+        if (el.nonNegative)
+          bits.push("not negative");
+        if (el.percent === true)
+          bits.push("a percent \u2014 send the number shown (12.5 for 12.5 %), never a fraction");
+        if (el.thousands === true)
+          bits.push("shown grouped (1,234,567) \u2014 send the plain number");
+        if (el.precision)
+          bits.push(`precision ${el.precision}`);
+        const id = typeof el.id === "string" && ELEMENT_ID.test(el.id) ? el.id : null;
+        lines.push(`  ${el.name}${id ? `  #${id}` : ""}  [${bits.join(", ")}]`);
+        if (el.filter)
+          lines.push(...legendFor([el.filter], vocab, "      "));
+        if (form)
+          lines.push(`      send ${form.send}${form.note ? ` \u2014 ${form.note}` : ""}`);
+        if (el.help)
+          lines.push(`      help: ${el.help}`);
+        const labels = (el.choices ?? []).filter((c2) => c2.label && norm(c2.label) !== norm(c2.value));
+        return {
+          ...id ? { id } : {},
+          name: el.name,
+          label: el.label ?? el.name,
+          dataType: el.dataType,
+          writable: !serverAssigned,
+          ...serverAssigned ? { notWritableReason: el.sequence ? "sequence" : "driven" } : {},
+          required: Boolean(el.required),
+          ...requiredWhen ? { requiredWhen } : {},
+          isTitle: Boolean(el.isTitle),
+          allowMultiple: Boolean(el.allowMultiple),
+          ...el.choices ? { choices: el.choices.map((c2) => c2.value) } : {},
+          ...labels.length ? { choiceLabels: Object.fromEntries(labels.map((c2) => [c2.value, c2.label])) } : {},
+          ...el.lookupCardKey ? { lookupCardKey: el.lookupCardKey } : {},
+          ...el.filter ? { filter: el.filter, strict: Boolean(el.strict) } : {},
+          ...el.measure ? { measure: el.measure, defaultUnit: el.defaultUnit, units: el.units } : {},
+          ...el.min !== void 0 && el.min !== null && el.min !== "" ? { min: el.min } : {},
+          ...el.max !== void 0 && el.max !== null && el.max !== "" ? { max: el.max } : {},
+          ...typeof el.decimals === "number" ? { decimals: el.decimals } : {},
+          ...el.nonNegative ? { nonNegative: true } : {},
+          ...el.prefix ? { prefix: el.prefix } : {},
+          ...typeof el.leadingZeros === "number" ? { leadingZeros: el.leadingZeros } : {},
+          ...el.percent === true ? { percent: true } : {},
+          ...el.thousands === true ? { thousands: true } : {},
+          ...el.precision ? { precision: el.precision } : {},
+          ...el.help ? { help: el.help } : {},
+          ...form ? { accepts: form.send } : {}
+        };
+      });
+      return {
+        key: card.key,
+        id: card.id,
+        name: card.name,
+        parentCardId: card.parentCardId ?? null,
+        parentKey,
+        elementSets: card.elementSets ?? [],
+        displayTemplate: title,
+        primaryDate: card.primaryDate ?? null,
+        allowPrivateItems: Boolean(card.allowPrivateItems),
+        ...card.itemTags ? { itemTags: card.itemTags, applyWhereReferenced: card.applyWhereReferenced !== false } : {},
+        writable: !attest && target.writable,
+        ...attest ? { notWritableReason: "attest", attest } : {},
+        ...card.record ? { record: card.record } : {},
+        elements: outElements,
+        ...args.include_json_schema === true ? { jsonSchema: card.jsonSchema } : {}
+      };
+    });
+    let savedFilters = [];
+    const sf = await ctx.http.request({
+      path: `/api/collections/${target.id}/saved-filters`
+    });
+    if (sf.ok && Array.isArray(sf.body?.filters)) {
+      savedFilters = sf.body.filters.map((f) => ({ id: f._id, name: f.name, q: f.query ?? null }));
+      if (savedFilters.length) {
+        lines.push("", "SAVED FILTERS (ready-made queries the user already named; pass one's query as keepr_get_items' q, as it is):");
+        for (const f of savedFilters) {
+          lines.push(`  "${cleanText(String(f.name ?? ""))}"${f.q ? `: ${cleanText(f.q, 2e3)}` : ""}`);
+          lines.push(...legendFor([f.q], vocab, "    "));
+        }
+      }
+    }
+    const tags = Array.isArray(body.tags) ? body.tags : null;
+    if (tags) {
+      if (!tags.length) {
+        lines.push("", "TAGS: this collection has none. keepr never creates a tag from here \u2014 if the person wants one, they add it in keepr.");
+      } else {
+        lines.push("", "TAGS \u2014 name them like this in a row's `tags` or keepr_update_item (the path, or the name when it is unique). keepr never creates a tag from here:");
+        for (const tag of tags) {
+          const bits = [];
+          if (tag.aliases?.length)
+            bits.push(`also: ${tag.aliases.join(", ")}`);
+          if (tag.restricted)
+            bits.push("restricted \u2014 only a manager, signed in to keepr, puts it on or takes it off; never from here");
+          if (tag.rule?.strict)
+            bits.push("applied by a rule only \u2014 never send it");
+          else if (tag.rule)
+            bits.push("a rule applies it too");
+          if (tag.inheritedFrom)
+            bits.push(`from "${tag.inheritedFrom.name}", the collection above`);
+          lines.push(`  ${tag.path ?? tag.name}${bits.length ? `  [${bits.join("; ")}]` : ""}`);
+          if (tag.description)
+            lines.push(`      ${tag.description}`);
+        }
+      }
+    }
+    let automations = [];
+    if (!ctx.contract.isLive || ctx.contract.hasEndpoint("automationList")) {
+      const ar = await ctx.http.request({
+        path: `/api/collections/${target.id}/automations`,
+        query: { describe: "1" }
+      });
+      if (ar.ok && Array.isArray(ar.body)) {
+        const own2 = ar.body.filter((r) => !r.inherited);
+        automations = own2.map((r) => ({
+          id: r._id,
+          name: r.name ?? "",
+          kind: r.kind ?? "rule",
+          state: r.awaitingPerson ? "waiting for the person" : r.enabled === false ? "paused" : "on",
+          summary: r.summary ?? null
+        }));
+        if (automations.length) {
+          lines.push("", "AUTOMATIONS (keepr_automations reads and switches them; keepr_propose_setup changes them):");
+          automations.forEach((a, i) => {
+            lines.push(`  "${a.name}" [${a.state}]${a.summary ? ` \u2014 ${a.summary}` : ""}`);
+            const shown = elementIdsInDocument(own2[i]).filter((id) => (a.summary ?? "").includes(id));
+            lines.push(...idLegend(shown, vocab, "    "));
+          });
+        }
+      }
+    }
+    const layouts = [];
+    if (args.include_layouts === true) {
+      const kinds = ["tile", "table", "page", "form"];
+      const unread = [];
+      await Promise.all(outCards.map(async (card) => Promise.all(kinds.map(async (kind) => {
+        const lr = await ctx.http.request({
+          path: `/api/card-definitions/${card.id}/layouts`,
+          query: { kind, collection_id: target.id }
+        });
+        if (!lr.ok) {
+          unread.push(`${card.key ?? card.id} ${kind}`);
+          return;
+        }
+        const rows = kind === "form" ? lr.body?.resolved ? [lr.body.resolved] : [] : lr.body?.layouts ?? [];
+        for (const l of rows) {
+          if (l.scope === "user")
+            continue;
+          layouts.push({ card: String(card.key ?? card.id), kind, tier: l.scope ?? "card", ...l.name ? { name: l.name } : {} });
+        }
+      }))));
+      if (unread.length)
+        warnings.push(`Some layouts could not be read (${unread.join(", ")}), so the list below may be missing them.`);
+      lines.push("", "LAYOUTS (by card, kind and tier \u2014 a missing kind means keepr arranges it automatically):");
+      for (const card of outCards) {
+        const mine = layouts.filter((l) => l.card === String(card.key ?? card.id));
+        lines.push(`  ${card.key ?? card.id}: ${mine.length ? mine.map((l) => `${l.kind}${l.name ? ` "${l.name}"` : ""} (${l.tier} tier)`).join(", ") : "(automatic)"}`);
+      }
+    }
+    if (attestGated.length) {
+      warnings.push(`These cards require a signed write and CANNOT be written by an API key: ${attestGated.join(", ")}. They have to be created in the web app.`);
+    }
+    if (warnings.length)
+      lines.push("", ...warnings.map((w) => `WARNING: ${w}`));
+    lines.push("", `NEXT: build rows using the element NAMES above (an element's #id is how stored filters name it \u2014 rows never use it), omit anything marked "never send", and call keepr_ingest with dry_run: true.`);
+    return ok(lines.join("\n"), {
+      collection: {
+        id: target.id,
+        name: body.collection?.name ?? target.name,
+        archived: target.archived,
+        writable: target.writable,
+        allowAttachments: body.collection?.allowAttachments ?? null
+      },
+      cards: outCards,
+      ...tags ? { tags } : {},
+      writeContract: body.writeContract ?? null,
+      savedFilters,
+      automations,
+      ...args.include_layouts === true ? { layouts } : {},
+      warnings
+    });
+  }
+};
+
+// dist/src/tags.js
+var HEX24 = /^[0-9a-fA-F]{24}$/;
+function normalizeKey(raw) {
+  return String(raw ?? "").normalize("NFKC").toLowerCase().normalize("NFKC").replace(/\s+/gu, " ").trim();
+}
+function candidatesOf(vocabulary) {
+  const byId = new Map(vocabulary.map((t3) => [t3.id.toLowerCase(), t3]));
+  return vocabulary.map((tag) => {
+    const chain = [tag];
+    const seen = /* @__PURE__ */ new Set([tag.id.toLowerCase()]);
+    let parent = tag.parentId ? String(tag.parentId).toLowerCase() : "";
+    for (let i = 0; parent && i < 6; i++) {
+      const up = byId.get(parent);
+      if (!up || seen.has(parent))
+        break;
+      seen.add(parent);
+      chain.unshift(up);
+      parent = up.parentId ? String(up.parentId).toLowerCase() : "";
+    }
+    const keys = chain.map((t3) => /* @__PURE__ */ new Set([normalizeKey(t3.name), ...(t3.aliases ?? []).map(normalizeKey)]));
+    return { tag, keys, label: tag.path ?? chain.map((t3) => t3.name).join("/") };
+  });
+}
+function answers(candidate, segments) {
+  if (segments.length > candidate.keys.length)
+    return false;
+  for (let i = 1; i <= segments.length; i++) {
+    if (!candidate.keys[candidate.keys.length - i].has(segments[segments.length - i]))
+      return false;
+  }
+  return true;
+}
+function resolveTagNames(vocabulary, values) {
+  const candidates = candidatesOf(vocabulary);
+  const ids = [];
+  const problems = [];
+  for (const value of values) {
+    const raw = typeof value === "string" ? value.trim() : "";
+    if (!raw) {
+      problems.push(`${JSON.stringify(value)} is not a tag name, path or id.`);
+      continue;
+    }
+    if (HEX24.test(raw)) {
+      ids.push(raw.toLowerCase());
+      continue;
+    }
+    const segments = normalizeKey(raw).split("/").map((s) => s.trim());
+    const hits = segments.every(Boolean) ? candidates.filter((c2) => answers(c2, segments)) : [];
+    if (!hits.length) {
+      problems.push(`"${raw}" is not a tag in this collection. keepr never creates a tag from here \u2014 ask the person whether it should exist (they add it in keepr), or use one keepr_schema lists. An item used as a tag goes by its id (keepr_search with types: ["tags"]).`);
+    } else if (hits.length > 1) {
+      problems.push(`"${raw}" could be more than one tag: ${hits.map((c2) => c2.label).join(", ")}. Send the path or the id.`);
+    } else {
+      ids.push(hits[0].tag.id.toLowerCase());
+    }
+  }
+  return { ids, problems };
+}
+var lower = (v) => String(v ?? "").toLowerCase();
+function shownTags(item) {
+  const titles = {};
+  for (const [id, entry] of Object.entries(item?.tagTitles ?? {}))
+    titles[lower(id)] = entry;
+  const hand = (item?.tagIds ?? []).map(lower);
+  const rule = new Set((item?.tagAutoIds ?? []).map(lower));
+  const handSet = new Set(hand);
+  const order = [...hand, ...[...rule].filter((id) => !handSet.has(id))];
+  const tags = order.map((id) => {
+    const t3 = titles[id];
+    const appliedBy = handSet.has(id) && rule.has(id) ? "both" : rule.has(id) ? "rule" : "hand";
+    if (!t3)
+      return { id, kind: null, name: null, appliedBy };
+    if (t3.kind === "tag")
+      return { id, kind: "collection", name: t3.name ?? null, appliedBy, ...t3.restricted ? { restricted: true } : {} };
+    return { id, kind: "item", name: t3.unavailable ? null : t3.title ?? null, appliedBy, ...t3.unavailable ? { unavailable: true } : {} };
+  });
+  const myTags = (item?.myTags ?? []).map((m) => {
+    const id = lower(m.tagId);
+    if (m.kind === "item") {
+      const t3 = titles[id];
+      return { id, kind: "item", name: t3 && !t3.unavailable ? t3.title ?? null : null, ...m.fromCollection ? { fromCollection: true } : {}, ...!t3 || t3.unavailable ? { unavailable: true } : {} };
+    }
+    return { id, kind: "private", name: m.name ?? null, ...m.fromCollection ? { fromCollection: true } : {} };
+  });
+  return { tags, myTags };
+}
+function word(t3, id) {
+  if (t3.name)
+    return t3.name;
+  return t3.unavailable ? `(no longer available, ${id})` : `(a tag this key cannot name, ${id})`;
+}
+function tagsLine(shown) {
+  const parts = [];
+  if (shown.tags.length) {
+    parts.push(`tags: ${shown.tags.map((t3) => `${word(t3, t3.id)}${t3.appliedBy === "rule" ? " (by a rule)" : t3.appliedBy === "both" ? " (by hand and by a rule)" : ""}`).join(", ")}`);
+  }
+  if (shown.myTags.length) {
+    parts.push(`my tags: ${shown.myTags.map((t3) => `${word(t3, t3.id)}${t3.fromCollection ? " (on the collection)" : ""}`).join(", ")}`);
+  }
+  return parts.join(" \xB7 ");
+}
+
+// dist/src/tools/getItems.js
+var HEX242 = /^[0-9a-fA-F]{24}$/;
+var API_LIST_MAX = 200;
+var IDS_MAX = 100;
+var EXPORT_MAX = 1e3;
+var IDS_NO_TAGS = "Fetching by ids returns elements only \u2014 no tags and no timestamps. Fetch one item_id, or list with q, to see an item's tags.";
+var EXPORT_TAG_IDS = "Past 200 items the bulk path gives tag ids without their names; list 200 or fewer, or fetch an item_id, to see the names.";
+var getItemsTool = {
+  name: "keepr_get_items",
+  description: "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id. Each item comes with its tags by name (and your own private tags). Filter by tag with q, e.g. `tags = Urgent`. Use this when you know which collection to look in; use keepr_search when you do not. To total, average or break items down by month or by category, ask keepr_chart instead of listing them.",
+  inputSchema: {
+    collection: external_exports.string().optional().describe("Collection id or name. Required unless you are fetching by item_id or ids."),
+    card: external_exports.string().optional().describe("Narrow to one card type, by key or id."),
+    q: external_exports.string().optional().describe("A KQL filter, e.g. `status = open and created > -30d`. Requires `collection`."),
+    ids: external_exports.array(external_exports.string()).optional().describe(`Fetch these item ids (24-hex). At most ${IDS_MAX}.`),
+    item_id: external_exports.string().optional().describe("Fetch exactly one item by id."),
+    mode: external_exports.enum(["list", "count"]).optional().describe("`count` returns only the number of matches \u2014 much cheaper than listing."),
+    limit: external_exports.number().int().min(1).max(EXPORT_MAX).optional().describe(`Default 25. Above ${API_LIST_MAX} the bulk export path is used, hard-capped at ${EXPORT_MAX}.`),
+    skip: external_exports.number().int().min(0).optional(),
+    sort_field: external_exports.string().optional().describe("`primaryDate` (default), `createdAt`, `updatedAt`, or an element name."),
+    sort_direction: external_exports.enum(["asc", "desc"]).optional(),
+    include_descendants: external_exports.boolean().optional().describe("With `card`, also match cards that inherit from it.")
+  },
+  handler: async (args, ctx) => {
+    if (typeof args.item_id === "string" && args.item_id) {
+      if (!HEX242.test(args.item_id))
+        return fail(`"${args.item_id}" is not an item id. An id is 24 hex characters.`);
+      const res2 = await ctx.http.request({ path: `/api/items/${args.item_id}` });
+      if (!res2.ok)
+        return failFromResponse(res2, `reading item ${args.item_id}`);
+      return ok(describeItems([res2.body], 1, false).join("\n"), { mode: "list", total: 1, returned: 1, items: [shape(res2.body)] });
+    }
+    if (Array.isArray(args.ids) && args.ids.length) {
+      const wanted = args.ids.map(String);
+      const bad = wanted.filter((id) => !HEX242.test(id));
+      if (bad.length)
+        return fail(`These are not item ids (an id is 24 hex characters): ${bad.join(", ")}.`);
+      if (wanted.length > IDS_MAX)
+        return fail(`${wanted.length} ids requested; the API resolves at most ${IDS_MAX} per call and silently ignores the rest. Split the request.`);
+      const res2 = await ctx.http.request({ path: "/api/items", query: { ids: wanted.join(",") } });
+      if (!res2.ok)
+        return failFromResponse(res2, "resolving items by id");
+      const got = Array.isArray(res2.body) ? res2.body : [];
+      const omitted = wanted.filter((id) => !got.some((i) => i._id === id));
+      const lines2 = describeItems(got, got.length, false);
+      if (got.length)
+        lines2.push("", IDS_NO_TAGS);
+      if (omitted.length) {
+        lines2.push("", `NOT RETURNED (${omitted.length}): ${omitted.join(", ")}`, "These ids are not readable by this key \u2014 wrong id, deleted, or outside the key's allowlist. A short response from this endpoint is NOT an error, which is why they are named here.");
+      }
+      return ok(lines2.join("\n"), { mode: "list", total: got.length, returned: got.length, items: got.map(shape), omittedIds: omitted });
+    }
+    const collectionRef = String(args.collection ?? "");
+    if (!collectionRef) {
+      return fail("No collection given. Reading items needs one \u2014 call keepr_collections to see what this key can reach, or keepr_search if you do not know where the thing lives.");
+    }
+    const resolved = ctx.resolveCollection(collectionRef);
+    if (!resolved.ok)
+      return fail(resolved.message);
+    const target = resolved.row;
+    let cardId = null;
+    if (args.card !== void 0 && args.card !== null && String(args.card).trim() !== "") {
+      const ref = String(args.card).trim();
+      if (HEX242.test(ref))
+        cardId = ref;
+      else {
+        const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
+        if (!schema.ok)
+          return failFromResponse(schema, `reading the schema of "${target.name}" to find card "${ref}"`);
+        const cards = schema.body?.cards ?? [];
+        const low = ref.toLowerCase();
+        const hit = cards.find((c2) => (c2.key ?? "").toLowerCase() === low) ?? cards.find((c2) => (c2.name ?? "").toLowerCase() === low);
+        if (!hit) {
+          return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.map((c2) => c2.key ?? c2.id).join(", ") || "(none)"}. Nothing was counted or listed.`);
+        }
+        cardId = hit.id;
+      }
+    }
+    const query = {
+      collection_id: target.id,
+      ...args.q ? { q: String(args.q) } : {},
+      ...cardId ? { card_id: cardId } : {},
+      ...args.include_descendants ? { include_descendants: "true" } : {},
+      ...args.sort_field ? { sort_field: String(args.sort_field) } : {},
+      ...args.sort_direction ? { sort_direction: String(args.sort_direction) } : {}
+    };
+    if (args.mode === "count") {
+      const res2 = await ctx.http.request({ path: "/api/items/count", query });
+      if (!res2.ok)
+        return failFromResponse(res2, `counting items in "${target.name}"`);
+      const count = res2.body?.count ?? res2.totalCount ?? 0;
+      return ok(`${count} item${count === 1 ? "" : "s"} match in "${target.name}".`, { mode: "count", total: count, collectionId: target.id });
+    }
+    const limit = Math.min(Number(args.limit ?? 25), EXPORT_MAX);
+    const skip = Number(args.skip ?? 0);
+    if (limit > API_LIST_MAX) {
+      const res2 = await ctx.http.request({ path: "/api/items/export", query: { ...query, format: "json" } });
+      if (!res2.ok)
+        return failFromResponse(res2, `exporting items from "${target.name}"`);
+      const items2 = Array.isArray(res2.body) ? res2.body.slice(0, limit) : [];
+      const truncated = items2.length >= EXPORT_MAX;
+      const lines2 = describeItems(items2, res2.totalCount ?? items2.length, truncated);
+      if (items2.some((i) => (i.tagIds?.length ?? 0) + (i.tagAutoIds?.length ?? 0) > 0))
+        lines2.push("", EXPORT_TAG_IDS);
+      if (truncated)
+        lines2.push("", `TRUNCATED at the export cap of ${EXPORT_MAX}. Narrow with \`q\` rather than paging \u2014 the export path does not paginate.`);
+      return ok(lines2.join("\n"), { mode: "list", total: res2.totalCount ?? items2.length, returned: items2.length, truncated, items: items2.map(shape), collectionId: target.id });
+    }
+    const res = await ctx.http.request({ path: "/api/items", query: { ...query, limit, skip } });
+    if (!res.ok)
+      return failFromResponse(res, `listing items in "${target.name}"`);
+    const items = Array.isArray(res.body) ? res.body : [];
+    const total = res.totalCount ?? items.length;
+    const lines = describeItems(items, total, false);
+    const nextSkip = skip + items.length < total ? skip + items.length : null;
+    if (nextSkip !== null)
+      lines.push("", `${total - (skip + items.length)} more match. Call again with skip: ${nextSkip} to continue.`);
+    return ok(lines.join("\n"), {
+      mode: "list",
+      total,
+      returned: items.length,
+      nextSkip,
+      items: items.map(shape),
+      collectionId: target.id
+    });
+  }
+};
+function shape(item) {
+  if (!item)
+    return null;
+  const { tags, myTags } = shownTags(item);
+  return {
+    id: item._id,
+    displayValue: item.displayValue ?? null,
+    // The item's short web link (keepr-api docs/SCHEMA.md § Record codes) —
+    // the one to show a person; null when keepr has not given it a code yet.
+    url: itemUrl(item),
+    cardId: item.card_id ?? null,
+    externalId: item.source?.externalId ?? null,
+    elements: item.elements ?? {},
+    ...item.notes ? { notes: item.notes } : {},
+    // Absent when the item has none: a read that carries no tag fields
+    // (the ids path) must not claim the item has no tags.
+    ...tags.length ? { tags } : {},
+    ...myTags.length ? { myTags } : {},
+    createdAt: item.createdAt ?? null,
+    updatedAt: item.updatedAt ?? null
+  };
+}
+function itemUrl(item) {
+  const code = item?.code;
+  if (typeof code !== "string" || !/^[0-9a-hjkmnp-tv-z]{7,16}$/.test(code))
+    return null;
+  const base = (process.env.KEEPR_WEB_URL || WEBSITE_URL).trim().replace(/\/+$/, "");
+  return `${base}/i/${code}`;
+}
+function describeItems(items, total, truncated) {
+  const real = items.filter(Boolean);
+  if (!real.length)
+    return ["No items matched."];
+  const lines = [`${real.length} of ${total} item${total === 1 ? "" : "s"}${truncated ? " (truncated)" : ""}:`];
+  for (const item of real) {
+    const tags = tagsLine(shownTags(item));
+    const url = itemUrl(item);
+    lines.push(`  ${item._id}  ${item.displayValue ?? "(no title)"}${item.source?.externalId ? `  [externalId ${item.source.externalId}]` : ""}${tags ? `  \xB7 ${tags}` : ""}${url ? `  ${url}` : ""}`);
+  }
+  return lines;
+}
+
+// dist/src/tools/search.js
+var PER_BUCKET_MAX = 50;
+var searchTool = {
+  name: "keepr_search",
+  description: "Find something by text across every keepr collection this key can reach \u2014 collections, card types, items, and tags (tags by name, and items used as tags by title, with the id to apply them by). Use when you do not know where a thing lives. Once you know the collection, keepr_get_items is more precise.",
+  inputSchema: {
+    q: external_exports.string().min(2).describe("Text to look for. At least 2 characters. Matched as a case-insensitive substring, not a KQL query."),
+    types: external_exports.array(external_exports.enum(["collections", "cards", "items", "tags"])).optional().describe('Which buckets to search \u2014 all four by default. Name some to narrow it: ["tags"] for tags alone (and items used as tags, with the id to apply them by), ["items"] for items alone.'),
+    limit: external_exports.number().int().min(1).max(PER_BUCKET_MAX).optional().describe(`Results per bucket, default 10, max ${PER_BUCKET_MAX}.`)
+  },
+  handler: async (args, ctx) => {
+    const q = String(args.q ?? "").trim();
+    if (q.length < 2)
+      return fail("Search needs at least 2 characters after trimming.");
+    const limit = Math.min(Number(args.limit ?? 10), PER_BUCKET_MAX);
+    const asked = Array.isArray(args.types) && args.types.length ? args.types : null;
+    const wantsTags = !asked || asked.includes("tags");
+    const plain = asked ? asked.filter((t3) => t3 !== "tags") : null;
+    let body = { query: q };
+    if (!plain || plain.length) {
+      const res = await ctx.http.request({ path: "/api/search", query: { q, limit, types: plain ? plain.join(",") : void 0 } });
+      if (!res.ok)
+        return failFromResponse(res, `searching for "${q}"`);
+      body = res.body ?? { query: q };
+    }
+    let tagHits = [];
+    let moreTags = false;
+    if (wantsTags) {
+      const res = await ctx.http.request({ path: "/api/tags/search", query: { q, limit } });
+      if (!res.ok)
+        return failFromResponse(res, `searching tags for "${q}"`);
+      tagHits = res.body?.results ?? [];
+      moreTags = Boolean(res.body?.more);
+    }
+    const collections = body.collections ?? [];
+    const cards = body.cards ?? [];
+    const items = body.items ?? [];
+    const byId = new Map(ctx.knownCollections().map((c2) => [c2.id, c2.name]));
+    const lines = [];
+    if (collections.length) {
+      lines.push(`COLLECTIONS (${collections.length}):`);
+      for (const c2 of collections)
+        lines.push(`  ${c2.name}${c2.status === "archived" ? "  [archived]" : ""}  ${c2._id}`);
+    }
+    if (cards.length) {
+      lines.push(lines.length ? "" : "", `CARD TYPES (${cards.length}):`);
+      for (const c2 of cards)
+        lines.push(`  ${c2.key ?? c2._id}  "${c2.name}"  in ${byId.get(String(c2.collection_id)) ?? c2.collection_id}`);
+    }
+    if (items.length) {
+      lines.push(lines.length ? "" : "", `ITEMS (${items.length}):`);
+      for (const i of items) {
+        const title = firstText(i.elements) ?? i.notes ?? "(no title)";
+        lines.push(`  ${i._id}  ${truncate(title, 70)}  in ${byId.get(String(i.collection_id)) ?? i.collection_id}`);
+      }
+    }
+    if (tagHits.length) {
+      lines.push(lines.length ? "" : "", `TAGS (${tagHits.length}):`);
+      for (const hit of tagHits) {
+        const where = hit.collection ? `  in ${hit.collection.name ?? byId.get(String(hit.collection._id)) ?? hit.collection._id}` : "";
+        if (hit.kind === "item")
+          lines.push(`  ${hit.tag._id}  ${truncate(hit.tag.title ?? "(untitled)", 60)}  [an item used as a tag \u2014 apply it by this id]${where}`);
+        else if (hit.kind === "private")
+          lines.push(`  ${hit.tag._id}  ${(hit.tag.path ?? [hit.tag.name]).join("/")}  [your private tag \u2014 only you see it; it is not applied from here]`);
+        else
+          lines.push(`  ${hit.tag._id}  ${(hit.tag.path ?? [hit.tag.name]).join("/")}  [tag${hit.tag.restricted ? ", restricted" : ""}${hit.tag.rule?.strict ? ", applied by a rule only" : ""}]${where}`);
+      }
+    }
+    if (!lines.length) {
+      return ok(`Nothing matched "${q}".
+
+Search is a literal substring, not a fuzzy match and not KQL \u2014 a shorter or differently-spelled fragment may find it.`, { query: q, buckets: { collections: [], cards: [], items: [], ...wantsTags ? { tags: [] } : {} }, truncated: false });
+    }
+    const truncated = [collections.length, cards.length, items.length].some((n) => n >= limit) || moreTags;
+    if (truncated)
+      lines.push("", `At least one bucket hit the limit of ${limit} and this endpoint does not paginate. Narrow the text, or switch to keepr_get_items with a KQL filter.`);
+    lines.push("", "NEXT: call keepr_schema for the collection you want, then keepr_get_items to read precisely.");
+    return ok(lines.join("\n"), {
+      query: q,
+      buckets: {
+        collections: collections.map((c2) => ({ id: c2._id, name: c2.name })),
+        cards: cards.map((c2) => ({ id: c2._id, key: c2.key ?? null, name: c2.name, collectionId: c2.collection_id ?? null })),
+        items: items.map((i) => ({ id: i._id, collectionId: i.collection_id ?? null, cardId: i.card_id ?? null })),
+        ...wantsTags ? {
+          tags: tagHits.map((h) => ({
+            id: h.tag._id,
+            kind: h.kind,
+            name: h.kind === "item" ? h.tag.title ?? null : (h.tag.path ?? [h.tag.name]).join("/"),
+            collectionId: h.collection?._id ?? null
+          }))
+        } : {}
+      },
+      truncated
+    });
+  }
+};
+function firstText(elements) {
+  for (const v of Object.values(elements ?? {})) {
+    if (typeof v === "string" && v.trim())
+      return v.trim();
+  }
+  return null;
+}
+function truncate(s, n) {
+  return s.length <= n ? s : `${s.slice(0, n - 1)}\u2026`;
+}
+
 // dist/src/tools/chart.js
 var HEX243 = /^[0-9a-fA-F]{24}$/;
 var LIST_MAX = 100;
@@ -25612,7 +25846,7 @@ function render(result, shown, ctx) {
   const rawFilter = shown.spec ? shown.spec.filter : void 0;
   const filter = typeof rawFilter === "string" ? cleanText(rawFilter, 4 * MAX_LABEL) : "";
   if (filter)
-    lines.push(`Filter: ${filter}`);
+    lines.push(`Filter: ${filter}`, ...legendFor([filter], shown.vocab ?? null, "  "));
   const applied = result.applied;
   if (result.range) {
     const r = rangeText(result.range, tz);
@@ -25640,8 +25874,8 @@ function render(result, shown, ctx) {
   const notes = (Array.isArray(result.notes) ? result.notes : []).map((n) => ({ code: String(n.code ?? ""), sentence: noteSentence(n, { measures: table.measures, spec: shown.spec, sampled }), ...typeof n.count === "number" ? { count: n.count } : {} })).filter((n) => n.sentence);
   if (notes.length)
     lines.push("", "NOTES \u2014 what keepr left out or could not read:", ...notes.map((n) => `  - ${n.sentence}`));
-  const said = new Set(notes.map((n) => n.sentence));
-  const warnings = shown.warnings.filter((w) => w && w.code !== "no_door" && w.code !== "no_door_other" && typeof w.message === "string" && cleanText(w.message, NOTE_MAX) && !said.has(cleanText(w.message, NOTE_MAX))).map((w) => ({ code: String(w.code ?? ""), sentence: cleanText(String(w.message), NOTE_MAX) }));
+  const said2 = new Set(notes.map((n) => n.sentence));
+  const warnings = shown.warnings.filter((w) => w && w.code !== "no_door" && w.code !== "no_door_other" && typeof w.message === "string" && cleanText(w.message, NOTE_MAX) && !said2.has(cleanText(w.message, NOTE_MAX))).map((w) => ({ code: String(w.code ?? ""), sentence: cleanText(String(w.message), NOTE_MAX) }));
   if (warnings.length)
     lines.push("", "ABOUT THIS QUESTION:", ...warnings.map((w) => `  - ${w.sentence}`));
   lines.push("", "NEXT: answer from these numbers as keepr counted them. Say the range and any filter, and repeat each note that changes the answer (items left out, other currencies, an estimate). The Overall row is keepr's own figure over every item \u2014 not the rows added up (an average's Overall is the average of all the items) \u2014 so never re-add the rows yourself.");
@@ -25773,14 +26007,23 @@ async function runSaved(ctx, target, args) {
   const name = cleanText(String(chart.name ?? ""));
   const partial2 = found.partial;
   const what = `running the chart "${name}" in "${target.name}"`;
-  const run = { chart_id: String(chart._id), collection_id: target.id, grade: GRADE };
+  const run2 = { chart_id: String(chart._id), collection_id: target.id, grade: GRADE };
   if (args.range !== void 0)
-    run.range = args.range;
-  const res = await ctx.http.request({ method: "POST", path: "/api/charts/run", body: { runs: [run] }, maxWaitMs: SHORT_WAIT_MS });
+    run2.range = args.range;
+  const res = await ctx.http.request({ method: "POST", path: "/api/charts/run", body: { runs: [run2] }, maxWaitMs: SHORT_WAIT_MS });
   if (!res.ok)
     return failFromHttp(res, what, { saved: true, collection: target.name });
   const slot = Array.isArray(res.body?.results) ? res.body.results[0] : void 0;
-  return answer(slot, { collection: target, chart: { id: String(chart._id), name, ...partial2 ? { partial: true } : {} }, card: null, spec: chart.spec ?? null, warnings: [] }, ctx, what, true);
+  const vocab = slot?.ok === true ? await vocabularyFor(ctx, target, chart.spec?.filter) : void 0;
+  return answer(slot, { collection: target, chart: { id: String(chart._id), name, ...partial2 ? { partial: true } : {} }, card: null, spec: chart.spec ?? null, warnings: [], vocab }, ctx, what, true);
+}
+async function vocabularyFor(ctx, target, filter, cards) {
+  if (!elementIdsIn(filter).length)
+    return void 0;
+  if (cards)
+    return vocabularyOf(cards);
+  const res = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
+  return res.ok ? vocabularyOf(res.body?.cards ?? []) : null;
 }
 async function runSpec(ctx, target, args) {
   const spec = { ...args.spec };
@@ -25788,6 +26031,7 @@ async function runSpec(ctx, target, args) {
   if (spec.show === void 0)
     spec.show = { type: "table" };
   let card = null;
+  let schemaCards;
   if (typeof spec.card_id === "string" && !HEX243.test(spec.card_id.trim())) {
     const ref = spec.card_id.trim();
     if (!ref)
@@ -25795,13 +26039,14 @@ async function runSpec(ctx, target, args) {
     const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
     if (!schema.ok)
       return failFromHttp(schema, `reading the schema of "${target.name}" to find card "${ref}"`, { saved: false, collection: target.name });
-    const cards = [...schema.body?.cards ?? [], ...schema.body?.familyCards ?? []];
+    schemaCards = schema.body?.cards ?? [];
+    const cards = [...schemaCards, ...schema.body?.familyCards ?? []];
     const low = ref.toLowerCase();
     const byKey = cards.filter((c2) => typeof c2.key === "string" && c2.key.toLowerCase() === low);
     const hits = byKey.length ? byKey : cards.filter((c2) => typeof c2.name === "string" && c2.name.trim().toLowerCase() === low);
-    const said = (c2) => `"${cleanText(String(c2.name ?? ""))}" (${c2.key ? `key ${cleanText(c2.key)}, ` : ""}${c2.id}${c2.collection?.name ? `, in ${cleanText(c2.collection.name)}` : ""})`;
+    const said2 = (c2) => `"${cleanText(String(c2.name ?? ""))}" (${c2.key ? `key ${cleanText(c2.key)}, ` : ""}${c2.id}${c2.collection?.name ? `, in ${cleanText(c2.collection.name)}` : ""})`;
     if (hits.length > 1) {
-      return fail(`"${ref}" names ${hits.length} cards here: ${hits.slice(0, 10).map(said).join(", ")}. Ask the user which one, then pass its id as spec.card_id \u2014 do not pick. Nothing was counted.`, { ok: false, status: 400, code: "ambiguous_card" });
+      return fail(`"${ref}" names ${hits.length} cards here: ${hits.slice(0, 10).map(said2).join(", ")}. Ask the user which one, then pass its id as spec.card_id \u2014 do not pick. Nothing was counted.`, { ok: false, status: 400, code: "ambiguous_card" });
     }
     if (!hits.length) {
       return fail(`No card "${ref}" in "${target.name}". Cards here: ${cards.slice(0, 40).map((c2) => cleanText(String(c2.key ?? c2.id))).join(", ") || "(none)"}. Nothing was counted.`, { ok: false, status: 400, code: "card_not_found" });
@@ -25818,7 +26063,9 @@ async function runSpec(ctx, target, args) {
   if (!res.ok)
     return failFromHttp(res, what, { saved: false, collection: target.name });
   const body = res.body ?? {};
-  return answer(body.result, { collection: target, chart: null, card, spec: body.spec ?? spec, warnings: Array.isArray(body.warnings) ? body.warnings : [] }, ctx, what, false);
+  const shownSpec = body.spec ?? spec;
+  const vocab = body.result?.ok === true ? await vocabularyFor(ctx, target, shownSpec.filter, schemaCards) : void 0;
+  return answer(body.result, { collection: target, chart: null, card, spec: shownSpec, warnings: Array.isArray(body.warnings) ? body.warnings : [], vocab }, ctx, what, false);
 }
 var chartTool = {
   name: "keepr_chart",
@@ -25963,9 +26210,9 @@ var ingestTool = {
         body: payload
       });
       if (!res.ok && res.status === 400) {
-        const said = JSON.stringify(res.body ?? "");
-        const dropImportId = Boolean(importId) && /importId/.test(said);
-        const dropCarried = carried.length > 0 && /wouldCreate\\?" is not allowed/.test(said);
+        const said2 = JSON.stringify(res.body ?? "");
+        const dropImportId = Boolean(importId) && /importId/.test(said2);
+        const dropCarried = carried.length > 0 && /wouldCreate\\?" is not allowed/.test(said2);
         if (dropImportId) {
           importId = null;
           delete payload.importId;
@@ -27416,9 +27663,9 @@ async function applyChange(proposal, args, ctx) {
   }
   const stored = storedCardOf(res.body);
   const storedKey = typeof stored.key === "string" ? stored.key : proposal.cardKey;
-  const storedName = typeof stored.name === "string" ? stored.name : proposal.cardName;
+  const storedName2 = typeof stored.name === "string" ? stored.name : proposal.cardName;
   const lines = [
-    `CHANGED card "${storedName}"${storedKey ? ` (key ${storedKey})` : ""} in "${proposal.collectionName}".`
+    `CHANGED card "${storedName2}"${storedKey ? ` (key ${storedKey})` : ""} in "${proposal.collectionName}".`
   ];
   if (proposal.summary)
     lines.push(proposal.summary);
@@ -27429,7 +27676,7 @@ async function applyChange(proposal, args, ctx) {
   lines.push("", "NEXT: call keepr_schema to see the card as stored. Existing rows built against the old shape need re-checking with keepr_ingest dry_run: true.");
   return ok(lines.join("\n"), {
     kind: "change",
-    card: { id: proposal.cardId, key: storedKey ?? null, name: storedName },
+    card: { id: proposal.cardId, key: storedKey ?? null, name: storedName2 },
     collectionId: proposal.collectionId,
     destructive: proposal.destructive,
     elementCount: Array.isArray(stored.elements) ? stored.elements.length : proposal.payload.elements.length
@@ -27565,7 +27812,16 @@ function ruleLines(step) {
   }
   return lines;
 }
-function describeSetup(body, setup, collectionName) {
+function setupElementIds(body, setup) {
+  const coll = setup.collection ?? {};
+  const ids = elementIdsInDocument((body.steps ?? []).map((s) => [s.before, s.after]));
+  for (const f of coll.savedFilters ?? [])
+    for (const id of elementIdsIn(f?.query))
+      if (!ids.includes(id))
+        ids.push(id);
+  return ids;
+}
+function describeSetup(body, setup, collectionName, vocab = null) {
   const steps = body.steps ?? [];
   const coll = setup.collection ?? {};
   const layoutsSent = coll.cardLayouts ?? [];
@@ -27680,6 +27936,10 @@ function describeSetup(body, setup, collectionName) {
     lines.push("", `the collection's Overview shows dashboard "${t2(boardNames.get(s.dashboard ?? "") ?? s.dashboard)}"`);
   for (const s of steps.filter((x) => !KNOWN.has(x.kind)))
     lines.push("", `also: ${t2(s.kind, 40)}${s.name ? ` "${t2(s.name)}"` : ""}${s.change ? ` (${t2(s.change, 20)})` : ""}`);
+  const shown = lines.join("\n");
+  const ids = setupElementIds(body, setup).filter((id) => shown.includes(id));
+  if (ids.length)
+    lines.push("", "ELEMENT IDS in the filters above:", ...idLegend(ids, vocab, "  "));
   return lines;
 }
 function needsWrite(setup) {
@@ -27832,12 +28092,18 @@ var proposeSetupTool = {
 ${problems.map((p) => `  ${t2(p.path, 120)}: ${t2(p.message, 400)}${p.code ? ` (${t2(p.code, 60)})` : ""}`).join("\n")}`, { validation: { ok: false, problems } });
     }
     const steps = body.steps ?? [];
+    let vocab = null;
+    if (setupElementIds(body, setup).length) {
+      const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
+      if (schema.ok)
+        vocab = vocabularyOf(schema.body?.cards ?? []);
+    }
     const paused = steps.filter((s) => (s.kind === "automation" || s.kind === "notification") && s.change !== "unchanged" && s.state === "paused");
     const proposal = ctx.proposals.setup({ collectionId: target.id, collectionName: target.name, setup, paused: paused.map((s) => s.name ?? ""), fingerprint: fingerprint(steps) });
     const lines = [
       "PROPOSED \u2014 nothing has changed. Show this to the user and wait for a yes.",
       "",
-      ...describeSetup(body, setup, target.name)
+      ...describeSetup(body, setup, target.name, vocab)
     ];
     const pausedRules = paused.filter((s) => s.kind === "automation").length;
     const pausedNotes = paused.length - pausedRules;
@@ -28000,11 +28266,19 @@ var automationsTool = {
     const defs = defsRes.ok ? (defsRes.body?.defs ?? []).filter((d) => d.scope === "collection" || d.scope === "user" && d.collection_id) : [];
     if (action === "list") {
       const lines = [`AUTOMATIONS in "${c(target.name)}" (${rules.length} rule${rules.length === 1 ? "" : "s"}, ${defs.length} notification${defs.length === 1 ? "" : "s"}):`];
-      for (const r of rules) {
-        lines.push(`  "${c(r.name)}" [${c(r.kind ?? "rule", 40)}] \u2014 ${stateOf(r)}${madeBy(r.createdVia)}${managedWord(r)}  id ${r._id}`);
-        if (r.summary)
-          lines.push(`    ${c(r.summary, 400)}`);
+      const summaries = rules.map((r) => r.summary ? c(r.summary, 400) : "");
+      const shownIds = rules.map((r, i) => elementIdsInDocument(r).filter((id) => summaries[i].includes(id)));
+      let vocab = null;
+      if (shownIds.some((ids) => ids.length)) {
+        const schema = await ctx.http.request({ path: `/api/collections/${target.id}/schema` });
+        if (schema.ok)
+          vocab = vocabularyOf(schema.body?.cards ?? []);
       }
+      rules.forEach((r, i) => {
+        lines.push(`  "${c(r.name)}" [${c(r.kind ?? "rule", 40)}] \u2014 ${stateOf(r)}${madeBy(r.createdVia)}${managedWord(r)}  id ${r._id}`);
+        if (summaries[i])
+          lines.push(`    ${summaries[i]}`, ...idLegend(shownIds[i], vocab, "      "));
+      });
       for (const d of defs)
         lines.push(`  notification "${c(d.name)}" (key ${c(d.key, 80)}${d.scope === "user" ? ", yours only" : ""}) \u2014 ${stateOf(d)}${madeBy(d.createdVia)}  id ${d._id}`);
       const waitingRules = rules.filter((r) => r.awaitingPerson).length;
@@ -28039,16 +28313,16 @@ var automationsTool = {
       const res2 = await ctx.http.request({ path: `/api/collections/${target.id}/automations/${hit.r._id}/runs`, query: { limit } });
       if (!res2.ok)
         return failFromResponse(res2, `reading the runs of "${c(hit.r.name)}"`);
-      const runs = (res2.body ?? []).map((run) => ({
-        startedAt: run.startedAt ?? null,
-        completedAt: run.completedAt ?? null,
-        status: run.status ?? null,
-        error: run.error ?? null,
-        actions: Array.isArray(run.results) ? run.results.length : 0
+      const runs = (res2.body ?? []).map((run2) => ({
+        startedAt: run2.startedAt ?? null,
+        completedAt: run2.completedAt ?? null,
+        status: run2.status ?? null,
+        error: run2.error ?? null,
+        actions: Array.isArray(run2.results) ? run2.results.length : 0
       }));
       const lines = [`RUNS of "${c(hit.r.name)}", newest first (${runs.length}):`];
-      for (const run of runs)
-        lines.push(`  ${run.startedAt ?? "?"}  ${c(run.status ?? "", 40)}${run.actions ? `  ${run.actions} action${run.actions === 1 ? "" : "s"}` : ""}${run.error ? `  error: ${c(run.error, 300)}` : ""}`);
+      for (const run2 of runs)
+        lines.push(`  ${run2.startedAt ?? "?"}  ${c(run2.status ?? "", 40)}${run2.actions ? `  ${run2.actions} action${run2.actions === 1 ? "" : "s"}` : ""}${run2.error ? `  error: ${c(run2.error, 300)}` : ""}`);
       if (!runs.length)
         lines.push("  (it has not run yet)");
       return ok(lines.join("\n"), { rule: hit.r._id, runs });
@@ -28147,10 +28421,12 @@ var historyTool = {
 };
 
 // dist/src/tools/attach.js
-import { readFile } from "node:fs/promises";
-import { basename } from "node:path";
-var HEX247 = /^[0-9a-fA-F]{24}$/;
-var MAX_INLINE_BYTES = 1e6;
+import { createReadStream } from "node:fs";
+import { stat as stat2, realpath } from "node:fs/promises";
+import { basename as basename2, normalize, sep } from "node:path";
+import { homedir as homedir2 } from "node:os";
+
+// dist/src/fileRules.js
 var REFUSED_EXT = /* @__PURE__ */ new Set([
   "exe",
   "dll",
@@ -28173,16 +28449,192 @@ var REFUSED_EXT = /* @__PURE__ */ new Set([
   "reg"
 ]);
 var MAX_FILES = 20;
+var MAX_FILE_BYTES = 100 * 1024 * 1024;
 var PHOTO_EXT = /* @__PURE__ */ new Set(["jpg", "jpeg", "jpe", "png", "gif", "webp", "tif", "tiff", "avif", "heic", "heif"]);
+function extOf(name) {
+  return name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+}
+var TYPES = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  jpe: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  avif: "image/avif",
+  heic: "image/heic",
+  heif: "image/heif",
+  pdf: "application/pdf",
+  txt: "text/plain",
+  csv: "text/csv",
+  json: "application/json",
+  mov: "video/quicktime",
+  mp4: "video/mp4",
+  m4v: "video/x-m4v",
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  wav: "audio/wav",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  zip: "application/zip"
+};
+function contentTypeFor(name) {
+  return TYPES[extOf(name)] ?? "application/octet-stream";
+}
+function refusalFor(name, size, element, contentType) {
+  const ext = extOf(name);
+  if (REFUSED_EXT.has(ext))
+    return `keepr refuses .${ext} files \u2014 executables and scripts are never accepted.`;
+  if (size === 0)
+    return "the file is empty.";
+  if (size > MAX_FILE_BYTES)
+    return `${mb(size)} \u2014 every attachment is limited to 100 MB.`;
+  if (element) {
+    if (element.accept === "image" && !PHOTO_EXT.has(ext) && !String(contentType ?? "").startsWith("image/")) {
+      return `"${element.name}" takes photos only (JPEG, PNG, WebP, GIF, AVIF, TIFF, HEIC).`;
+    }
+    if (typeof element.maxSizeMb === "number" && size > element.maxSizeMb * 1024 * 1024) {
+      return `${mb(size)} \u2014 larger than ${element.maxSizeMb} MB, the limit of "${element.name}".`;
+    }
+  }
+  return null;
+}
+function mb(bytes) {
+  if (bytes <= 0)
+    return "0 KB";
+  return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+function storedName(name) {
+  let n = name.replace(/"/g, "%22").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+  n = n.replace(/[\u0000-\u001f\u007f]/g, "").replace(/["\\]/g, "");
+  n = n.split("/").pop() ?? "";
+  n = n.replace(/^\.+/, "").trim();
+  if (!n)
+    return "file";
+  if (n.length > 255) {
+    const m = /\.([A-Za-z0-9]{1,12})$/.exec(n);
+    const suffix = m ? `.${m[1].toLowerCase()}` : "";
+    n = n.slice(0, 255 - suffix.length) + suffix;
+  }
+  return n;
+}
+
+// dist/src/agentPaths.js
+import { readdir, readFile, stat } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join as join3, basename } from "node:path";
+function sessionsRoot(env = process.env) {
+  return env.KEEPR_COWORK_SESSIONS || join3(homedir(), "Library", "Application Support", "Claude", "local-agent-mode-sessions");
+}
+async function findSession(name, root) {
+  const cwd = `/sessions/${name}`;
+  let level1;
+  try {
+    level1 = await readdir(root);
+  } catch {
+    return null;
+  }
+  for (const a of level1) {
+    if (a === "skills-plugin")
+      continue;
+    let level2;
+    try {
+      level2 = await readdir(join3(root, a));
+    } catch {
+      continue;
+    }
+    for (const b of level2) {
+      const dir = join3(root, a, b);
+      let names;
+      try {
+        names = await readdir(dir);
+      } catch {
+        continue;
+      }
+      for (const n of names) {
+        if (!/^local_.*\.json$/.test(n))
+          continue;
+        try {
+          const rec = JSON.parse(await readFile(join3(dir, n), "utf8"));
+          if (rec.cwd !== cwd)
+            continue;
+          return {
+            record: join3(dir, n),
+            sessionDir: join3(dir, n.replace(/\.json$/, "")),
+            userSelectedFolders: Array.isArray(rec.userSelectedFolders) ? rec.userSelectedFolders.map(String) : []
+          };
+        } catch {
+        }
+      }
+    }
+  }
+  return null;
+}
+async function exists(p) {
+  try {
+    await stat(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function resolveAgentPath(given, env = process.env) {
+  if (await exists(given))
+    return { path: given, mappedFrom: null };
+  const m = /^\/sessions\/([^/]+)(\/.*)?$/.exec(given);
+  if (!m)
+    return { path: given, mappedFrom: null };
+  const [, name, rest = ""] = m;
+  const session = await findSession(name, sessionsRoot(env));
+  if (!session)
+    return { path: given, mappedFrom: null };
+  const candidates = [];
+  const mnt = /^\/mnt\/([^/]+)(\/.*)?$/.exec(rest);
+  if (mnt) {
+    const [, top, tail = ""] = mnt;
+    if (top === "uploads" || top === "outputs")
+      candidates.push(join3(session.sessionDir, top) + tail);
+    for (const folder of session.userSelectedFolders)
+      if (basename(folder) === top)
+        candidates.push(folder + tail);
+  }
+  for (const c2 of candidates)
+    if (await exists(c2))
+      return { path: c2, mappedFrom: given };
+  return { path: given, mappedFrom: null };
+}
+var PROTECTED = ["Documents", "Desktop", "Downloads"];
+function pathProblem(given, code) {
+  const link = "Or ask the person for the files with keepr_request_upload: it gives them a link to drop the files in keepr themselves.";
+  if (code === "EPERM" || code === "EACCES") {
+    const inProtected = PROTECTED.some((d) => given.startsWith(join3(homedir(), d)));
+    return `macOS refused this server access to ${given}.` + (inProtected ? " Documents, Desktop and Downloads are protected: the person allows it in System Settings \u2192 Privacy & Security \u2192 Files and Folders (or Full Disk Access) for Claude, then tries again \u2014 or moves the files to Pictures or another folder." : " The person can allow it in System Settings \u2192 Privacy & Security.") + ` ${link}`;
+  }
+  if (code === "ENOENT" || code === "ENOTDIR") {
+    if (given.startsWith("/sessions/")) {
+      return `${given} is a path inside your Cowork sandbox, and no folder selected for this Cowork session holds it on this computer. This server can read a folder the person selected for the session (it appears under /sessions/<name>/mnt/<folder>), or a path on the computer itself. Files made inside the sandbox, or dragged into the chat, are not on this computer's disk. ${link}`;
+    }
+    return `Nothing at ${given} on the computer this server runs on. This server reads that computer's own disk \u2014 from Claude Code that is the person's computer; from a sandbox (Cowork, claude.ai, a container) it is not the sandbox's files. Give the path as it is on this computer. ${link}`;
+  }
+  return `Could not read ${given}: ${code ?? "unknown error"}. ${link}`;
+}
+
+// dist/src/tools/attach.js
+var HEX247 = /^[0-9a-fA-F]{24}$/;
+var MAX_INLINE_BYTES = 1e6;
 var attachFileTool = {
   name: "keepr_attach_file",
-  description: "Attach files to a keepr item. Give the bytes as content_base64 with a filename \u2014 this server usually does NOT share a filesystem with you, so a `path` only works when they happen to be on the same machine. Address the item by item_id, or by external_id from a keepr_ingest run. Pass `element` to put the files INTO one of the item's file elements (keepr_schema lists them: dataType \"file\", with accept, maxSizeMb and allowMultiple): a single file element takes exactly one file and REPLACES the one there (the old file is deleted, so the key needs Can delete records), a list appends (20 files at most). Without `element` the files are the item's other attachments.",
+  description: "Attach files to a keepr item. content_base64 with a filename is for a SMALL file you already hold (about a megabyte at most \u2014 every character passes through the conversation); never resize, re-encode or convert a person's file to make it fit. Anything bigger, or a file on the person's computer: give its `path` (the extension and the plugin read this computer's disk, streamed, up to 100 MB), keepr_attach_folder for many, or keepr_request_upload to give the person a link \u2014 the only route on the Claude.ai or ChatGPT connector. Address the item by item_id, or by external_id from a keepr_ingest run. Pass `element` to put the files INTO one of the item's file elements (keepr_schema lists them: dataType \"file\", with accept, maxSizeMb and allowMultiple): a single file element takes exactly one file and REPLACES the one there (the old file is deleted, so the key needs Can delete records), a list appends (20 files at most). Without `element` the files are the item's other attachments.",
   writes: true,
   inputSchema: {
     item_id: external_exports.string().optional().describe("The item to attach to, 24 hex characters."),
     run_id: external_exports.string().optional().describe("A runId from a committed keepr_ingest, used with external_id instead of item_id."),
     external_id: external_exports.string().optional().describe("The external_id of a row written by keepr_ingest in this session."),
-    files: external_exports.array(external_exports.custom()).min(1).max(20).describe("Files: {filename, content_base64, content_type?} \u2014 or {path} when this server shares your filesystem."),
+    files: external_exports.array(external_exports.custom()).min(1).max(20).describe("Files: {filename, content_base64, content_type?} for a small file you hold (about a megabyte at most) \u2014 or {path} for a file on the computer this server runs on."),
     skip_if_present: external_exports.boolean().optional().describe("Default true. Skips a file whose name is already attached, so re-running after adding two photos uploads two photos. With `element`, an attachment already there is reused only when no element holds it and its name and size both match; anything else is uploaded fresh."),
     element: external_exports.string().optional().describe("A file element of the item's card to put the files into (its name, as keepr_schema lists it). A single file element is replaced; a list is appended to.")
   },
@@ -28248,22 +28700,26 @@ var attachFileTool = {
     }
     const bindReplaces = !!target && !target.allowMultiple && current.length > 0;
     const toBind = [];
+    const allowPath = ctx.config.keySource !== "bearer";
+    const tooLarge = [];
     const uploaded = [];
     const skipped = [];
     const failed = [];
     for (const spec of files) {
-      const loaded = await loadBytes(spec, ctx.config.keySource !== "bearer");
+      const loaded = await loadBytes(spec, allowPath);
       if (!loaded.ok) {
         failed.push({ filename: loaded.filename, message: loaded.message });
+        if (loaded.tooLarge)
+          tooLarge.push(loaded.filename);
         continue;
       }
-      const { filename, bytes } = loaded;
+      const { filename, size } = loaded;
       const there = present.get(filename);
       if (there && !target) {
         skipped.push({ filename, reason: "already attached to this item" });
         continue;
       }
-      if (there && target && there.id && there.size === bytes.length) {
+      if (there && target && there.id && there.size === size) {
         if (there.element === elementName && current.includes(there.id)) {
           skipped.push({ filename, reason: `already in "${elementName}"` });
           continue;
@@ -28283,30 +28739,42 @@ var attachFileTool = {
         failed.push({ filename, message: `"${elementName}" takes photos only (JPEG, PNG, WebP, GIF, AVIF, TIFF, HEIC) \u2014 a PDF or a document never fits it. Leave out \`element\` to attach it as another attachment.` });
         continue;
       }
-      if (target && typeof target.maxSizeMb === "number" && bytes.length > target.maxSizeMb * 1024 * 1024) {
+      if (target && typeof target.maxSizeMb === "number" && size > target.maxSizeMb * 1024 * 1024) {
         failed.push({ filename, message: `larger than ${target.maxSizeMb} MB, the limit of "${elementName}".` });
         continue;
       }
-      const form = new FormData();
-      form.append("file", new Blob([new Uint8Array(bytes)], { type: spec.content_type || "application/octet-stream" }), filename);
-      const res = await ctx.http.request({
-        method: "POST",
-        path: `/api/items/${itemId}/attachments`,
-        formData: form
-      });
+      let form;
+      if (loaded.inline) {
+        form = new FormData();
+        form.append("file", new Blob([new Uint8Array(loaded.inline)], { type: spec.content_type || "application/octet-stream" }), filename);
+      }
+      let res;
+      try {
+        res = await ctx.http.request({
+          method: "POST",
+          path: `/api/items/${itemId}/attachments`,
+          ...form ? { formData: form } : { stream: loaded.stream }
+        });
+      } catch (err) {
+        if (err instanceof FileChangedError) {
+          failed.push({ filename, message: err.kind === "unreadable" ? `it could not be read from the disk: ${err.message}.` : "it changed while it was being sent. Try again once it is finished being written." });
+          continue;
+        }
+        throw err;
+      }
       ctx.noteWriteAttempt(res);
       if (!res.ok) {
         if (res.status === 403 && ctx.keyScope === "read")
           return fail(ctx.readOnlyRefusal());
         const code = errorCode(res.body);
         const meaning = code ? ctx.contract.meaningOf(code) : null;
-        const said = `${code ? `${code}: ` : ""}${errorMessage(res.body, "")}${meaning ? ` (${meaning})` : ""}`.trim();
-        const why = res.status === 413 ? "over the per-user attachment cap (100 MB). The user has to free space before this will work." : res.status === 403 ? `refused \u2014 attachments may be off for this collection, or the owner's email is unverified.${said ? ` keepr said: ${said}` : ""}` : said || `HTTP ${res.status}`;
+        const said2 = `${code ? `${code}: ` : ""}${errorMessage(res.body, "")}${meaning ? ` (${meaning})` : ""}`.trim();
+        const why = res.status === 413 ? "over the per-user attachment cap (100 MB). The user has to free space before this will work." : res.status === 403 ? `refused \u2014 attachments may be off for this collection, or the owner's email is unverified.${said2 ? ` keepr said: ${said2}` : ""}` : said2 || `HTTP ${res.status}`;
         failed.push({ filename, message: why });
         continue;
       }
-      uploaded.push({ attachmentId: String(res.body?._id ?? ""), filename, bytes: bytes.length });
-      present.set(filename, { id: String(res.body?._id ?? ""), element: null, size: bytes.length });
+      uploaded.push({ attachmentId: String(res.body?._id ?? ""), filename, bytes: size });
+      present.set(filename, { id: String(res.body?._id ?? ""), element: null, size });
       if (target && res.body?._id)
         toBind.push(String(res.body._id));
     }
@@ -28353,17 +28821,46 @@ var attachFileTool = {
       for (const f of failed)
         lines.push(`  ${f.filename} \u2014 ${f.message}`);
     }
+    const next = tooLarge.length ? routesFor(tooLarge, itemId, collectionId, elementName || null, allowPath) : null;
+    if (next)
+      lines.push("", ...next.lines);
     const result = {
       itemId,
       itemDisplayValue: item.body?.displayValue ?? null,
       uploaded,
       skipped,
       failed,
-      ...target ? { element: elementName, bound, ...bindError ? { bindError } : {} } : {}
+      ...target ? { element: elementName, bound, ...bindError ? { bindError } : {} } : {},
+      ...next ? { next: next.calls } : {}
     };
     return failed.length || bindError ? fail(lines.join("\n"), result) : ok(lines.join("\n"), result);
   }
 };
+function routesFor(names, itemId, collectionId, element, allowPath) {
+  const request = { tool: "keepr_request_upload", args: { collection: collectionId, entries: names.map((name) => ({ item_id: itemId, name, ...element ? { element } : {} })) } };
+  const lines = [`NEXT \u2014 ${names.length === 1 ? "this file is" : "these files are"} too big to send inline (about a megabyte at most). Do NOT resize or convert ${names.length === 1 ? "it" : "them"}.`];
+  const calls = [];
+  if (allowPath) {
+    const byPath = { tool: "keepr_attach_file", args: { item_id: itemId, files: names.map(() => ({ path: "<where the file is on this computer>" })), ...element ? { element } : {} } };
+    lines.push("  If the file is on the computer this server runs on (Claude Code, the extension, the plugin), give its path \u2014 streamed from disk, up to 100 MB:", `    keepr_attach_file ${JSON.stringify(byPath.args)}`, "  Many files in one folder: keepr_attach_folder.", "  If you cannot reach the file (it is on the person's phone, or only in the chat), ask the person for it with a link:");
+    calls.push(byPath);
+  } else {
+    lines.push("  This connector cannot read files from the person's computer. Ask the person for the file with a link \u2014 they drop it in keepr, and you can check it arrived:");
+  }
+  lines.push(`    keepr_request_upload ${JSON.stringify(request.args)}`);
+  calls.push(request);
+  return { lines, calls };
+}
+function secretPlace(p) {
+  const name = p.split(/[\\/]/).filter(Boolean).pop() ?? "";
+  if (name.startsWith("."))
+    return true;
+  const home = homedir2();
+  const norm3 = normalize(p);
+  if (!norm3.startsWith(home + sep))
+    return false;
+  return (norm3.slice(home.length + 1).split(sep)[0] ?? "").startsWith(".");
+}
 async function loadBytes(spec, allowPath) {
   if (spec.content_base64) {
     const name = spec.filename || "attachment";
@@ -28376,35 +28873,48 @@ async function loadBytes(spec, allowPath) {
     if (!bytes.length)
       return { ok: false, filename: name, message: "content_base64 decoded to zero bytes." };
     if (bytes.length > MAX_INLINE_BYTES) {
-      return { ok: false, filename: name, message: `${bytes.length} bytes is too large to pass inline (the practical ceiling is about ${MAX_INLINE_BYTES}). Ask the user to attach this one in the web app.` };
+      return { ok: false, filename: name, tooLarge: true, message: `${mb(bytes.length)} is too big to send inline (about a megabyte at most) \u2014 see NEXT for the way that works.` };
     }
     if (!spec.filename)
       return { ok: false, filename: name, message: "content_base64 was given without a filename. keepr stores the name, so it cannot be guessed." };
-    return { ok: true, filename: spec.filename, bytes };
+    return { ok: true, filename: spec.filename, size: bytes.length, inline: bytes };
   }
   if (spec.path) {
-    const name = spec.filename || basename(spec.path);
+    const name = spec.filename || basename2(spec.path);
     if (!allowPath) {
       return {
         ok: false,
         filename: name,
-        message: "this connector cannot read files by path \u2014 it runs on keepr's servers, not on your machine. Re-send the file as content_base64 with a filename."
+        message: "this connector cannot read files by path \u2014 it runs on keepr's servers, not on the person's computer. A small file you hold: content_base64 with a filename (about a megabyte at most). Anything else: keepr_request_upload gives the person a link to upload it."
       };
     }
-    try {
-      const bytes = await readFile(spec.path);
-      return { ok: true, filename: name, bytes };
-    } catch (err) {
-      const code = err.code;
-      if (code === "ENOENT") {
-        return {
-          ok: false,
-          filename: name,
-          message: `nothing at ${spec.path} \u2014 this MCP server does not share a filesystem with you (it runs on the host; you run in a sandbox). Re-send this file as content_base64 with a filename instead of a path.`
-        };
-      }
-      return { ok: false, filename: name, message: `could not read ${spec.path}: ${code ?? err.message}` };
+    if (secretPlace(spec.path)) {
+      return { ok: false, filename: name, message: `${spec.path} is a hidden file or inside a hidden folder \u2014 those are never attached from here. If the person wants it attached, they can do it in keepr.` };
     }
+    const { path } = await resolveAgentPath(spec.path);
+    let size;
+    try {
+      const real = await realpath(path);
+      if (secretPlace(real)) {
+        return { ok: false, filename: name, message: `${spec.path} leads to a hidden file (${real}) \u2014 those are never attached from here.` };
+      }
+      const st = await stat2(path);
+      if (!st.isFile())
+        return { ok: false, filename: name, message: `${spec.path} is not a file.` };
+      size = st.size;
+    } catch (err) {
+      return { ok: false, filename: name, message: pathProblem(spec.path, err.code) };
+    }
+    if (size > MAX_FILE_BYTES)
+      return { ok: false, filename: name, message: "over 100 MB \u2014 every attachment is limited to 100 MB." };
+    if (!size)
+      return { ok: false, filename: name, message: "the file is empty." };
+    return {
+      ok: true,
+      filename: name,
+      size,
+      stream: { open: () => createReadStream(path), length: size, filename: name, contentType: spec.content_type || contentTypeFor(name) }
+    };
   }
   return { ok: false, filename: spec.filename || "attachment", message: "neither content_base64 nor path was given." };
 }
@@ -28624,6 +29134,894 @@ var uploadStatusTool = {
   }
 };
 
+// dist/src/tools/attachFolder.js
+import { stat as stat5, realpath as realpath4 } from "node:fs/promises";
+import { createHash as createHash3, randomBytes as randomBytes5 } from "node:crypto";
+
+// dist/src/folderMatch.js
+import { readdir as readdir2, stat as stat3, realpath as realpath2 } from "node:fs/promises";
+import { join as join4, relative, sep as sep2, basename as basename3, extname } from "node:path";
+var MATCH_MODES = ["auto", "folder", "stem", "exact"];
+var COUNTER_SUFFIX = /[\s._-]*(?:\(\s*[0-9]+\s*\)|[0-9]+)$/;
+function stemOf(name) {
+  const ext = extname(name);
+  return ext && ext !== name ? name.slice(0, -ext.length) : name;
+}
+function keyFor(rel, mode) {
+  const parts = rel.normalize("NFC").split("/").filter(Boolean);
+  const name = parts[parts.length - 1] ?? "";
+  const parent = parts.slice(0, -1);
+  const stem = stemOf(name);
+  if (mode === "folder")
+    return parent.length ? parent[0] : null;
+  if (mode === "exact")
+    return stem;
+  const stripped = stem.replace(COUNTER_SUFFIX, "") || stem;
+  if (mode === "stem")
+    return stripped;
+  return parent.length ? parent[0] : stripped;
+}
+function keysFor(rel, mode) {
+  if (mode !== "auto") {
+    const k = keyFor(rel, mode);
+    return k ? [k] : [];
+  }
+  const folder = keyFor(rel, "folder");
+  if (folder)
+    return [folder];
+  const out = [];
+  for (const k of [keyFor(rel, "exact"), keyFor(rel, "stem")])
+    if (k && !out.includes(k))
+      out.push(k);
+  return out;
+}
+function inside(root, p) {
+  return p === root || p.startsWith(root.endsWith(sep2) ? root : root + sep2);
+}
+function fenceProblem(rootReal, real) {
+  if (!inside(rootReal, real))
+    return `it is a link to ${real}, outside this folder`;
+  if (relative(rootReal, real).split(sep2).some((seg) => seg.startsWith(".")))
+    return `it is a link to a hidden file (${real})`;
+  return null;
+}
+async function listFiles(root, limit = 2e4) {
+  const files = [];
+  const skipped = [];
+  let truncated = false;
+  const rootReal = await realpath2(root);
+  const relOf = (p) => relative(root, p).split(sep2).join("/");
+  async function walk(dir, top) {
+    if (truncated)
+      return;
+    let entries;
+    try {
+      entries = await readdir2(dir, { withFileTypes: true });
+    } catch (err) {
+      if (top)
+        throw err;
+      skipped.push({ rel: `${relOf(dir)}/`, reason: `this folder could not be read (${err.code ?? "error"}) \u2014 its files were left out` });
+      return;
+    }
+    const dirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name).sort();
+    const names = entries.filter((e) => (e.isFile() || e.isSymbolicLink()) && !e.name.startsWith(".")).map((e) => e.name).sort();
+    for (const name of names) {
+      const path = join4(dir, name);
+      let st;
+      let real;
+      try {
+        st = await stat3(path);
+        real = await realpath2(path);
+      } catch {
+        continue;
+      }
+      if (!st.isFile())
+        continue;
+      const fenced = fenceProblem(rootReal, real);
+      if (fenced) {
+        skipped.push({ rel: relOf(path), reason: `${fenced} \u2014 left out` });
+        continue;
+      }
+      if (files.length >= limit) {
+        truncated = true;
+        return;
+      }
+      files.push({ path, rel: relOf(path), name, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs, ino: st.ino });
+    }
+    for (const d of dirs)
+      await walk(join4(dir, d), false);
+  }
+  await walk(root, true);
+  return { files, truncated, skipped };
+}
+function foldKey(v) {
+  return v.trim().normalize("NFC").toLowerCase();
+}
+function matchByKeys(files, mode, source) {
+  const pairs = [];
+  const unmatched = [];
+  const lookup = (k) => source.keys.get(source.caseless ? foldKey(k) : k);
+  for (const file of files) {
+    const candidates = keysFor(file.rel, mode);
+    if (!candidates.length) {
+      unmatched.push({ file, reason: "could not derive a key from its place in the folder (it is not in a subfolder)" });
+      continue;
+    }
+    const key = candidates.find((k) => (lookup(k) ?? []).length) ?? null;
+    const ids = key ? lookup(key) : null;
+    if (!key || !ids) {
+      unmatched.push({ file, reason: `no item has ${source.label} ${candidates.map((k) => `"${k}"`).join(" or ")}` });
+      continue;
+    }
+    const distinct = [...new Set(ids)];
+    if (distinct.length > 1) {
+      unmatched.push({ file, reason: `${distinct.length} items have ${source.label} "${key}" \u2014 name the item in a map instead` });
+      continue;
+    }
+    pairs.push({ file, itemId: distinct[0], key });
+  }
+  const used = new Set(pairs.map((p) => p.itemId));
+  const without = [...source.keys.entries()].filter(([, ids]) => !ids.some((id) => used.has(id))).map(([k]) => k);
+  return { pairs, unmatched, itemsWithoutFile: without };
+}
+async function matchByMap(root, map, resolve) {
+  const pairs = [];
+  const unmatched = [];
+  const rootReal = await realpath2(root);
+  for (const [key, value] of Object.entries(map)) {
+    const names = Array.isArray(value) ? value : [value];
+    const itemId = resolve(key);
+    for (const name of names) {
+      const path = String(name).startsWith("/") ? String(name) : join4(root, String(name));
+      const rel = relative(root, path).split(sep2).join("/");
+      const shown = { path, rel, name: basename3(path) };
+      if (!itemId) {
+        unmatched.push({ file: shown, reason: `no item for "${key}" \u2014 give an item id, or an external_id from a keepr_ingest run in this session` });
+        continue;
+      }
+      if (rel.split("/").some((seg) => seg.startsWith("."))) {
+        unmatched.push({ file: shown, reason: "a hidden file, or a path outside the folder \u2014 the map names files in the folder" });
+        continue;
+      }
+      let st;
+      let real;
+      try {
+        st = await stat3(path);
+        real = await realpath2(path);
+      } catch {
+        unmatched.push({ file: shown, reason: "no such file" });
+        continue;
+      }
+      if (!st.isFile()) {
+        unmatched.push({ file: shown, reason: "not a file" });
+        continue;
+      }
+      const fenced = fenceProblem(rootReal, real);
+      if (fenced) {
+        unmatched.push({ file: shown, reason: `${fenced} \u2014 the map names files in the folder` });
+        continue;
+      }
+      pairs.push({ file: { ...shown, size: st.size, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs, ino: st.ino }, itemId, key });
+    }
+  }
+  return { pairs, unmatched, itemsWithoutFile: [] };
+}
+
+// dist/src/attachJobs.js
+import { createReadStream as createReadStream2 } from "node:fs";
+import { stat as stat4, realpath as realpath3 } from "node:fs/promises";
+import { randomBytes as randomBytes4 } from "node:crypto";
+import { setTimeout as sleep3 } from "node:timers/promises";
+var IDS_PER_CALL = 100;
+var CONCURRENCY = 3;
+var MAX_RATE_WAITS = 20;
+var KEEP_JOBS = 20;
+var PLAN_WAIT_MS = 5e3;
+function idsIn(value) {
+  return (Array.isArray(value) ? value : value ? [value] : []).map(String).filter(Boolean);
+}
+async function planUploads(ctx, pairs, element) {
+  const ids = [...new Set(pairs.map((p) => p.itemId))];
+  const items = /* @__PURE__ */ new Map();
+  for (let i = 0; i < ids.length; i += IDS_PER_CALL) {
+    const chunk = ids.slice(i, i + IDS_PER_CALL);
+    const res = await ctx.http.request({
+      path: "/api/items",
+      query: { ids: chunk.join(",") },
+      maxWaitMs: PLAN_WAIT_MS
+    });
+    if (res.status === 429)
+      return { error: BUSY };
+    if (!res.ok)
+      return { error: `keepr would not read the matched items: ${errorMessage(res.body, `HTTP ${res.status}`)}` };
+    for (const it of Array.isArray(res.body) ? res.body : []) {
+      items.set(String(it._id), {
+        id: String(it._id),
+        title: it.displayValue || String(it._id),
+        cardId: String(it.card_id ?? ""),
+        collectionId: String(it.collection_id ?? ""),
+        elements: it.elements ?? {}
+      });
+    }
+  }
+  const unreadable = ids.filter((id) => !items.has(id));
+  const collectionRefusal = /* @__PURE__ */ new Map();
+  for (const it of items.values()) {
+    if (collectionRefusal.has(it.collectionId))
+      continue;
+    const row = ctx.knownCollections().find((c2) => c2.id === it.collectionId);
+    collectionRefusal.set(it.collectionId, !row ? null : row.allowAttachments === false ? `attachments are turned off in "${row.name}" \u2014 someone who manages it can turn them on in its settings.` : row.archived ? `"${row.name}" is archived and read-only.` : null);
+  }
+  const targets = /* @__PURE__ */ new Map();
+  const schemas = /* @__PURE__ */ new Map();
+  for (const it of items.values()) {
+    if (!schemas.has(it.collectionId)) {
+      const res = await ctx.http.request({ path: `/api/collections/${it.collectionId}/schema`, maxWaitMs: PLAN_WAIT_MS });
+      if (res.status === 429)
+        return { error: BUSY };
+      if (!res.ok)
+        return { error: `keepr would not read the elements of the items' collection: ${errorMessage(res.body, `HTTP ${res.status}`)}` };
+      schemas.set(it.collectionId, res.body?.cards ?? []);
+    }
+    const card = schemas.get(it.collectionId).find((c2) => c2.id === it.cardId);
+    const titleEl = (card?.elements ?? []).find((e) => e.isTitle);
+    const titleValue = titleEl ? it.elements[titleEl.name] : void 0;
+    if (it.title === it.id && (typeof titleValue === "string" || typeof titleValue === "number") && String(titleValue).trim())
+      it.title = String(titleValue).trim();
+    if (element) {
+      const def = (card?.elements ?? []).find((e) => e.dataType === "file" && e.name === element);
+      if (def)
+        targets.set(it.id, def);
+    }
+  }
+  const files = pairs.map((p) => ({ file: p.file, itemId: p.itemId, key: p.key, refused: null, note: null }));
+  const byItem = /* @__PURE__ */ new Map();
+  for (const f of files) {
+    if (!byItem.has(f.itemId))
+      byItem.set(f.itemId, []);
+    byItem.get(f.itemId).push(f);
+  }
+  for (const [itemId, group] of byItem) {
+    const it = items.get(itemId);
+    const def = targets.get(itemId) ?? null;
+    const seen = /* @__PURE__ */ new Map();
+    for (const f of group) {
+      if (!it) {
+        f.refused = "this key cannot read the item (a wrong id, a deleted item, or outside the key's allowlist).";
+        continue;
+      }
+      const off = collectionRefusal.get(it.collectionId);
+      if (off) {
+        f.refused = off;
+        continue;
+      }
+      if (element && !def) {
+        f.refused = `the card of "${it.title}" has no file element "${element}".`;
+        continue;
+      }
+      const why = refusalFor(f.file.name, f.file.size, def, contentTypeFor(f.file.name));
+      if (why) {
+        f.refused = why;
+        continue;
+      }
+      const lower2 = storedName(f.file.name).toLowerCase();
+      if (seen.has(lower2)) {
+        f.refused = `${seen.get(lower2)} has the same name and is already going to "${it.title}".`;
+        continue;
+      }
+      seen.set(lower2, f.file.rel);
+    }
+    if (!def || !it)
+      continue;
+    const going = group.filter((f) => !f.refused);
+    const held = idsIn(it.elements[def.name]).length;
+    if (!def.allowMultiple) {
+      going.forEach((f, i) => {
+        if (i > 0)
+          f.refused = `"${def.name}" holds one file, and ${going[0].file.rel} is already going there.`;
+        else if (held)
+          f.note = `"${def.name}" of "${it.title}" already holds a file: skipped if it is this file, otherwise left alone (replace it with keepr_attach_file on that item).`;
+      });
+    } else if (held + going.length > MAX_FILES) {
+      going.forEach((f) => {
+        f.note = `"${def.name}" of "${it.title}" holds ${held} of its ${MAX_FILES} files: files already there are skipped, and any past the 20th are not sent.`;
+      });
+    }
+  }
+  return { files, items, element, targets, unreadable };
+}
+var BUSY = "keepr is busy for this key right now (its rate limit \u2014 an upload running in the background shares it). Nothing was sent; try the dry run again in a minute.";
+var jobs = /* @__PURE__ */ new Map();
+function getJob(id) {
+  return jobs.get(id) ?? null;
+}
+function startJob(ctx, plan, folder, opts = {}) {
+  const now = opts.now ?? Date.now;
+  const files = plan.files.map((f) => ({
+    rel: f.file.rel,
+    name: f.file.name,
+    path: f.file.path,
+    size: f.file.size,
+    mtimeMs: f.file.mtimeMs,
+    ctimeMs: f.file.ctimeMs,
+    ino: f.file.ino,
+    itemId: f.itemId,
+    state: f.refused ? "refused" : "queued",
+    reason: f.refused,
+    attachmentId: null,
+    rateWaits: 0
+  }));
+  const items = /* @__PURE__ */ new Map();
+  for (const f of files) {
+    const info = plan.items.get(f.itemId);
+    if (!info)
+      continue;
+    if (!items.has(f.itemId))
+      items.set(f.itemId, { info, target: plan.targets.get(f.itemId) ?? null, pending: 0, toBind: [], reserved: 0, present: null, bound: 0, bindError: null });
+    if (f.state === "queued")
+      items.get(f.itemId).pending++;
+  }
+  const job = {
+    id: `att-${randomBytes4(4).toString("hex")}`,
+    startedAt: now(),
+    finishedAt: null,
+    element: plan.element,
+    folder,
+    files,
+    items,
+    rootReal: opts.rootReal ? Promise.resolve(opts.rootReal) : null,
+    pausedUntil: 0,
+    rateWaitsTotal: 0,
+    done: Promise.resolve(),
+    error: null
+  };
+  jobs.set(job.id, job);
+  for (const [jid, j] of jobs) {
+    if (jobs.size <= KEEP_JOBS)
+      break;
+    if (j.finishedAt !== null)
+      jobs.delete(jid);
+  }
+  job.done = run(ctx, job, opts).catch((err) => {
+    job.error = `the upload stopped unexpectedly: ${err?.message ?? String(err)}`;
+    for (const f of job.files)
+      if (f.state === "queued" || f.state === "uploading")
+        settle(f, "failed", job.error);
+  }).finally(() => {
+    job.finishedAt = now();
+  });
+  return job;
+}
+async function run(ctx, job, opts) {
+  const wait = opts.sleep ?? ((ms) => sleep3(ms));
+  const now = opts.now ?? Date.now;
+  const queue = job.files.filter((f) => f.state === "queued");
+  const worker = async () => {
+    for (; ; ) {
+      const f = queue.shift();
+      if (!f)
+        return;
+      const pause = job.pausedUntil - now();
+      if (pause > 0)
+        await wait(pause);
+      let requeued = false;
+      try {
+        requeued = await sendOne(ctx, job, f, now);
+      } catch (err) {
+        settle(f, "failed", `it could not be sent: ${err?.message ?? String(err)}`);
+      }
+      if (requeued) {
+        queue.push(f);
+        continue;
+      }
+      const item = job.items.get(f.itemId);
+      if (item && --item.pending === 0)
+        await bind(ctx, item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, opts.concurrency ?? CONCURRENCY) }, worker));
+}
+async function presentOn(ctx, item) {
+  if (!item.present) {
+    item.present = (async () => {
+      const out = /* @__PURE__ */ new Map();
+      let res;
+      try {
+        res = await ctx.http.request({ path: `/api/items/${item.info.id}/attachments` });
+      } catch {
+        return null;
+      }
+      if (res.status === 429) {
+        item.present = null;
+        return "busy";
+      }
+      if (!res.ok || !Array.isArray(res.body))
+        return null;
+      {
+        for (const a of res.body) {
+          const name = String(a.originalName ?? "");
+          if (!out.has(name))
+            out.set(name, []);
+          out.get(name).push({ id: String(a._id ?? ""), element: a.element ?? null, size: typeof a.size === "number" ? a.size : null });
+        }
+      }
+      return out;
+    })();
+  }
+  return item.present;
+}
+async function sendOne(ctx, job, f, now) {
+  const item = job.items.get(f.itemId);
+  f.state = "uploading";
+  const present = await presentOn(ctx, item);
+  if (present === "busy")
+    return requeueForRate(job, f, now, null);
+  if (!present) {
+    return settle(f, "failed", `keepr could not say what is already on "${item.info.title}", so it was not sent (it might have gone twice). Run the folder again.`);
+  }
+  const same = (present.get(storedName(f.name)) ?? []).filter((p) => p.size === f.size);
+  const target = item.target;
+  if (same.length && !target)
+    return settle(f, "skipped", "already on the item (same name and size)");
+  if (same.length && target) {
+    const current = idsIn(item.info.elements[target.name]);
+    if (same.some((p) => p.element === target.name && current.includes(p.id)))
+      return settle(f, "skipped", `already in "${target.name}"`);
+    const free = same.find((p) => p.element === null && !item.toBind.includes(p.id));
+    const replaces = !target.allowMultiple && current.length > 0;
+    if (free && !replaces && (!target.allowMultiple || reserve(item))) {
+      item.toBind.push(free.id);
+      return settle(f, "skipped", `already on the item (same name and size) \u2014 put into "${target.name}"`);
+    }
+  }
+  let reserved = false;
+  if (target) {
+    const current = idsIn(item.info.elements[target.name]);
+    if (!target.allowMultiple && current.length) {
+      return settle(f, "failed", `"${target.name}" already holds another file \u2014 replace it with keepr_attach_file on that item, or attach this one without element.`);
+    }
+    if (target.allowMultiple) {
+      if (!reserve(item))
+        return settle(f, "failed", `"${target.name}" is full (${MAX_FILES} files).`);
+      reserved = true;
+    }
+  }
+  try {
+    return await sendReserved(ctx, job, f, item, now);
+  } finally {
+    if (reserved && f.state !== "uploaded")
+      item.reserved--;
+  }
+}
+function reserve(item) {
+  const current = idsIn(item.info.elements[item.target.name]);
+  if (current.length + item.reserved >= MAX_FILES)
+    return false;
+  item.reserved++;
+  return true;
+}
+async function sendReserved(ctx, job, f, item, now) {
+  const target = item.target;
+  if (!job.rootReal)
+    job.rootReal = realpath3(job.folder).catch(() => null);
+  const rootReal = await job.rootReal;
+  let real = null;
+  try {
+    real = await realpath3(f.path);
+  } catch {
+  }
+  const fenced = rootReal && real ? fenceProblem(rootReal, real) : null;
+  if (fenced)
+    return settle(f, "failed", `${fenced} now \u2014 it was not sent.`);
+  let st;
+  try {
+    st = await stat4(f.path);
+  } catch (err) {
+    return settle(f, "failed", err.code === "ENOENT" ? "it was moved or deleted after the folder was matched." : `it could not be read: ${err.code ?? err.message}.`);
+  }
+  if (st.size !== f.size || st.mtimeMs !== f.mtimeMs || st.ctimeMs !== f.ctimeMs || st.ino !== f.ino) {
+    return settle(f, "failed", `it changed after the folder was matched (${f.size} bytes then, ${st.size} now). Run the folder again to send the new version.`);
+  }
+  let res;
+  try {
+    res = await ctx.http.request({
+      method: "POST",
+      path: `/api/items/${f.itemId}/attachments`,
+      stream: { open: () => createReadStream2(f.path), length: f.size, filename: f.name, contentType: contentTypeFor(f.name) }
+    });
+  } catch (err) {
+    if (err instanceof FileChangedError) {
+      return settle(f, "failed", err.kind === "unreadable" ? `it could not be read from the disk while it was being sent (${err.message.replace(/^.* could not be read /, "")}).` : "it changed while it was being sent. Run the folder again to send the new version.");
+    }
+    if (err instanceof KeeprTransportError)
+      return settle(f, "failed", `keepr could not be reached: ${err.message}`);
+    return settle(f, "failed", `it could not be sent: ${err.message}`);
+  }
+  ctx.noteWriteAttempt(res);
+  if (res.status === 429)
+    return requeueForRate(job, f, now, res.rateLimit?.resetSeconds ?? null);
+  if (!res.ok) {
+    const code = errorCode(res.body);
+    const meaning = code ? ctx.contract.meaningOf(code) : null;
+    const said2 = `${code ? `${code}: ` : ""}${errorMessage(res.body, "")}${meaning ? ` (${meaning})` : ""}`.trim();
+    const why = res.status === 413 ? "over the attachment storage cap \u2014 the person has to free space first." : res.status === 415 ? "keepr refuses that type of file." : res.status === 403 && ctx.keyScope === "read" ? ctx.readOnlyRefusal() : said2 || `HTTP ${res.status}`;
+    return settle(f, "failed", why);
+  }
+  f.attachmentId = String(res.body?._id ?? "");
+  if (target && f.attachmentId)
+    item.toBind.push(f.attachmentId);
+  return settle(f, "uploaded", null);
+}
+function requeueForRate(job, f, now, resetSeconds) {
+  f.rateWaits++;
+  job.rateWaitsTotal++;
+  if (f.rateWaits > MAX_RATE_WAITS)
+    return settle(f, "failed", "keepr kept refusing it for the rate limit. Run the folder again later to send what is left.");
+  const seconds = Math.max(5, (resetSeconds ?? 30) + 1);
+  job.pausedUntil = Math.max(job.pausedUntil, now() + seconds * 1e3);
+  f.state = "queued";
+  return true;
+}
+function settle(f, state, reason) {
+  f.state = state;
+  f.reason = reason;
+  return false;
+}
+async function bind(ctx, item) {
+  try {
+    await bindOnce(ctx, item);
+  } catch (err) {
+    item.bindError = `keepr could not be reached to put the files in (${err?.message ?? String(err)}) \u2014 they stayed on the item as other attachments; run the folder again to put them in.`;
+  }
+}
+async function bindOnce(ctx, item) {
+  const target = item.target;
+  if (!target || !item.toBind.length)
+    return;
+  const fresh = await ctx.http.request({ path: `/api/items/${item.info.id}` });
+  if (!fresh.ok) {
+    item.bindError = `keepr would not read the item again before putting the files in: ${errorMessage(fresh.body, `HTTP ${fresh.status}`)}`;
+    return;
+  }
+  const current = idsIn(fresh.body?.elements?.[target.name]);
+  if (!target.allowMultiple && current.length) {
+    item.bindError = `"${target.name}" was given a file by someone else while this ran; the new file stayed as another attachment.`;
+    return;
+  }
+  const fresh_ = item.toBind.filter((id) => !current.includes(id));
+  const room = Math.max(0, MAX_FILES - current.length);
+  const going = target.allowMultiple ? fresh_.slice(0, room) : fresh_.slice(0, 1);
+  const left = fresh_.length - going.length;
+  if (!going.length) {
+    item.bindError = `"${target.name}" is full (${MAX_FILES} files) \u2014 someone added files while this ran; the new files stayed as other attachments.`;
+    return;
+  }
+  const value = target.allowMultiple ? [...current, ...going] : going[0];
+  const body = { elements: { [target.name]: value }, merge: true };
+  if (fresh.body?.updatedAt)
+    body.ifUpdatedAt = fresh.body.updatedAt;
+  const put = await ctx.http.request({ method: "PUT", path: `/api/items/${item.info.id}`, body });
+  ctx.noteWriteAttempt(put);
+  if (put.ok) {
+    item.bound = going.length;
+    if (left)
+      item.bindError = `${left} more file${left === 1 ? "" : "s"} did not fit in "${target.name}" (${MAX_FILES} at most) and stayed as other attachments.`;
+    return;
+  }
+  const code = errorCode(put.body);
+  item.bindError = `${code ? `${code}: ` : ""}${errorMessage(put.body, `HTTP ${put.status}`)} \u2014 the files stayed on the item as other attachments.`;
+}
+function summarise(job) {
+  const t3 = { queued: 0, uploading: 0, uploaded: 0, skipped: 0, failed: 0, refused: 0, bound: 0, bindErrors: 0 };
+  for (const f of job.files)
+    t3[f.state]++;
+  for (const it of job.items.values()) {
+    t3.bound += it.bound;
+    if (it.bindError)
+      t3.bindErrors++;
+  }
+  return t3;
+}
+
+// dist/src/tools/attachFolder.js
+var HEX249 = /^[0-9a-fA-F]{24}$/;
+var LIST_PAGE = 200;
+var ELEMENT_ITEMS_MAX = 5e3;
+var SHOWN = 60;
+var CONFIRM_TTL_MS = 30 * 6e4;
+var confirms = /* @__PURE__ */ new Map();
+function matchFingerprint(files) {
+  const rows = files.map((f) => [f.file.rel, f.file.size, f.file.mtimeMs, f.file.ctimeMs, f.file.ino, f.itemId].join("\0")).sort();
+  return createHash3("sha256").update(rows.join("\n")).digest("hex");
+}
+function signatureOf(args) {
+  const pick2 = { folder: args.folder ?? null, run_id: args.run_id ?? null, map: args.map ?? null, collection: args.collection ?? null, match_element: args.match_element ?? null, match: args.match ?? null, element: args.element ?? null };
+  return createHash3("sha256").update(JSON.stringify(pick2)).digest("hex");
+}
+var attachFolderTool = {
+  name: "keepr_attach_folder",
+  description: "Attach a whole folder of files (photos, receipts, scans, videos \u2014 up to 100 MB each) to the keepr items they belong to, straight from the disk of the computer this server runs on. Use it instead of keepr_attach_file whenever there is more than a file or two, or any file over about a megabyte: nothing goes through the conversation. Files are matched to items by their place in the folder \u2014 a subfolder per item (photos/molly-blake/front.jpg), or a filename per item with an optional counter (leah-park-2.jpg, R-1042.pdf) \u2014 against: the external_ids of a keepr_ingest run in this session (the default), an explicit `map`, or `collection` + `match_element` (an element whose value the filenames carry, e.g. a receipt number). ALWAYS call with dry_run: true first and show the person the match; it returns a `confirm` token. Then the SAME arguments with dry_run: false and that `confirm` start the upload in the background and return a job id for keepr_attach_status. Re-running a folder skips files already on their items (same name and size). The folder must be a path this server can read: on Claude Code, the person's own disk; in Cowork, a folder the person selected for the session. When the server cannot read the files, use keepr_request_upload instead.",
+  writes: true,
+  inputSchema: {
+    folder: external_exports.string().min(1).describe("The folder, as a path on the computer this server runs on (or a Cowork path under /sessions/<name>/mnt/ for a folder the person selected)."),
+    dry_run: external_exports.boolean().describe("REQUIRED. true shows the match, uploads nothing and returns a `confirm` token. false (with that token) starts the upload and returns a job id."),
+    confirm: external_exports.string().optional().describe("With dry_run: false \u2014 the token the dry run of these same arguments returned. Single use, 30 minutes."),
+    run_id: external_exports.string().optional().describe("Match against the external_ids of this keepr_ingest run. Default: every committed run in this session."),
+    map: external_exports.record(external_exports.string(), external_exports.union([external_exports.string(), external_exports.array(external_exports.string())])).optional().describe('Explicit: {"<external_id or item_id>": ["file.jpg", "sub/other.jpg"]}, names relative to the folder. Beats filename matching.'),
+    collection: external_exports.string().optional().describe("With match_element: the collection whose items the files belong to (name or id)."),
+    match_element: external_exports.string().optional().describe(`Match the filename (or subfolder) to this element's value, e.g. "receiptNo", compared without case. For items not written in this session.`),
+    match: external_exports.enum(["auto", "folder", "stem", "exact"]).optional().describe("How a file names its item. auto (default): its subfolder, else its filename, else its filename without a trailing counter. folder | stem | exact force one."),
+    element: external_exports.string().optional().describe("Put the files INTO this file element of each item (keepr_schema lists them) instead of the item's other attachments. A single file element is never replaced from here.")
+  },
+  handler: async (args, ctx) => {
+    if (typeof args.dry_run !== "boolean")
+      return fail("dry_run is required: true to see the match first, then false to upload.");
+    const given = String(args.folder ?? "").trim();
+    const { path: root, mappedFrom } = await resolveAgentPath(given);
+    try {
+      const st = await stat5(root);
+      if (!st.isDirectory())
+        return fail(`${given} is a file, not a folder. Give its folder \u2014 or use keepr_attach_file for a single file.`);
+    } catch (err) {
+      return fail(pathProblem(given, err.code), { ok: false, code: "folder_unreadable" });
+    }
+    const mode = MATCH_MODES.includes(args.match) ? args.match : "auto";
+    const element = typeof args.element === "string" && args.element.trim() ? args.element.trim() : null;
+    const sig = signatureOf({ ...args, folder: given });
+    const token = typeof args.confirm === "string" ? args.confirm : "";
+    if (args.dry_run === false) {
+      const held = confirms.get(token);
+      if (!held || held.sig !== sig || held.expires < Date.now()) {
+        return fail(token ? "That confirm token is not for these arguments, was used already, or has expired (30 minutes). Run the dry run again and show the person the match." : "Run keepr_attach_folder with dry_run: true first, show the person the match, then call again with the same arguments, dry_run: false and the `confirm` it returned.", { ok: false, code: "confirm_required" });
+      }
+    }
+    let matched;
+    let truncated = false;
+    let skipped = [];
+    let sourceNote = null;
+    let sourceLabel;
+    if (args.map && typeof args.map === "object") {
+      const runId = typeof args.run_id === "string" ? args.run_id : null;
+      const byExt = (k) => [k, k.normalize("NFC"), k.normalize("NFD")].map((v) => ctx.ledger.resolveExternalId(v, runId)?.itemId ?? null).find(Boolean) ?? null;
+      matched = await matchByMap(root, args.map, (k) => HEX249.test(k) ? k : byExt(k));
+      sourceLabel = "the map";
+    } else {
+      let walk;
+      try {
+        walk = await listFiles(root);
+      } catch (err) {
+        return fail(pathProblem(given, err.code), { ok: false, code: "folder_unreadable" });
+      }
+      truncated = walk.truncated;
+      skipped = walk.skipped;
+      if (!walk.files.length)
+        return fail(`${given} holds no files (hidden files are left out).${skipped.length ? `
+${listSkipped(skipped)}` : ""}`);
+      const source = await keySource(ctx, args);
+      if ("error" in source)
+        return fail(source.error);
+      matched = matchByKeys(walk.files, mode, source);
+      sourceLabel = source.label;
+      sourceNote = source.note ?? null;
+    }
+    if (!matched.pairs.length) {
+      return fail(`No file in ${given} matched an item (${sourceLabel}).
+${listUnmatched(matched.unmatched)}
+
+Try another match mode, a \`map\` naming the files per item, or match_element with the element the filenames carry.`);
+    }
+    const plan = await planUploads(ctx, matched.pairs, element);
+    if ("error" in plan)
+      return fail(plan.error);
+    const going = plan.files.filter((f) => !f.refused);
+    const refused = plan.files.filter((f) => f.refused);
+    const bytes = going.reduce((n, f) => n + f.file.size, 0);
+    const title = (id) => plan.items.get(id)?.title ?? id;
+    const header = [
+      `${going.length} file${going.length === 1 ? "" : "s"} (${mb(bytes)}) \u2192 ${new Set(going.map((f) => f.itemId)).size} item${new Set(going.map((f) => f.itemId)).size === 1 ? "" : "s"}` + (element ? ` \xB7 into "${element}"` : "") + (refused.length ? ` \xB7 ${refused.length} refused` : "") + (matched.unmatched.length ? ` \xB7 ${matched.unmatched.length} unmatched` : "") + (matched.itemsWithoutFile.length ? ` \xB7 ${matched.itemsWithoutFile.length} item${matched.itemsWithoutFile.length === 1 ? "" : "s"} without a file` : "")
+    ];
+    if (mappedFrom)
+      header.push(`(Read from ${root} \u2014 the computer's copy of ${mappedFrom}.)`);
+    if (truncated)
+      header.push("Only the first 20,000 files were read; pick a smaller folder for the rest.");
+    if (sourceNote)
+      header.push(sourceNote);
+    if (args.dry_run) {
+      const lines = [...header, ""];
+      lines.push(`MATCHED (${going.length}):`);
+      for (const f of going.slice(0, SHOWN))
+        lines.push(`  ${f.file.rel} \u2192 ${title(f.itemId)}`);
+      if (going.length > SHOWN)
+        lines.push(`  \u2026 and ${going.length - SHOWN} more`);
+      if (refused.length) {
+        lines.push("", `REFUSED BEFORE UPLOAD (${refused.length}):`);
+        for (const f of refused.slice(0, SHOWN))
+          lines.push(`  ${f.file.rel} \u2192 ${title(f.itemId)}: ${f.refused}`);
+        if (refused.length > SHOWN)
+          lines.push(`  \u2026 and ${refused.length - SHOWN} more`);
+      }
+      const noted = going.filter((f) => f.note);
+      if (noted.length) {
+        lines.push("", `NOTE (${noted.length}):`);
+        for (const f of noted.slice(0, SHOWN))
+          lines.push(`  ${f.file.rel} \u2192 ${title(f.itemId)}: ${f.note}`);
+      }
+      if (matched.unmatched.length)
+        lines.push("", `UNMATCHED (${matched.unmatched.length}):`, listUnmatched(matched.unmatched));
+      if (skipped.length)
+        lines.push("", `LEFT OUT (${skipped.length}):`, listSkipped(skipped));
+      if (matched.itemsWithoutFile.length) {
+        lines.push("", `ITEMS WITHOUT A FILE (${matched.itemsWithoutFile.length}), by ${sourceLabel}: ${matched.itemsWithoutFile.slice(0, 25).join(", ")}${matched.itemsWithoutFile.length > 25 ? ", \u2026" : ""}`);
+      }
+      if (plan.unreadable.length)
+        lines.push("", `${plan.unreadable.length} matched item id${plan.unreadable.length === 1 ? " is" : "s are"} not readable by this key: ${plan.unreadable.slice(0, 10).join(", ")}.`);
+      const issued = randomBytes5(12).toString("hex");
+      confirms.set(issued, { sig, match: matchFingerprint(going), expires: Date.now() + CONFIRM_TTL_MS });
+      for (const [t3, c2] of confirms)
+        if (c2.expires < Date.now())
+          confirms.delete(t3);
+      lines.push("", "DRY RUN \u2014 nothing was uploaded. Files already on their items (same name and size) are skipped when it runs.", `Show the person this match. To upload, call keepr_attach_folder again with the same arguments, dry_run: false and confirm: "${issued}".`);
+      return ok(lines.join("\n"), {
+        ok: true,
+        dryRun: true,
+        confirm: issued,
+        leftOut: skipped.slice(0, 500),
+        matched: going.slice(0, 500).map((f) => ({ file: f.file.rel, itemId: f.itemId, item: title(f.itemId), bytes: f.file.size })),
+        refused: refused.slice(0, 500).map((f) => ({ file: f.file.rel, itemId: f.itemId, reason: f.refused })),
+        unmatched: matched.unmatched.slice(0, 500).map((u) => ({ file: u.file.rel, reason: u.reason })),
+        itemsWithoutFile: matched.itemsWithoutFile.slice(0, 500),
+        counts: { matched: going.length, refused: refused.length, unmatched: matched.unmatched.length, itemsWithoutFile: matched.itemsWithoutFile.length, bytes }
+      });
+    }
+    if (!going.length)
+      return fail(`${header[0]}
+
+Nothing to upload: every matched file is refused.
+${refused.slice(0, 20).map((f) => `  ${f.file.rel}: ${f.refused}`).join("\n")}`);
+    if (confirms.get(token)?.match !== matchFingerprint(going)) {
+      confirms.delete(token);
+      return fail(`The folder or the match changed since the dry run (${going.length} file${going.length === 1 ? "" : "s"} would go now), so nothing was sent. Run the dry run again and show the person the new match.`, { ok: false, code: "match_changed" });
+    }
+    confirms.delete(token);
+    const job = startJob(ctx, plan, root, { rootReal: await realpath4(root) });
+    return ok([
+      ...header,
+      "",
+      `Uploading in the background (job ${job.id}), ${CONCURRENCY} at a time, streamed from disk.`,
+      `Call keepr_attach_status with job_id ${job.id} to see progress \u2014 every minute or so, not in a tight loop.`,
+      "The job runs inside this server: if the app restarts, run the same folder again and it sends only what is missing."
+    ].join("\n"), { ok: true, dryRun: false, job_id: job.id, counts: { files: going.length, refused: refused.length, unmatched: matched.unmatched.length, bytes } });
+  }
+};
+async function keySource(ctx, args) {
+  const matchElement = typeof args.match_element === "string" ? args.match_element.trim() : "";
+  if (matchElement) {
+    const resolved = ctx.resolveCollection(String(args.collection ?? ""));
+    if (!resolved.ok)
+      return { error: args.collection ? resolved.message : "match_element needs `collection`: the collection whose items the files belong to." };
+    const keys2 = /* @__PURE__ */ new Map();
+    let seen = 0;
+    let total = null;
+    for (let skip = 0; skip < ELEMENT_ITEMS_MAX; skip += LIST_PAGE) {
+      const res = await ctx.http.request({
+        path: "/api/items",
+        query: { collection_id: resolved.row.id, limit: LIST_PAGE, skip },
+        maxWaitMs: PLAN_WAIT_MS
+      });
+      if (res.status === 429)
+        return { error: "keepr is busy for this key right now (its rate limit \u2014 an upload running in the background shares it). Nothing was sent; try the dry run again in a minute." };
+      total = res.totalCount ?? total;
+      if (!res.ok)
+        return { error: `keepr would not list the items of "${resolved.row.name}" (HTTP ${res.status}).` };
+      const page = Array.isArray(res.body) ? res.body : [];
+      for (const it of page) {
+        const v = it.elements?.[matchElement];
+        if (typeof v !== "string" && typeof v !== "number")
+          continue;
+        const k = foldKey(String(v));
+        if (!k)
+          continue;
+        if (!keys2.has(k))
+          keys2.set(k, []);
+        keys2.get(k).push(String(it._id));
+      }
+      seen += page.length;
+      if (page.length < LIST_PAGE || res.totalCount !== null && seen >= res.totalCount)
+        break;
+    }
+    if (!keys2.size)
+      return { error: `No item in "${resolved.row.name}" has a value in "${matchElement}". Check the element's name with keepr_schema.` };
+    const cut = total !== null && total > seen;
+    return {
+      kind: "keys",
+      keys: keys2,
+      caseless: true,
+      label: `"${matchElement}"`,
+      ...cut ? { note: `Only the first ${seen} of ${total} items of "${resolved.row.name}" were read for "${matchElement}"; a file for a later item reads as unmatched \u2014 use a map, or this session's import, for those.` } : {}
+    };
+  }
+  const runId = typeof args.run_id === "string" && args.run_id ? args.run_id : null;
+  const runs = runId ? [ctx.ledger.byRunId(runId)].filter((r) => r !== null) : ctx.ledger.all();
+  if (!runs.length) {
+    return {
+      error: runId ? `No committed keepr_ingest run "${runId}" in this session (${ctx.ledger.size ? `known: ${ctx.ledger.knownRunIds().join(", ")}` : "none is remembered"}).` : "Nothing to match the files against: no keepr_ingest run in this session. Pass `map` (item ids per file), or `collection` + `match_element`."
+    };
+  }
+  const keys = /* @__PURE__ */ new Map();
+  for (const run2 of runs) {
+    for (const [raw, itemId] of Object.entries(run2.itemsByExternalId)) {
+      const ext = raw.normalize("NFC");
+      if (!keys.has(ext))
+        keys.set(ext, []);
+      if (!keys.get(ext).includes(itemId))
+        keys.get(ext).push(itemId);
+    }
+  }
+  return { kind: "keys", keys, caseless: false, label: "external_id" };
+}
+function listSkipped(skipped) {
+  const lines = skipped.slice(0, SHOWN).map((s) => `  ${s.rel}: ${s.reason}`);
+  if (skipped.length > SHOWN)
+    lines.push(`  \u2026 and ${skipped.length - SHOWN} more`);
+  return lines.join("\n");
+}
+function listUnmatched(unmatched) {
+  const lines = unmatched.slice(0, SHOWN).map((u) => `  ${u.file.rel}: ${u.reason}`);
+  if (unmatched.length > SHOWN)
+    lines.push(`  \u2026 and ${unmatched.length - SHOWN} more`);
+  return lines.join("\n");
+}
+var attachStatusTool = {
+  name: "keepr_attach_status",
+  description: "Progress of a keepr_attach_folder upload: how many files are uploaded, skipped, failed and still waiting, and why each failure failed. Check it every minute or so while the job runs, and once at the end to tell the person what happened.",
+  inputSchema: {
+    job_id: external_exports.string().describe("The job id keepr_attach_folder returned.")
+  },
+  handler: async (args) => {
+    const job = getJob(String(args.job_id ?? ""));
+    if (!job) {
+      return fail("No upload job with that id in this server. Jobs live only as long as the server process: if the app restarted, run keepr_attach_folder on the same folder again \u2014 it skips what already arrived.");
+    }
+    const t3 = summarise(job);
+    const running = job.finishedAt === null;
+    const total = job.files.length;
+    const done = t3.uploaded + t3.skipped + t3.failed + t3.refused;
+    const lines = [
+      running ? `RUNNING \u2014 ${done} of ${total} files done: ${t3.uploaded} uploaded, ${t3.skipped} skipped, ${t3.failed} failed${t3.refused ? `, ${t3.refused} refused` : ""}; ${t3.queued + t3.uploading} to go.` : `${t3.failed || t3.bindErrors ? "FINISHED WITH PROBLEMS" : "FINISHED"} \u2014 ${t3.uploaded} uploaded, ${t3.skipped} skipped (already there), ${t3.failed} failed${t3.refused ? `, ${t3.refused} refused` : ""}.`
+    ];
+    if (job.error)
+      lines.push(`STOPPED: ${job.error}. Running the same folder again sends only what is not there yet.`);
+    if (job.element)
+      lines.push(`Into "${job.element}": ${t3.bound} file${t3.bound === 1 ? "" : "s"} put in${t3.bindErrors ? `, ${t3.bindErrors} item${t3.bindErrors === 1 ? "" : "s"} refused the bind` : ""}.`);
+    if (running && job.pausedUntil > Date.now())
+      lines.push(`Paused for keepr's rate limit \u2014 resuming in about ${Math.ceil((job.pausedUntil - Date.now()) / 1e3)} s. Nothing failed for it.`);
+    const failed = job.files.filter((f) => f.state === "failed");
+    if (failed.length) {
+      lines.push("", `FAILED (${failed.length}):`);
+      for (const f of failed.slice(0, SHOWN))
+        lines.push(`  ${f.rel} \u2014 ${f.reason}`);
+      if (failed.length > SHOWN)
+        lines.push(`  \u2026 and ${failed.length - SHOWN} more`);
+    }
+    const binds = [...job.items.values()].filter((i) => i.bindError);
+    if (binds.length) {
+      lines.push("", `NOT PUT INTO "${job.element}" (${binds.length}):`);
+      for (const i of binds.slice(0, 20))
+        lines.push(`  ${i.info.title} \u2014 ${i.bindError}`);
+    }
+    if (!running && failed.length)
+      lines.push("", "Running the same folder again sends only what is not there yet.");
+    return ok(lines.join("\n"), {
+      ok: true,
+      job_id: job.id,
+      running,
+      totals: t3,
+      failed: failed.slice(0, 500).map((f) => ({ file: f.rel, itemId: f.itemId, reason: f.reason })),
+      bindErrors: binds.map((i) => ({ itemId: i.info.id, item: i.info.title, reason: i.bindError }))
+    });
+  }
+};
+
 // dist/src/tools/index.js
 var ALL_TOOLS = [
   collectionsTool,
@@ -28645,6 +30043,8 @@ var ALL_TOOLS = [
 ];
 var LOCAL_TOOLS = [
   ...ALL_TOOLS,
+  attachFolderTool,
+  attachStatusTool,
   connectTool,
   disconnectTool
 ];
