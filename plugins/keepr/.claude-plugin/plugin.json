@@ -1,7 +1,7 @@
 {
 	"name": "keepr",
 	"displayName": "keepr",
-	"version": "2.10.0",
+	"version": "2.11.0",
 	"description": "Read, add and change the records you keep in keepr. The keepr skill, the keepr connector, and in Claude Code and Cowork on your computer, local tools that attach files and folders from it.",
 	"author": {
 		"name": "Zachary Biewend",
@@ -17,6 +17,6 @@
 		"database"
 	],
 	"metadata": {
-		"server": "0.12.0"
+		"server": "0.13.0"
 	}
 }

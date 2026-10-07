@@ -53,6 +53,12 @@ its owner's to fix in keepr; ask the same question as a spec meanwhile.
 Read `keepr_schema` for the collection first. Every name in a spec — the card,
 each element, each choice in a filter — comes from it.
 
+An element field — a measure's `element`, and the `on` of `groupBy`,
+`splitBy` and `time` — takes the element's name or its `#id` from
+`keepr_schema` (`"element": "#k7f3q2xa"`). keepr may hand the spec back with
+ids in those fields, as it stores them; the answer still names the element by
+its label. Tell the person the label, never the id.
+
 1. **The card** — `card_id`: its key, name or id (descendant cards are
    counted with it). `null` counts every card, but only by the system fields
    (`count`, and grouping by `created`, `updated`, `created.by`, `card` or
@@ -105,7 +111,11 @@ each element, each choice in a filter — comes from it.
    it with element ids, so the answer may show your `status != lost` as
    `#k7f3q2xa != lost`, with the element named beneath it (`kql.md`,
    "Element ids"). An id in a chart's filter must be one of its card's own
-   elements.
+   elements. A name is read on the chart's card and the cards beneath it;
+   with `card_id: null`, or where a card beneath restates it, a name more than
+   one element answers to is refused with each one's `#id`. If the person has
+   not said which one they mean, ask them, never pick, and ask again with the
+   `#id` (`kql.md`, "When keepr asks which element").
 
 ## A worked example
 

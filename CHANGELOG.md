@@ -3,6 +3,12 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.11.0 — 2026-10-06
+
+Skill 2.11.0, keepr-mcp 0.13.0.
+
+- Your assistant asks which element you mean. When a filter names an element more than one card has, such as a Task's status and a Bug's, keepr asks instead of guessing. Every keepr tool that sends a filter lists the elements it could mean by label, card and id, then writes the filter with the one you choose. Two cards with the same name are told apart by where they come from: Bug (global) is the shared card, Bug (Clinic) is your Clinic collection's own. Charts can name their fields by element id, and keepr_chart shows each by its label. keepr's text stays keepr's text: the tools and keepr.py show every name and message from keepr on one line, and anything you might type back, such as an element's name or a card's key, exactly as it is, with any invisible character spelled out. So a card's or a collection's name can't pass for an instruction. No new tools or inputs.
+
 ## 2.10.0 — 2026-10-06
 
 Skill 2.10.0, keepr-mcp 0.12.0.

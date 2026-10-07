@@ -78,8 +78,19 @@ setup's charts by `chartRef` (its `localId`) or a chart the collection already
 shows by `chartId`. The preview marks every entry `adds`, `CHANGES` (with
 what changes, before and after) or `unchanged`; an unchanged one is not
 written. An entry says the whole of what it sets: give every key you mean to
-keep. A filter keepr stores may name an element by its id (`#k7f3q2xa`,
+keep. A filter keepr stores names an element by its id (`#k7f3q2xa`,
 `kql.md`): `keepr_propose_setup` names each one at the end of its preview. Tell the person the element, not the id.
+
+**A filter or condition names each element by its `#id`** from `schema`. A
+name works only where keepr reads it on one card — a rule's condition on the
+rule's card, as below, or a `card =` beside it (`card = bug` for the card this
+setup makes, which has no ids yet). Where more than one element answers to a
+name, the preview refuses it, naming each by its label and card; take the
+`#id` from `schema` (an element of a sub-collection's card is in that
+sub-collection's `schema`, not this one's). If the person has not said which
+one they mean, ask them, never pick, and propose again with the `#id` — or, for
+any of those cards, the condition once per id (`kql.md`, "When keepr asks
+which element").
 
 ## Layouts
 

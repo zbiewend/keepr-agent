@@ -55,7 +55,10 @@ A spec is one card, a list of them, or `{ "cards": [...], "filters": [...],
 (`{ "name": "Ready", "query": "card = task and status = ready" }`, the key needs
 write as well) and table layouts for cards in the spec. Write a filter's cards
 by key and its choices by value or label, as a person types them: keepr saves
-each one by id and value once the spec's cards exist. A record goes in by its
+each one by id and value once the spec's cards exist. Name an element on its
+card, as there, or by its `#id` from `schema`: a name more than one element
+answers to is refused with each one's `#id`, and you ask the person which
+(`kql.md`, "When keepr asks which element"). A record goes in by its
 id, never its title — `owner = Jane` is refused, with the matching records,
 and the whole apply is undone; so is a key nothing in the
 collection has. Table layouts are for cards in the spec
@@ -162,8 +165,7 @@ to skip the preview: it is where the token comes from.
 
 ### Reading the preview
 
-The server answers with a classified diff. The script prints it one line per
-change and leads the summary with `DESTRUCTIVE —` when anything is:
+The server answers with a classified diff:
 
 | kind | what it means | destructive |
 | --- | --- | --- |

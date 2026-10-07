@@ -4,6 +4,41 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+// dist/src/cleanText.js
+var MAX_LABEL = 120;
+var NAME_MAX = 200;
+var INVISIBLE = /[\p{Cc}\p{Default_Ignorable_Code_Point}\u2800]/gu;
+function cleanText(raw, max = MAX_LABEL) {
+  const one = raw.replace(/[\t\n\r\v\f\u0085]/g, " ").replace(INVISIBLE, "").replace(/\s+/g, " ").trim();
+  const chars = Array.from(one);
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}\u2026` : one;
+}
+var HIDDEN = new RegExp("[\\p{Cc}\\p{Zl}\\p{Zp}\\p{Default_Ignorable_Code_Point}\\u2800]|(?! )\\p{Zs}", "u");
+var HIDDEN_ALL = new RegExp(HIDDEN.source, "gu");
+function hasHidden(raw) {
+  return HIDDEN.test(raw);
+}
+function needsEscape(raw) {
+  return hasHidden(raw) || /["\\]/.test(raw) || raw !== raw.trim();
+}
+function identifierText(raw) {
+  if (!needsEscape(raw))
+    return raw;
+  return JSON.stringify(raw).replace(HIDDEN_ALL, (ch) => {
+    const cp = ch.codePointAt(0);
+    return cp > 65535 ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4, "0")}`;
+  });
+}
+function identifierQuoted(raw) {
+  return needsEscape(raw) ? identifierText(raw) : `"${raw}"`;
+}
+function quoted(raw, max = NAME_MAX) {
+  return `"${sayName(raw, max)}"`;
+}
+function sayName(raw, max = NAME_MAX) {
+  return cleanText(raw === null || raw === void 0 ? "" : String(raw), max).replace(/"/g, "'");
+}
+
 // dist/src/updates.js
 var CHANNELS = ["connector", "plugin", "skill", "claude-ai", "extension", "local"];
 function channelFromEnv(value) {
@@ -49,12 +84,12 @@ function channelUpdate(raw) {
     return null;
   const how = r.how === "automatic" || r.how === "assistant" ? r.how : "manual";
   return {
-    name: r.name,
+    name: cleanText(r.name),
     how,
     commands: strings(r.commands),
-    steps: strings(r.steps),
-    ...typeof r.tip === "string" ? { tip: r.tip } : {},
-    guide: r.guide
+    steps: strings(r.steps).map((st) => cleanText(st, 600)),
+    ...typeof r.tip === "string" ? { tip: cleanText(r.tip, 600) } : {},
+    guide: cleanText(r.guide, 600)
   };
 }
 function statusFrom(doc, current, channel) {
@@ -66,7 +101,7 @@ function statusFrom(doc, current, channel) {
   const upToDate = channel === "connector" || !latest || compareVersions(current, latest) >= 0;
   const channels = doc.channels && typeof doc.channels === "object" ? doc.channels : {};
   const update = channelUpdate(channels[channel]);
-  return { channel, current, latest, latestSkill, upToDate, summary: typeof doc.summary === "string" ? doc.summary : null, update };
+  return { channel, current, latest, latestSkill, upToDate, summary: typeof doc.summary === "string" ? cleanText(doc.summary, 1e3) : null, update };
 }
 function updateNotice(status) {
   try {
@@ -78,7 +113,7 @@ function updateNotice(status) {
     ];
     const commands = u.commands ?? [];
     if (u.how === "assistant" && commands.length) {
-      lines.push(`It updates with ${commands.map((c) => `\`${c}\``).join(", then ")}.`);
+      lines.push(`It updates with ${commands.map((c) => `\`${identifierText(c)}\``).join(", then ")}.`);
       if (u.steps.length)
         lines.push(`After that: ${u.steps.join(" ")}`);
     } else if (u.steps.length) {
@@ -460,14 +495,15 @@ function errorCode(body) {
   }
   return null;
 }
-function errorMessage(body, fallback) {
+var MESSAGE_MAX = 600;
+function errorMessage(body, fallback, max = MESSAGE_MAX) {
   if (body && typeof body === "object" && "message" in body) {
     const m = body.message;
-    if (typeof m === "string" && m.length)
-      return m;
+    if (typeof m === "string" && m.trim())
+      return cleanText(m, max);
   }
-  if (typeof body === "string" && body.length)
-    return body.slice(0, 400);
+  if (typeof body === "string" && body.trim())
+    return cleanText(body, Math.min(max, 400));
   return fallback;
 }
 
@@ -931,7 +967,7 @@ var LocalConnection = class {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok || typeof body?.client_id !== "string") {
-      throw new Error(`keepr refused to register this plugin (HTTP ${res.status}${body?.error_description ? `: ${body.error_description}` : ""}). Call keepr_connect again in a few minutes.`);
+      throw new Error(`keepr refused to register this plugin (HTTP ${res.status}${body?.error_description ? `: ${cleanText(String(body.error_description), 600)}` : ""}). Call keepr_connect again in a few minutes.`);
     }
     const before = this.stored;
     this.stored = {
@@ -1061,7 +1097,7 @@ var LocalConnection = class {
     }).catch((err) => ({ ok: false, status: 0, json: { error_description: err.message } }));
     const body = exchanged.json;
     if (!exchanged.ok || typeof body?.access_token !== "string" || typeof body?.refresh_token !== "string") {
-      const why = typeof body?.error_description === "string" ? body.error_description : `HTTP ${exchanged.status}`;
+      const why = typeof body?.error_description === "string" ? cleanText(body.error_description, 600) : `HTTP ${exchanged.status}`;
       send(502, false, "keepr approved the connection, but this plugin could not finish it. Go back to Claude and try again.");
       flow.finish({ state: "failed", message: `The approval could not be exchanged for a connection: ${why}` });
       return;
@@ -2072,9 +2108,9 @@ var ContractCache = class {
       if (entry?.code)
         this.codeMeaning.set(entry.code, entry.means);
     }
-    for (const t of this.body.elementTypes ?? []) {
-      if (t?.name)
-        this.elementTypes.set(t.name, t);
+    for (const t2 of this.body.elementTypes ?? []) {
+      if (t2?.name)
+        this.elementTypes.set(t2.name, t2);
     }
   }
   /** The deployment's own sentence for an error code. */
@@ -2217,10 +2253,10 @@ var RefusalBreaker = class {
   }
   /** Record a refusal. Returns how many identical ones have been seen. */
   record(signature, status) {
-    const t = this.now();
+    const t2 = this.now();
     const prev = this.seen.get(signature);
-    if (!prev || t - prev.firstAt > WINDOW_MS || prev.status !== status) {
-      this.seen.set(signature, { count: 1, firstAt: t, status });
+    if (!prev || t2 - prev.firstAt > WINDOW_MS || prev.status !== status) {
+      this.seen.set(signature, { count: 1, firstAt: t2, status });
       return 1;
     }
     prev.count += 1;
@@ -2353,6 +2389,244 @@ var ProposalStore = class {
   }
 };
 
+// dist/src/elementIds.js
+var ELEMENT_ID = /^[a-z0-9]{8}$/;
+
+// dist/src/elementRefusals.js
+var ELEMENT_REFUSAL_CODES = ["ambiguous_element", "unknown_element", "invalid_element_choices", "query_too_long"];
+var MAX_NAME = 80;
+var MAX_CANDIDATES = 20;
+var MAX_CARDS = 6;
+var t = (v, max = MAX_NAME) => cleanText(v === null || v === void 0 ? "" : String(v), max);
+var str = (v) => typeof v === "string" && v.trim() ? v : null;
+var num = (v) => typeof v === "number" && Number.isFinite(v) ? v : void 0;
+var isCode = (v) => typeof v === "string" && ELEMENT_REFUSAL_CODES.includes(v);
+function candidateOf(raw) {
+  if (!raw || typeof raw !== "object")
+    return null;
+  const c = raw;
+  const id = typeof c.elementId === "string" ? c.elementId.replace(/^#/, "") : "";
+  if (!ELEMENT_ID.test(id))
+    return null;
+  const cards = (Array.isArray(c.cards) ? c.cards : []).filter((k) => !!k && typeof k === "object").map((k) => ({
+    cardId: typeof k.cardId === "string" && /^[0-9a-fA-F]{24}$/.test(k.cardId) ? k.cardId : null,
+    name: t(k.name),
+    ...str(k.element) ? { element: t(k.element) } : {},
+    ...str(k.qualifier) ? { qualifier: t(k.qualifier) } : {}
+  }));
+  return {
+    elementId: id,
+    label: t(str(c.label) ?? c.name),
+    name: t(c.name),
+    cards,
+    ...c.hiddenCopies === true ? { hiddenCopies: true } : {}
+  };
+}
+function elementRefusalOf(body) {
+  if (!body || typeof body !== "object")
+    return null;
+  const b = body;
+  const code = isCode(b.code) ? b.code : b.code === "invalid_filter" && isCode(b.cause) ? b.cause : null;
+  if (!code)
+    return null;
+  return {
+    code,
+    field: str(b.field) ? t(b.field, 120) : str(b.path) && b.code === "invalid_filter" ? t(b.path, 120) : null,
+    element: str(b.element) ? t(b.element) : null,
+    // A chart's or a dashboard's `path` is the spec's ("filter"); the comparison's own path rides as `conditionPath`.
+    path: b.code === "invalid_filter" ? str(b.conditionPath) ? t(b.conditionPath, 200) : null : str(b.path) ? t(b.path, 200) : null,
+    choiceKey: str(b.choiceKey) ? t(b.choiceKey, 200) : null,
+    reference: b.reference === true,
+    requiresAll: b.requiresAll === true,
+    unpickable: b.unpickable === true,
+    candidates: (Array.isArray(b.candidates) ? b.candidates : []).map(candidateOf).filter((c) => c !== null).slice(0, MAX_CANDIDATES),
+    ...num(b.conditions) !== void 0 ? { conditions: num(b.conditions) } : {},
+    ...num(b.max) !== void 0 ? { max: num(b.max) } : {},
+    ...num(b.length) !== void 0 ? { length: num(b.length) } : {},
+    ...num(b.limit) !== void 0 ? { limit: num(b.limit) } : {}
+  };
+}
+var isReference = (r) => r.reference || /^\{\{.*\}\}$/.test(r.choiceKey ?? "");
+function replacementFor(r, id) {
+  const seg = `#${id}`;
+  const key = r.choiceKey ?? r.element ?? "";
+  if (isReference(r))
+    return `{{${seg}}}`;
+  const element = r.element ?? "";
+  if (element && key.length > element.length && key.endsWith(`.${element}`))
+    return `${key.slice(0, key.length - element.length)}${seg}`;
+  return seg;
+}
+var q = (v) => `"${v.replace(/"/g, "'")}"`;
+var LOOKALIKE = {
+  "\u0430": "a",
+  "\u0432": "b",
+  "\u0435": "e",
+  "\u0451": "e",
+  "\u043A": "k",
+  "\u043C": "m",
+  "\u043D": "h",
+  "\u043E": "o",
+  "\u0440": "p",
+  "\u0441": "c",
+  "\u0442": "t",
+  "\u0443": "y",
+  "\u0445": "x",
+  "\u0456": "i",
+  "\u0457": "i",
+  "\u0458": "j",
+  "\u0455": "s",
+  "\u0501": "d",
+  "\u051B": "q",
+  "\u051D": "w",
+  "\u0261": "g",
+  "\u0131": "i",
+  "\u03B1": "a",
+  "\u03B2": "b",
+  "\u03B5": "e",
+  "\u03B7": "n",
+  "\u03B9": "i",
+  "\u03BA": "k",
+  "\u03BD": "v",
+  "\u03BF": "o",
+  "\u03C1": "p",
+  "\u03C4": "t",
+  "\u03C5": "u",
+  "\u03C7": "x",
+  "\u03B6": "z"
+};
+function lookalikeKey(name) {
+  return Array.from(name.normalize("NFKD").replace(new RegExp("\\p{M}", "gu"), "").toLowerCase()).map((ch) => LOOKALIKE[ch] ?? ch).join("");
+}
+var KEEPR_QUALIFIERS = /* @__PURE__ */ new Set(["global", "another collection"]);
+function cardText(card, shared, copies) {
+  const qualifier = card.qualifier ? ` (${KEEPR_QUALIFIERS.has(card.qualifier) ? card.qualifier : q(card.qualifier)})` : "";
+  const tell = qualifier || (shared.has(lookalikeKey(card.name)) && card.cardId ? ` (card ${card.cardId})` : "");
+  const as = copies && card.element ? ` as ${q(card.element)}` : "";
+  return `${card.name ? q(card.name) : "a card"}${tell}${as}`;
+}
+function candidateLines(r) {
+  const ids = /* @__PURE__ */ new Map();
+  for (const c of r.candidates)
+    for (const k of c.cards) {
+      const key = lookalikeKey(k.name);
+      if (!ids.has(key))
+        ids.set(key, /* @__PURE__ */ new Set());
+      ids.get(key).add(k.cardId ?? `${c.elementId}:${k.qualifier ?? ""}`);
+    }
+  const shared = new Set([...ids].filter(([, set]) => set.size > 1).map(([key]) => key));
+  return r.candidates.map((c) => {
+    const copies = c.cards.some((k) => k.element && k.element !== c.name);
+    const cards = c.cards.slice(0, MAX_CARDS).map((k) => cardText(k, shared, copies));
+    const more = c.cards.length > MAX_CARDS ? ` and ${c.cards.length - MAX_CARDS} more` : "";
+    const on = cards.length ? ` on ${cards.join(", ")}${more}` : " on a card this connection cannot open";
+    const hidden = c.hiddenCopies ? " \u2014 also held under another name on a card this connection cannot open, which naming it reads too" : "";
+    return `  #${c.elementId}  ${q(c.label || c.name)}${on}${hidden}`;
+  });
+}
+function groupText(r, ids, negative) {
+  const join5 = negative ? " and " : " or ";
+  if (isReference(r))
+    return r.path ? `(${ids.map((id) => `${r.path} \u2026 ${replacementFor(r, id)}`).join(join5)})` : null;
+  return `(${ids.map((id) => `${replacementFor(r, id)} ${negative ? "!=" : "="} \u2026`).join(join5)})`;
+}
+function groupOrWords(r, ids, negative) {
+  return groupText(r, ids, negative) ?? `the whole comparison once per id, each with its id in place of ${q(r.choiceKey ?? r.element ?? "the name")}, joined by ${negative ? "and" : "or"}`;
+}
+function elementRefusalLines(r, fix = {}) {
+  const where = fix.where ?? (r.field ? `${r.field}${fix.within ? ` in ${fix.within}` : ""}` : fix.within ? `a filter in ${fix.within}` : "the filter");
+  const named = r.element ? q(r.element) : "a name";
+  const ids = r.candidates.map((c) => c.elementId);
+  const lines = [""];
+  if (r.code === "unknown_element") {
+    lines.push(`NO SUCH ELEMENT: ${named} in ${where} names no element keepr finds there.`);
+    lines.push("", fix.notYours ? `NEXT: ${fix.notYours}` : "NEXT: keepr_schema lists this collection's elements, each with its #id beside its name. Write the condition with the #id of the one the person means; if it is not plain which one that is, ask them \u2014 never guess a name.");
+    return lines;
+  }
+  if (r.code === "query_too_long") {
+    if (r.conditions !== void 0) {
+      lines.push(`TOO MANY CONDITIONS: naming each element by itself made ${where} ${r.conditions} conditions; keepr takes ${r.max !== void 0 ? `at most ${r.max}` : "fewer"}.`);
+      lines.push("", `NEXT: name fewer elements \u2014 write only the ids of the cards the person means, and if it is not plain which those are, ask them \u2014${fix.pinned ? "" : ` or narrow it to one card with card = <key> beside the condition${fix.pin ? `; ${fix.pin}` : ""},`} or split the question into several calls.`);
+    } else {
+      lines.push(`TOO LONG: ${where} is ${r.length !== void 0 ? `${r.length} characters` : "too long"} once keepr stores it (its names written as ids)${r.limit !== void 0 ? `; keepr takes at most ${r.limit}` : ""}.`);
+      lines.push("", "NEXT: shorten it, or split it into several filters; if it is not plain which part the person can do without, ask them.");
+    }
+    return lines;
+  }
+  if (r.code === "invalid_element_choices") {
+    lines.push("", "NEXT: name the element by its #id in the text itself instead; keepr_schema lists each element's #id.");
+    return lines;
+  }
+  if (!r.candidates.length) {
+    lines.push(`WHICH ELEMENT: ${named} in ${where} could mean more than one element, and none of them is on a card this connection can open, so keepr lists none.`);
+    lines.push("", "NEXT: tell the person; the filter has to be written in keepr by someone who can open those cards.");
+    return lines;
+  }
+  if (r.requiresAll && r.candidates.length === 1 && !r.unpickable) {
+    const [c] = r.candidates;
+    lines.push(`WHICH ELEMENT: ${named} in ${where} is #${c.elementId} (${q(c.label || c.name)}), and keepr reads it under another name on another card too:`);
+    lines.push(...candidateLines(r));
+    lines.push("", "NEXT: this filter decides who sees what, and the rule would read every copy, so keepr asks the person to confirm it. Tell them what it reads; they confirm it in keepr.");
+    return lines;
+  }
+  const several = r.candidates.length > 1;
+  lines.push(several ? `WHICH ELEMENT: ${named} in ${where} could mean any of these ${r.candidates.length} elements:` : `WHICH ELEMENT: ${named} in ${where} could mean more than one element; this is the one on a card this connection can open:`);
+  lines.push(...candidateLines(r));
+  if (r.unpickable) {
+    lines.push("", `NEXT: nothing written here can be accepted. This filter decides who sees what and its condition matches a missing value, so it must name every element ${named} could mean \u2014 and another card that defines it is one this connection cannot open. Tell the person: someone who can open every card changes it in keepr, or the condition goes on one card's own filter.`);
+    return lines;
+  }
+  if (fix.notYours) {
+    lines.push("", `NEXT: ${fix.notYours}`);
+    return lines;
+  }
+  if (r.requiresAll) {
+    lines.push("", `NEXT: keepr takes only the whole group here. This filter decides who sees what and its condition matches a missing value, so one card's element would let every other card's items through. Write the condition once per id: a != (or is not), not in, !~ or is empty joined by and \u2014 ${groupOrWords(r, ids, true)}; a positive comparison under a not joined by or, inside that not \u2014 not ${groupOrWords(r, ids, false)}. Or leave it to the person in keepr.`);
+    return lines;
+  }
+  const first = ids[0];
+  const steps = [
+    `  - one of them: ${replacementFor(r, first)} in place of ${r.choiceKey && r.choiceKey !== r.element ? q(r.choiceKey) : named}${several ? " (or another id above)" : ""};`
+  ];
+  if (several) {
+    steps.push(`  - any of these cards: the condition once per id, joined by or \u2014 ${groupOrWords(r, ids, false)}; with != (or is not), not in, !~ or is empty, joined by and \u2014 ${groupOrWords(r, ids, true)}. A not before the condition goes before the whole group;`);
+  }
+  if (fix.pinned) {
+    steps.push(`  - a card pin does not help here: this filter is already read on one card, and ${several ? "these are" : "this is"} on the cards beneath it${fix.pinnedHint ? ` \u2014 ${fix.pinnedHint}` : ""}.`);
+  } else {
+    steps.push(`  - one card only: card = <key> beside it, in the same and, reads ${named} on that card \u2014 and on the cards beneath it, so where one of those restates ${named} keepr asks again${fix.pin ? `; or ${fix.pin}` : ""}.`);
+  }
+  lines.push("", `NEXT: if the person has not said which one they mean, ask them, with these labels and cards \u2014 never pick one yourself. Then ${fix.again ?? `send ${where} again`} with the element named by its id:`, ...steps);
+  return lines;
+}
+function elementRefusalData(r) {
+  return {
+    code: r.code,
+    ...r.field ? { field: r.field } : {},
+    ...r.element ? { element: r.element } : {},
+    ...r.path ? { path: r.path } : {},
+    ...r.choiceKey ? { choiceKey: r.choiceKey } : {},
+    ...r.reference ? { reference: true } : {},
+    ...r.requiresAll ? { requiresAll: true } : {},
+    ...r.unpickable ? { unpickable: true } : {},
+    ...r.code === "ambiguous_element" ? {
+      candidates: r.candidates.map((c) => ({
+        elementId: c.elementId,
+        // What to write: the id as KQL spells it at this place.
+        write: replacementFor(r, c.elementId),
+        label: c.label,
+        name: c.name,
+        cards: c.cards,
+        ...c.hiddenCopies ? { hiddenCopies: true } : {}
+      }))
+    } : {},
+    ...r.conditions !== void 0 ? { conditions: r.conditions } : {},
+    ...r.max !== void 0 ? { max: r.max } : {},
+    ...r.length !== void 0 ? { length: r.length } : {},
+    ...r.limit !== void 0 ? { limit: r.limit } : {}
+  };
+}
+
 // dist/src/format.js
 function ok(text, structured) {
   return { content: [{ type: "text", text }], ...structured ? { structuredContent: structured } : {} };
@@ -2360,10 +2634,11 @@ function ok(text, structured) {
 function fail(text, structured) {
   return { content: [{ type: "text", text }], ...structured ? { structuredContent: structured } : {}, isError: true };
 }
-function failFromResponse(res, what) {
+function failFromResponse(res, what, kql, notes = []) {
   const code = errorCode(res.body);
   const message = errorMessage(res.body, `HTTP ${res.status}`);
-  const hint = STATUS_HINTS[res.status];
+  const element = res.ok ? null : elementRefusalOf(res.body);
+  const hint = element ? void 0 : STATUS_HINTS[res.status];
   const proxyNote = res.nonJson ? "\n\nThe response body was not JSON, so this may not be keepr answering at all \u2014 an intercepting proxy is the usual cause." : "";
   const lines = [
     `FAILED \u2014 ${what}.`,
@@ -2372,12 +2647,17 @@ function failFromResponse(res, what) {
   ];
   if (hint)
     lines.push("", hint);
+  if (notes.length)
+    lines.push(...notes);
+  if (element)
+    lines.push(...elementRefusalLines(element, kql));
   return fail(lines.join("\n") + proxyNote, {
     ok: false,
     status: res.status,
     code,
     message,
-    requestId: res.requestId
+    requestId: res.requestId,
+    ...element ? { elementRefusal: elementRefusalData(element) } : {}
   });
 }
 
@@ -2452,7 +2732,7 @@ This is a bug in keepr-mcp, not something the user did.`)) : guard(def, ctx, arg
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.12.0";
+var SERVER_VERSION = "0.13.0";
 var WEBSITE_URL = "https://keepr.cloud";
 var KQL_REFERENCE_URL = `${WEBSITE_URL}/docs/guides/finding-and-lists/kql-reference`;
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {
@@ -2466,6 +2746,7 @@ function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.kee
 var READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 
 // dist/src/context.js
+var COLLECTION_NAME_MAX = 200;
 var SCOPE_NAMES = ["read", "write", "cards", "delete"];
 function collectionKind(c) {
   if (typeof c.kind === "string" && c.kind)
@@ -2624,8 +2905,8 @@ var KeeprContext = class {
       if (who.ok && who.body) {
         this.startup.keyValid = true;
         this.startup.reachable = true;
-        this.startup.accountEmail = who.body.email ?? null;
-        this.startup.accountName = who.body.fullName ?? null;
+        this.startup.accountEmail = typeof who.body.email === "string" ? cleanText(who.body.email, 254) : null;
+        this.startup.accountName = typeof who.body.fullName === "string" ? cleanText(who.body.fullName, 200) : null;
         const scopes = who.body.auth?.scopes;
         if (Array.isArray(scopes) && scopes.length) {
           this.scopesReported = scopes.map(String);
@@ -2664,7 +2945,11 @@ var KeeprContext = class {
       const cardRole = ["owner", "manage"].includes(label);
       const row = {
         id: String(c._id ?? c.id ?? ""),
-        name: String(c.name ?? ""),
+        // A collection's name is its owner's text, and every tool says it:
+        // cleaned to one line here, where keepr's JSON becomes a row, so no
+        // tool can forge a line from it (KPR-238 P5 re-check, R1). Nothing
+        // is sent to keepr by name — a row goes by its id.
+        name: cleanText(String(c.name ?? ""), COLLECTION_NAME_MAX),
         access: label,
         writable: writable && !archived,
         cardRole,
@@ -2677,7 +2962,7 @@ var KeeprContext = class {
         // A sub-collection names its parent: cards defined there are
         // usable here, and a record of one of this collection's own
         // cards is written HERE, not to the parent.
-        parent: c.parent && typeof c.parent === "object" ? { id: String(c.parent._id ?? ""), name: String(c.parent.name ?? "") } : null
+        parent: c.parent && typeof c.parent === "object" ? { id: String(c.parent._id ?? ""), name: cleanText(String(c.parent.name ?? ""), COLLECTION_NAME_MAX) } : null
       };
       const noun = this.credential;
       if (archived)
@@ -2707,7 +2992,7 @@ var KeeprContext = class {
    * workspace and nothing downstream can detect that.
    */
   resolveCollection(ref) {
-    const needle = ref.trim();
+    const needle = cleanText(ref, 1e3);
     if (!needle)
       return { ok: false, message: "No collection given." };
     const byId = this.collections.find((c) => c.id === needle);
@@ -2726,12 +3011,12 @@ var KeeprContext = class {
     if (/^[0-9a-fA-F]{24}$/.test(needle)) {
       return { ok: false, message: `No collection with id ${needle} is reachable by this key. A hidden collection answers 404, so this may be outside the key's allowlist. Do not look for somewhere else to put the data \u2014 ask the user.` };
     }
-    const names = this.collections.map((c) => `"${c.name}"`).join(", ") || "(none)";
-    return { ok: false, message: `No collection matches "${needle}". This key can reach: ${names}.` };
+    const names = this.collections.map((c) => quoted(c.name, COLLECTION_NAME_MAX)).join(", ") || "(none)";
+    return { ok: false, message: `No collection matches ${quoted(needle)}. This key can reach: ${names}.` };
   }
   ambiguous(needle, rows) {
-    const list = rows.map((c) => `"${c.name}" (${c.id})`).join(", ");
-    return `"${needle}" matches ${rows.length} collections: ${list}. Ask the user which one \u2014 do not pick.`;
+    const list = rows.map((c) => `${quoted(c.name, COLLECTION_NAME_MAX)} (${c.id})`).join(", ");
+    return `${quoted(needle)} matches ${rows.length} collections: ${list}. Ask the user which one \u2014 do not pick.`;
   }
   /** The write latch, as the first build named it: read from the scope facts. */
   get keyScope() {
@@ -3317,7 +3602,7 @@ function pathProblem(given, code, filesOnly = false) {
   }
   return `Could not read ${given}: ${code ?? "unknown error"}. ${link}`;
 }
-var HIDDEN = { kind: "hidden" };
+var HIDDEN2 = { kind: "hidden" };
 var TOO_LONG = { kind: "too-long" };
 function identity(p) {
   try {
@@ -3399,7 +3684,7 @@ function secretPlace(p, platform = process.platform, env = process.env) {
     return TOO_LONG;
   const name = p.split(/[\\/]/).filter(Boolean).pop() ?? "";
   if (name.startsWith("."))
-    return HIDDEN;
+    return HIDDEN2;
   const homeIds = homes().map(identity).filter((h) => !!h);
   const stores = credentialStores(platform, env).map((s) => ({ label: s.label, id: identity(s.path) })).filter((s) => s.id);
   const clouds = cloudDrives(platform).map(identity).filter((c) => !!c);
@@ -3420,7 +3705,7 @@ function secretPlace(p, platform = process.platform, env = process.env) {
       if (store && !inCloud)
         return { kind: "store", label: store.label };
       if (homeIds.some((h) => same(h, id)) && child.startsWith("."))
-        return HIDDEN;
+        return HIDDEN2;
     }
     const up = dirname2(cur);
     if (up === cur)
@@ -3494,10 +3779,10 @@ var attachFileTool = {
     const collectionId = String(item.body?.collection_id ?? "");
     const collection = ctx.knownCollections().find((c) => c.id === collectionId);
     if (collection?.allowAttachments === false) {
-      return fail(`Attachments are turned off for "${collection.name}". Every upload here is refused until someone enables them in the collection's settings in the web app.`);
+      return fail(`Attachments are turned off for ${quoted(collection.name)}. Every upload here is refused until someone enables them in the collection's settings in the web app.`);
     }
     if (collection?.archived) {
-      return fail(`"${collection.name}" is archived and is read-only for everyone, so nothing can be attached.`);
+      return fail(`${quoted(collection.name)} is archived and is read-only for everyone, so nothing can be attached.`);
     }
     const elementName = typeof args.element === "string" ? args.element.trim() : "";
     let target = null;
@@ -3510,7 +3795,7 @@ var attachFileTool = {
       const fileElements = (card?.elements ?? []).filter((e) => e.dataType === "file");
       target = fileElements.find((e) => e.name === elementName) ?? null;
       if (!target) {
-        return fail(`"${elementName}" is not a file element of this item's card.` + (fileElements.length ? ` Its file elements: ${fileElements.map((e) => e.name).join(", ")}.` : " The card has no file element \u2014 leave out `element` to attach the files as other attachments."));
+        return fail(`"${elementName}" is not a file element of this item's card.` + (fileElements.length ? ` Its file elements: ${fileElements.map((e) => identifierText(String(e.name))).join(", ")}.` : " The card has no file element \u2014 leave out `element` to attach the files as other attachments."));
       }
       const stored = item.body?.elements?.[elementName];
       current = (Array.isArray(stored) ? stored : stored ? [stored] : []).map(String).filter(Boolean);
@@ -3631,7 +3916,7 @@ var attachFileTool = {
         bindError = `${code ? `${code}: ` : ""}${errorMessage(put.body, `HTTP ${put.status}`)}${meaning ? ` (${meaning})` : ""}` + (put.status === 403 && replacing ? ` ${ctx.deleteRefusal()}` : "");
       }
     }
-    const title = item.body?.displayValue ?? itemId;
+    const title = item.body?.displayValue ? sayName(item.body.displayValue) : itemId;
     const lines = [
       failed.length ? `PARTIAL \u2014 ${uploaded.length} attached to "${title}", ${failed.length} failed.` : `Attached ${uploaded.length} file${uploaded.length === 1 ? "" : "s"} to "${title}".`
     ];
@@ -4020,8 +4305,9 @@ async function planUploads(ctx, pairs, element) {
       return { error: `keepr would not read the matched items: ${errorMessage(res.body, `HTTP ${res.status}`)}` };
     for (const it of Array.isArray(res.body) ? res.body : []) {
       items.set(String(it._id), {
+        // An item's title is someone's text, said in every line below: one line, here (R1).
         id: String(it._id),
-        title: it.displayValue || String(it._id),
+        title: it.displayValue ? cleanText(it.displayValue, 200) : String(it._id),
         cardId: String(it.card_id ?? ""),
         collectionId: String(it.collection_id ?? ""),
         elements: it.elements ?? {}
@@ -4051,7 +4337,7 @@ async function planUploads(ctx, pairs, element) {
     const titleEl = (card?.elements ?? []).find((e) => e.isTitle);
     const titleValue = titleEl ? it.elements[titleEl.name] : void 0;
     if (it.title === it.id && (typeof titleValue === "string" || typeof titleValue === "number") && String(titleValue).trim())
-      it.title = String(titleValue).trim();
+      it.title = cleanText(String(titleValue), 200);
     if (element) {
       const def = (card?.elements ?? []).find((e) => e.dataType === "file" && e.name === element);
       if (def)
@@ -4080,7 +4366,7 @@ async function planUploads(ctx, pairs, element) {
         continue;
       }
       if (element && !def) {
-        f.refused = `the card of "${it.title}" has no file element "${element}".`;
+        f.refused = `the card of ${quoted(it.title)} has no file element "${element}".`;
         continue;
       }
       const why = refusalFor(f.file.name, f.file.size, def, contentTypeFor(f.file.name));
@@ -4090,7 +4376,7 @@ async function planUploads(ctx, pairs, element) {
       }
       const lower = storedName(f.file.name).toLowerCase();
       if (seen.has(lower)) {
-        f.refused = `${seen.get(lower)} has the same name and is already going to "${it.title}".`;
+        f.refused = `${seen.get(lower)} has the same name and is already going to ${quoted(it.title)}.`;
         continue;
       }
       seen.set(lower, f.file.rel);
@@ -4102,13 +4388,13 @@ async function planUploads(ctx, pairs, element) {
     if (!def.allowMultiple) {
       going.forEach((f, i) => {
         if (i > 0)
-          f.refused = `"${def.name}" holds one file, and ${going[0].file.rel} is already going there.`;
+          f.refused = `${identifierQuoted(String(def.name))} holds one file, and ${going[0].file.rel} is already going there.`;
         else if (held)
-          f.note = `"${def.name}" of "${it.title}" already holds a file: skipped if it is this file, otherwise left alone (replace it with ${ctx.diskFileTool} on that item).`;
+          f.note = `${identifierQuoted(String(def.name))} of ${quoted(it.title)} already holds a file: skipped if it is this file, otherwise left alone (replace it with ${ctx.diskFileTool} on that item).`;
       });
     } else if (held + going.length > MAX_FILES) {
       going.forEach((f) => {
-        f.note = `"${def.name}" of "${it.title}" holds ${held} of its ${MAX_FILES} files: files already there are skipped, and any past the 20th are not sent.`;
+        f.note = `${identifierQuoted(String(def.name))} of ${quoted(it.title)} holds ${held} of its ${MAX_FILES} files: files already there are skipped, and any past the 20th are not sent.`;
       });
     }
   }
@@ -4250,23 +4536,23 @@ async function sendOne(ctx, job, f, now) {
   if (same2.length && target) {
     const current = idsIn(item.info.elements[target.name]);
     if (same2.some((p) => p.element === target.name && current.includes(p.id)))
-      return settle(f, "skipped", `already in "${target.name}"`);
+      return settle(f, "skipped", `already in ${identifierQuoted(String(target.name))}`);
     const free = same2.find((p) => p.element === null && !item.toBind.includes(p.id));
     const replaces = !target.allowMultiple && current.length > 0;
     if (free && !replaces && (!target.allowMultiple || reserve(item))) {
       item.toBind.push(free.id);
-      return settle(f, "skipped", `already on the item (same name and size) \u2014 put into "${target.name}"`);
+      return settle(f, "skipped", `already on the item (same name and size) \u2014 put into ${identifierQuoted(String(target.name))}`);
     }
   }
   let reserved = false;
   if (target) {
     const current = idsIn(item.info.elements[target.name]);
     if (!target.allowMultiple && current.length) {
-      return settle(f, "failed", `"${target.name}" already holds another file \u2014 replace it with ${ctx.diskFileTool} on that item, or attach this one without element.`);
+      return settle(f, "failed", `${identifierQuoted(String(target.name))} already holds another file \u2014 replace it with ${ctx.diskFileTool} on that item, or attach this one without element.`);
     }
     if (target.allowMultiple) {
       if (!reserve(item))
-        return settle(f, "failed", `"${target.name}" is full (${MAX_FILES} files).`);
+        return settle(f, "failed", `${identifierQuoted(String(target.name))} is full (${MAX_FILES} files).`);
       reserved = true;
     }
   }
@@ -4369,7 +4655,7 @@ async function bindOnce(ctx, item) {
   }
   const current = idsIn(fresh.body?.elements?.[target.name]);
   if (!target.allowMultiple && current.length) {
-    item.bindError = `"${target.name}" was given a file by someone else while this ran; the new file stayed as another attachment.`;
+    item.bindError = `${identifierQuoted(String(target.name))} was given a file by someone else while this ran; the new file stayed as another attachment.`;
     return;
   }
   const fresh_ = item.toBind.filter((id) => !current.includes(id));
@@ -4377,7 +4663,7 @@ async function bindOnce(ctx, item) {
   const going = target.allowMultiple ? fresh_.slice(0, room) : fresh_.slice(0, 1);
   const left = fresh_.length - going.length;
   if (!going.length) {
-    item.bindError = `"${target.name}" is full (${MAX_FILES} files) \u2014 someone added files while this ran; the new files stayed as other attachments.`;
+    item.bindError = `${identifierQuoted(String(target.name))} is full (${MAX_FILES} files) \u2014 someone added files while this ran; the new files stayed as other attachments.`;
     return;
   }
   const value = target.allowMultiple ? [...current, ...going] : going[0];
@@ -4389,22 +4675,22 @@ async function bindOnce(ctx, item) {
   if (put.ok) {
     item.bound = going.length;
     if (left)
-      item.bindError = `${left} more file${left === 1 ? "" : "s"} did not fit in "${target.name}" (${MAX_FILES} at most) and stayed as other attachments.`;
+      item.bindError = `${left} more file${left === 1 ? "" : "s"} did not fit in ${identifierQuoted(String(target.name))} (${MAX_FILES} at most) and stayed as other attachments.`;
     return;
   }
   const code = errorCode(put.body);
   item.bindError = `${code ? `${code}: ` : ""}${errorMessage(put.body, `HTTP ${put.status}`)} \u2014 the files stayed on the item as other attachments.`;
 }
 function summarise(job) {
-  const t = { queued: 0, uploading: 0, uploaded: 0, skipped: 0, failed: 0, refused: 0, bound: 0, bindErrors: 0 };
+  const t2 = { queued: 0, uploading: 0, uploaded: 0, skipped: 0, failed: 0, refused: 0, bound: 0, bindErrors: 0 };
   for (const f of job.files)
-    t[f.state]++;
+    t2[f.state]++;
   for (const it of job.items.values()) {
-    t.bound += it.bound;
+    t2.bound += it.bound;
     if (it.bindError)
-      t.bindErrors++;
+      t2.bindErrors++;
   }
-  return t;
+  return t2;
 }
 
 // dist/src/tools/attachFolder.js
@@ -4555,15 +4841,15 @@ Try another match mode, a \`map\` naming the files per item, or match_element wi
       if (skipped.length)
         lines.push("", `LEFT OUT (${skipped.length}):`, listSkipped(skipped));
       if (matched.itemsWithoutFile.length) {
-        lines.push("", `ITEMS WITHOUT A FILE (${matched.itemsWithoutFile.length}), by ${sourceLabel}: ${matched.itemsWithoutFile.slice(0, 25).join(", ")}${matched.itemsWithoutFile.length > 25 ? ", \u2026" : ""}`);
+        lines.push("", `ITEMS WITHOUT A FILE (${matched.itemsWithoutFile.length}), by ${sourceLabel}: ${matched.itemsWithoutFile.slice(0, 25).map((k) => identifierText(String(k))).join(", ")}${matched.itemsWithoutFile.length > 25 ? ", \u2026" : ""}`);
       }
       if (plan.unreadable.length)
         lines.push("", `${plan.unreadable.length} matched item id${plan.unreadable.length === 1 ? " is" : "s are"} not readable by this key: ${plan.unreadable.slice(0, 10).join(", ")}.`);
       const issued = randomBytes5(12).toString("hex");
       confirms.set(issued, { sig, match: matchFingerprint(going), expires: Date.now() + CONFIRM_TTL_MS });
-      for (const [t, c] of confirms)
+      for (const [t2, c] of confirms)
         if (c.expires < Date.now())
-          confirms.delete(t);
+          confirms.delete(t2);
       lines.push("", "DRY RUN \u2014 nothing was uploaded. Files already on their items (same name and size) are skipped when it runs.", `Show the person this match. To upload, call keepr_attach_folder again with the same arguments, dry_run: false and confirm: "${issued}".`);
       return ok(lines.join("\n"), {
         ok: true,
@@ -4616,7 +4902,7 @@ async function keySource(ctx, args) {
         return { error: "keepr is busy for this key right now (its rate limit \u2014 an upload running in the background shares it). Nothing was sent; try the dry run again in a minute." };
       total = res.totalCount ?? total;
       if (!res.ok)
-        return { error: `keepr would not list the items of "${resolved.row.name}" (HTTP ${res.status}).` };
+        return { error: `keepr would not list the items of ${quoted(resolved.row.name)} (HTTP ${res.status}).` };
       const page = Array.isArray(res.body) ? res.body : [];
       for (const it of page) {
         const v = it.elements?.[matchElement];
@@ -4634,14 +4920,14 @@ async function keySource(ctx, args) {
         break;
     }
     if (!keys2.size)
-      return { error: `No item in "${resolved.row.name}" has a value in "${matchElement}". ${ctx.filesOnly ? "Check the element's name on the card." : "Check the element's name with keepr_schema."}` };
+      return { error: `No item in ${quoted(resolved.row.name)} has a value in "${matchElement}". ${ctx.filesOnly ? "Check the element's name on the card." : "Check the element's name with keepr_schema."}` };
     const cut = total !== null && total > seen;
     return {
       kind: "keys",
       keys: keys2,
       caseless: true,
       label: `"${matchElement}"`,
-      ...cut ? { note: `Only the first ${seen} of ${total} items of "${resolved.row.name}" were read for "${matchElement}"; a file for a later item reads as unmatched \u2014 use a map, or this session's import, for those.` } : {}
+      ...cut ? { note: `Only the first ${seen} of ${total} items of ${quoted(resolved.row.name)} were read for "${matchElement}"; a file for a later item reads as unmatched \u2014 use a map, or this session's import, for those.` } : {}
     };
   }
   const runId = typeof args.run_id === "string" && args.run_id ? args.run_id : null;
@@ -4688,17 +4974,17 @@ var attachStatusTool = {
     if (!job) {
       return fail("No upload job with that id in this server. Jobs live only as long as the server process: if the app restarted, run keepr_attach_folder on the same folder again \u2014 it skips what already arrived.");
     }
-    const t = summarise(job);
+    const t2 = summarise(job);
     const running = job.finishedAt === null;
     const total = job.files.length;
-    const done = t.uploaded + t.skipped + t.failed + t.refused;
+    const done = t2.uploaded + t2.skipped + t2.failed + t2.refused;
     const lines = [
-      running ? `RUNNING \u2014 ${done} of ${total} files done: ${t.uploaded} uploaded, ${t.skipped} skipped, ${t.failed} failed${t.refused ? `, ${t.refused} refused` : ""}; ${t.queued + t.uploading} to go.` : `${t.failed || t.bindErrors ? "FINISHED WITH PROBLEMS" : "FINISHED"} \u2014 ${t.uploaded} uploaded, ${t.skipped} skipped (already there), ${t.failed} failed${t.refused ? `, ${t.refused} refused` : ""}.`
+      running ? `RUNNING \u2014 ${done} of ${total} files done: ${t2.uploaded} uploaded, ${t2.skipped} skipped, ${t2.failed} failed${t2.refused ? `, ${t2.refused} refused` : ""}; ${t2.queued + t2.uploading} to go.` : `${t2.failed || t2.bindErrors ? "FINISHED WITH PROBLEMS" : "FINISHED"} \u2014 ${t2.uploaded} uploaded, ${t2.skipped} skipped (already there), ${t2.failed} failed${t2.refused ? `, ${t2.refused} refused` : ""}.`
     ];
     if (job.error)
       lines.push(`STOPPED: ${job.error}. Running the same folder again sends only what is not there yet.`);
     if (job.element)
-      lines.push(`Into "${job.element}": ${t.bound} file${t.bound === 1 ? "" : "s"} put in${t.bindErrors ? `, ${t.bindErrors} item${t.bindErrors === 1 ? "" : "s"} refused the bind` : ""}.`);
+      lines.push(`Into "${job.element}": ${t2.bound} file${t2.bound === 1 ? "" : "s"} put in${t2.bindErrors ? `, ${t2.bindErrors} item${t2.bindErrors === 1 ? "" : "s"} refused the bind` : ""}.`);
     if (running && job.pausedUntil > Date.now())
       lines.push(`Paused for keepr's rate limit \u2014 resuming in about ${Math.ceil((job.pausedUntil - Date.now()) / 1e3)} s. Nothing failed for it.`);
     const failed = job.files.filter((f) => f.state === "failed");
@@ -4721,7 +5007,7 @@ var attachStatusTool = {
       ok: true,
       job_id: job.id,
       running,
-      totals: t,
+      totals: t2,
       failed: failed.slice(0, 500).map((f) => ({ file: f.rel, itemId: f.itemId, reason: f.reason })),
       bindErrors: binds.map((i) => ({ itemId: i.info.id, item: i.info.title, reason: i.bindError }))
     });
@@ -4790,7 +5076,7 @@ var connectTool = {
     for (let attempt = 0; attempt < 2; attempt++) {
       const outcome = await connection.connect(CONNECT_WAIT_MS);
       if (outcome.state === "failed")
-        return fail(outcome.message, { state: "failed" });
+        return fail(cleanText(outcome.message, 600), { state: "failed" });
       if (outcome.state === "waiting") {
         return ok("Waiting for the person to approve the connection in their browser. " + (outcome.reused ? "The keepr page is still open from before. " : outcome.browserOpened ? "keepr has opened in their browser. " : "Their browser could not be opened from here. ") + `If they do not see it, give them this link: ${outcome.url}
 
@@ -4882,12 +5168,12 @@ function serveStdio(ctx, tools, info, input, output) {
         return;
       case "tools/list":
         reply(msg.id, {
-          tools: tools.map((t) => ({
-            name: t.name,
-            ...t.title ? { title: t.title } : {},
-            description: describeFor(t, ctx),
-            inputSchema: objectJson(t.inputSchema),
-            ...t.annotations ? { annotations: t.annotations } : {},
+          tools: tools.map((t2) => ({
+            name: t2.name,
+            ...t2.title ? { title: t2.title } : {},
+            description: describeFor(t2, ctx),
+            inputSchema: objectJson(t2.inputSchema),
+            ...t2.annotations ? { annotations: t2.annotations } : {},
             // What the SDK server says of every tool (the tasks extension): no task mode.
             execution: { taskSupport: "forbidden" }
           }))
@@ -4904,7 +5190,7 @@ function serveStdio(ctx, tools, info, input, output) {
           return;
         }
         const name = String(msg.params.name ?? "");
-        const tool = tools.find((t) => t.name === name);
+        const tool = tools.find((t2) => t2.name === name);
         if (!tool) {
           reply(msg.id, textError(`MCP error -32602: Tool ${name} not found`));
           return;

@@ -28,6 +28,12 @@ the difference between paging a collection into context and asking the server
 the actual question. `search` is not a query: it is a case-insensitive
 substring match on names and text values, for "is there anything called…".
 
+When a name in `q` could mean more than one element — two cards each with a
+`status` — keepr refuses the query and lists each element with its `#id`,
+label and card. If the person has not said which one they mean, ask them;
+never pick one. Then send `q` again with that `#id` (`kql.md`, "When keepr
+asks which element").
+
 ## The rules
 
 **Never present a page as the whole.** `items` answers `N of TOTAL items in

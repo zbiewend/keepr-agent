@@ -53,11 +53,12 @@ lookup element, whatever it is called: `@person = "Molly Blake"`,
 
 ## Element ids — `#k7f3q2xa`
 
-Text keepr **stores** can name an element by its id instead of its name:
+A filter can name an element by its id instead of its name:
 `#k7f3q2xa != done`. An id is `#` and eight lower-case letters or digits, and
 it names exactly **one element of one card**, whatever that element is called
-and whatever other card has an element of the same name. You meet ids in
-lookup filters, chart filters and saved filters.
+and whatever other card has an element of the same name. keepr writes ids into
+everything it stores — lookup filters, chart filters, saved filters, rules — and
+you can write them in `q` too.
 
 - `schema` lists each element's id beside its name: `status  #k7f3q2xa`.
 - The MCP tools print a stored filter as it is and name each id beneath it:
@@ -65,12 +66,68 @@ lookup filters, chart filters and saved filters.
 - A stored filter runs as written. Pass it on as `q` unchanged, and never put
   a name or a label in place of an id to make it readable: tell the person
   the element's label instead.
-- You may write an id yourself where a name could mean another card's
-  element — say two cards here have `status` and you mean the task's. Take it
-  from `schema`. It stands wherever a name does: after a dot-walk
-  (`#e1e1e1e1.#p4a5e6x7`) and before a part of a date (`#d8d8d8d8.weekday`).
-- Names still work in what you type: `status = open` in `q` is fine.
+- Write an id wherever a name could mean more than one element — say two
+  cards here have `status` and you mean the task's. Take it from `schema`. It
+  stands wherever a name does: after a dot-walk (`#e1e1e1e1.#p4a5e6x7`) and
+  before a part of a date (`#d8d8d8d8.weekday`).
+- In what you type, a name **one** element answers to still works: keepr reads
+  `status = open` as that element's id. A name that more than one element
+  answers to is refused — next section.
 - Quoted, `"#k7f3q2xa"` is text, not an id.
+
+## When keepr asks which element
+
+A name is unique within one card, not across a collection: a Task and a Bug
+can each have a `status`, and a global card can even share its card name with
+one of the collection's own. keepr never guesses which one a filter means.
+When more than one element answers to a name where the filter reaches, keepr
+refuses the filter and lists the candidates: each element's `#id`, its label
+and the cards that hold it. The MCP tools print them one per line, with the
+rewrite, and return them structured (`elementRefusal`),
+and `schema` lists every id.
+
+Then, in this order:
+
+- **If the person has not said which one they mean, ask them.** Show the
+  labels and the cards, not the ids. Never pick one yourself, even when one
+  looks likelier: the wrong element answers a different question, and nothing
+  says so.
+- **One element:** its id where the name was — `#k7f3q2xa = open`; past a
+  dot-walk, `who.#k7f3q2xa = nurse`; in a reference, `{{#k7f3q2xa}}`.
+- **Any of those cards** ("whatever kind it is"): the condition once per id,
+  joined by `or` — `(#k7f3q2xa = open or #m2p9r4tb = open)`. Where a missing
+  value matches — `!=` (or `is not`), `not in`, `!~`, `is empty` — join them
+  with `and`: `(#k7f3q2xa != done and #m2p9r4tb != done)`, so each card's items
+  are read by their own element. `is not empty` is not one of those: it joins
+  with `or`. A `not` in front stays in front of the whole group. Each copy
+  counts as a condition.
+- **One card's items only:** pin the card in the same `and` —
+  `card = task and status = open`. The name is read on that card **and the
+  cards beneath it**, so where a child card restates the name keepr asks
+  again. A filter keepr already reads on one card — a lookup's filter, a
+  chart with a card, `keepr_get_items` with its own `card` (which reads that
+  card alone) — gains nothing from a pin: there the question comes from a card
+  beneath it.
+
+What you type may name a card by its key: keepr turns `card = task` into the
+card's id. In a filter keepr **stores** — a saved filter, a rule's condition,
+a lookup's filter, a chart's filter — write each element by its `#id` from
+`schema`. A name works there only where keepr reads it on one card — the
+rule's card, the lookup's target card, the chart's card, or a `card =` in the
+same `and` — and keepr stores its id. An element of a card the same setup or
+proposal creates has no id yet: name it on its card,
+`card = <new card's key> and <name> = …`, and keepr writes both ids as it
+saves.
+
+A name **no** element answers to is refused in a filter keepr stores; in what
+you type it matches nothing (below). A group can also take a filter past
+keepr's cap of conditions, or past its length once every name is an id: name
+fewer elements (ask which cards), pin one card, or split the question.
+
+In a filter that decides who sees what (the person's own sharing settings,
+never one an assistant writes), keepr may take only the whole group, or say
+that nobody here can write it. The refusal says which; the person settles it
+in keepr.
 
 ## Operators
 
@@ -179,14 +236,17 @@ An element name or id the collection does not have, a card key nobody uses, or a
 type-incompatible comparison compiles to a **no-match** — the query runs and
 answers zero. So does a value a date part cannot read: `created.weekday =
 funday` and `created.hour = 24` match nothing (and `!=` them, everything).
-Only a **parse error** is a 400, and it names the character position — a
-number of about 309 digits is one (quote it to use it as text). So a zero
+A **parse error** is a 400, and it names the character position — a
+number of about 309 digits is one (quote it to use it as text). A name that
+more than one element or more than one tag answers to is a 400 too (above).
+So a zero
 from a query you wrote from memory is not evidence of anything; check the
 element name against `schema` before you report "none".
 
 keepr caps a query's length, its number of conditions and its dot-walk hops;
 a query past a cap is refused with a sentence naming it. Split the question,
-or narrow it.
+or narrow it. An element group counts one condition per id, and in a filter
+keepr stores the length is counted with every name written as its id.
 
 ## Worked examples
 

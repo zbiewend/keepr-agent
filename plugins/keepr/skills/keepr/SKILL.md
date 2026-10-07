@@ -161,6 +161,14 @@ you query, before you write, before you propose a change — element names in
 a query, values in a row and the diff of a card change all come from it, never
 from memory or from what a similar collection looked like.
 
+**A filter names an element by its `#id` when its name could mean more than
+one.** Two cards can each have a `status`; keepr then refuses a filter that
+says `status`, typed or stored, and lists each element it could mean with its
+id, label and card. If the person has not said which one they mean, ask them —
+never pick one yourself — then write that element's `#id`, or for any of those
+cards the condition once per id (`references/kql.md`, "When keepr asks which
+element").
+
 If the user named no collection, list them (`keepr_collections`)
 and ask which one. Never pick one for them.
 
@@ -199,7 +207,7 @@ Two rules hold in every chapter:
 
 ## This copy
 
-This is keepr skill **2.10.0**. Every fact that changes comes from keepr, so a
+This is keepr skill **2.11.0**. Every fact that changes comes from keepr, so a
 copy a release behind is still right about the way of working.
 
 ## Files
