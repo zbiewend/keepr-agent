@@ -5,42 +5,41 @@ one changes the shape of data that already exists. Neither is done quietly,
 and neither is done from memory: **read the card first**, propose, show the
 user exactly what the server says will happen, and apply only what they saw.
 
-Both need a key with the **`cards`** scope (**Can change cards** on the key)
-and `manage` on the collection. A key without it gets `403 insufficient_scope`
-with `requiredScope: "cards"`; the script prints the fix — *create or edit a
-key with Can change cards turned on* — and so should you.
+Both need **Can change cards** on the key (or the connection) and `manage` on
+the collection. Without it keepr refuses, naming what is missing; keepr's
+tools print the fix — *create or edit a key with Can change cards turned
+on* — and so should you.
 
 ## Commands and tools
 
-| | CLI | MCP tool |
-| --- | --- | --- |
-| read the card | `keepr.py schema --collection X --card KEY` | `keepr_schema` with `card` |
-| propose a new card | `keepr.py create-card --collection X --spec card.json` (prints, writes nothing) | `keepr_propose_card` |
-| create it | `keepr.py create-card … --apply` | `keepr_apply_card` with the proposal token and the collection name typed back |
-| propose a change | `keepr.py change-card --collection X --card KEY --spec change.json` (server diff + a token, writes nothing) | `keepr_propose_card` with a `change` argument |
-| apply the change | `keepr.py change-card --apply TOKEN [--confirm "Card name"]` | `keepr_apply_card` with the token, the collection name typed back, and — for a destructive change — the card name typed back too |
+| | MCP tool |
+| --- | --- |
+| read the card | `keepr_schema` with `card` |
+| propose a new card | `keepr_propose_card` |
+| create it | `keepr_apply_card` with the proposal token and the collection name typed back |
+| propose a change | `keepr_propose_card` with a `change` argument |
+| apply the change | `keepr_apply_card` with the token, the collection name typed back, and — for a destructive change — the card name typed back too |
 
 A proposal token is good for 30 minutes and is used once. The apply step sends
 exactly the payload that was previewed; nothing is recomputed between the two.
 
 ## Creating a card
 
-```bash
-python3 scripts/keepr.py create-card --collection "My Books" --spec card.json
-# prints exactly what it would create, writes nothing
-python3 scripts/keepr.py create-card --collection "My Books" --spec card.json --apply
-```
+`keepr_propose_card` with the card spec as `cards` writes nothing and returns
+keepr's preview and a token; `keepr_apply_card` with that token creates it.
 
-Propose first, show the user the elements and their types, and only `--apply`
+Propose first, show the user the elements and their types, and only apply
 once they agree. `references/recipes.md` has worked card specs (a reading log,
-an expense tracker, a linked contacts + notes pair) to start from;
-`references/elements.md` says what each of the 22 data types accepts.
+an expense tracker, a linked contacts + notes pair) to start from. The data
+types an element can have, and the options each takes, are keepr's: the
+contract (`elementTypes`) lists every type, and keepr's
+preview refuses an option it does not know, by name.
 
 The whole spec goes to keepr as **one card blueprint** (keepr 2.1): keepr checks
 it without writing anything — the proposal step prints its summary, or the
-problems, one per line, each with where it is (`cards[1].key`) and why
-(`key_taken`, `ref_unresolved`, `invalid_options`, `invalid_template`…) — and
-`--apply` creates it **all or nothing**: parents first, then the lookups and
+problems, one per line, each with where it is (`cards[1].key`) and keepr's
+reason — and
+Applying creates it **all or nothing**: parents first, then the lookups and
 rollups once every card exists. If anything is refused part-way, keepr removes
 what that apply had made and says so. So a card can look up **another card in
 the same spec, or itself** (`"lookupCard": "task"` on the Task card — "depends
@@ -57,8 +56,8 @@ A spec is one card, a list of them, or `{ "cards": [...], "filters": [...],
 write as well) and table layouts for cards in the spec. Write a filter's cards
 by key and its choices by value or label, as a person types them: keepr saves
 each one by id and value once the spec's cards exist. A record goes in by its
-id, never its title — `owner = Jane` is refused (`lookup_needs_item`, with the
-matching records) and the whole apply is undone; so is a key nothing in the
+id, never its title — `owner = Jane` is refused, with the matching records,
+and the whole apply is undone; so is a key nothing in the
 collection has. Table layouts are for cards in the spec
 (`{ "card": "task", "columns": ["kpr", "title", "status"] }`). A card may also
 carry `icon`, `color`, `displayTemplate` (`"{{kpr}} {{title}}"`),
@@ -76,7 +75,7 @@ well.
 
 One card, for example:
 
-```json
+```json example
 { "name": "Plant", "key": "plant",
   "elements": [
     { "name": "species", "label": "Species", "dataType": "text-small", "isTitle": true, "required": true },
@@ -86,27 +85,26 @@ One card, for example:
     { "name": "last-watered", "label": "Last watered", "dataType": "date" } ] }
 ```
 
-A choice that holds more than one value at once ("Allow multiple" in keepr) carries
-`"allowMultiple": true` beside its `choices` — only on `dataType: "choice"`,
-never on a short text with choices.
+Options go beside the element's name in the spec — whatever keepr's schema
+shows on an element like it (`allowMultiple` for "Allow multiple", say). An
+option the element's type does not take is refused by the preview, by name;
+read the refusal rather than guessing another.
 
-Turning "Allow multiple" on or off — on a choice, date, date-time, card lookup
-or user element — on a card that already has items changes the shape of every
-stored value, so keepr refuses it (`values_need_conversion`) until the change
-says what to do with them: `"convertValues": "wrap"` in the element's options
-when turning it on (each single value becomes a list of one),
-`"convertValues": "first"` when turning it off (each item keeps ONE entry — a
-choice its first in the choices' order, a date its earliest, a linked item or
-user its first stored — and the others are DROPPED; the refusal says how many
-items hold more than one and lists them in `review.query`). Ask the user which
-they want before you send `first`; never pick it for them.
+**A change to the shape of stored values waits for an answer.** Turning
+"Allow multiple" on or off on a card whose items hold values (or another
+change that would turn single values into lists, or lists into single values)
+is refused until the change says what to do with them. keepr's refusal says
+which answer it waits for, where it goes in the element's options, how many
+items are affected, and a query that lists them. Tell the person what each
+answer does to their data in those words. When the answer keeps one value and
+drops the rest, ask the person before you send it; never pick it for them.
 
 Only what the user described goes in. Do not add "useful" elements they did
 not ask for; ask.
 
 A card can **inherit** another card's elements — "a Bug is a Work item plus a
-severity". Name the parent by key: `"parentCard": "work-item"` in a
-`keepr.py` spec, `parentCardKey` on `keepr_propose_card`. It may be a card in
+severity". Name the parent by key: `parentCardKey` on `keepr_propose_card`.
+It may be a card in
 the same spec (anywhere in it — keepr creates parents first), a card the
 collection already has, or a global card. A parent that names nothing is
 refused before anything is created — never created without its parent. An
@@ -119,8 +117,8 @@ are written.
 
 `PATCH /api/card-definitions/{id}` **replaces the card's element list whole.**
 A payload that carries only the element you meant to touch removes every other
-one, and hides their stored values on every item. So neither the script nor the tool
-ever sends a partial list: they read the card's own elements, lay your change
+one, and hides their stored values on every item. So a partial list is never
+sent: keepr's tools read the card's own elements, lay your change
 over them, and send all of them — and then the server's **change-preview**
 says, from the real stored data, what that payload would do. You do not get
 to skip the preview: it is where the token comes from.
@@ -128,18 +126,18 @@ to skip the preview: it is where the token comes from.
 ### The flow
 
 ```
-1. keepr.py schema --collection X --card KEY          read the card as it is
-2. write change.json                                  only what the user asked for
-3. keepr.py change-card --collection X --card KEY --spec change.json
+1. keepr_schema with card                             read the card as it is
+2. write the change                                   only what the user asked for
+3. keepr_propose_card with change
      the server's diff, item counts, side effects — and a token. Nothing written.
 4. show the diff to the user, in their words, destructive parts first
-5. keepr.py change-card --apply TOKEN                 once they say yes
-     --confirm "Card name"  when step 3 said DESTRUCTIVE
+5. keepr_apply_card with the token                    once they say yes
+     confirm_card_name too  when step 3 said DESTRUCTIVE
 ```
 
 ### The change spec
 
-```json
+```json example
 {
   "elements": [
     { "name": "rating", "max": 10 },
@@ -171,14 +169,14 @@ change and leads the summary with `DESTRUCTIVE —` when anything is:
 | --- | --- | --- |
 | `added` | a new element; existing items have it empty | no |
 | `labelChanged`, `optionsChanged`, `reordered` | display and validation changes; stored values untouched | no |
-| `removed` | the element goes and **its stored values are hidden** on every item — kept, but no list, form, export, search or title shows them — until an element of the same name is added back (they all return) or a manager purges them from the card's settings in the web app. The preview reports how many items hold a value (`values_hidden`) | **yes** |
+| `removed` | the element goes and **its stored values are hidden** on every item — kept, but no list, form, export, search or title shows them — until an element of the same name is added back (they all return) or a manager purges them from the card's settings in the web app. The preview reports how many items hold a value | **yes** |
 | `retyped` | the data type changes. A number ↔ measurement move is a `conversion: measurement` and a number ↔ currency move a `conversion: currency` (values converted); anything else is `conversion: none` — the stored values are **reinterpreted, not converted**, and may stop matching or sorting | **yes** |
 
 Plus `cardFields` (name, description…) and `sideEffects` the server knows
 about — an account link that would be un-linked, automation rules that would
 retire, rules and notifications that read a removed element and will see it
-as unset (`rules_reference_removed_element`, by name), a primary date that
-would stop resolving. Read them out.
+as unset (each by name), a primary date that would stop resolving. Read them
+out.
 
 ### Say aloud what cannot be undone
 

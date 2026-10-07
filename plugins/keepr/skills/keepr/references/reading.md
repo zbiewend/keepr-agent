@@ -14,23 +14,19 @@ error — you would report "none" for a question that had an answer.
 
 ## Commands and tools
 
-| CLI | MCP tool | what it answers |
-| --- | --- | --- |
-| `keepr.py collections` | `keepr_collections` | which collections this key can see, and its role in each |
-| `keepr.py schema --collection X` | `keepr_schema` | the cards and elements — read this first |
-| `keepr.py items --collection X [--q KQL] [--card KEY] [--sort F] [--desc] [--limit N] [--skip N]` | `keepr_get_items` with `collection` and `q` | a page of items, count first |
-| `keepr.py get --id ID [--id ID …]` | `keepr_get_items` with `ids` (or `item_id`) | one or more items in full, up to 100 |
-| `keepr.py search --q TEXT [--types …] [--limit N]` | `keepr_search` | free-text substring search across collections, cards, items and tags — tags by name and items used as tags by title; `--types` / `types` narrows it (`tags` for tags alone) |
-| — (`api.md` § 2d) | `keepr_chart` | a total, count, average, earliest/latest or share, by month or by category — worked out by keepr over every item; or a saved chart. `charts.md` |
+| MCP tool | what it answers |
+| --- | --- |
+| `keepr_collections` | which collections this key can see, and its role in each |
+| `keepr_schema` | the cards and elements — read this first |
+| `keepr_get_items` with `collection` and `q` | a page of items, count first |
+| `keepr_get_items` with `ids` (or `item_id`) | one or more items in full, up to 100 |
+| `keepr_search` | free-text substring search across collections, cards, items and tags — tags by name and items used as tags by title; `types` narrows it (`tags` for tags alone) |
+| `keepr_chart` | a total, count, average, earliest/latest or share, by month or by category — worked out by keepr over every item; or a saved chart. `charts.md` |
 
-`--q` is KQL — `references/kql.md` has the grammar and worked examples. It is
+`q` is KQL — `references/kql.md` has the grammar and worked examples. It is
 the difference between paging a collection into context and asking the server
 the actual question. `search` is not a query: it is a case-insensitive
 substring match on names and text values, for "is there anything called…".
-
-`--json` on any of them prints the raw response (for `items`, wrapped as
-`{total, shown, skip, q, items}` because the total travels in a header), for
-when you need a field the human rendering does not show.
 
 ## The rules
 
@@ -43,10 +39,10 @@ and there is more than a page, say how many there are and ask how they want
 it cut, rather than paging.
 
 **Narrow before you page.** The default page is 25 and the API's ceiling is
-200. Never walk a whole collection into context with `--skip` to answer a
-question a query would answer. "How many are open?" is `--q "status = open"`
-and reading the count line, not fetching every item and counting. "The
-newest five" is `--limit 5` (the default sort is each card's primary date,
+200. Never walk a whole collection into context page by page to answer a
+question a query would answer. "How many are open?" is the query
+`status = open` and reading the count line, not fetching every item and
+counting. "The newest five" is a limit of 5 (the default sort is each card's primary date,
 newest first). If a question really needs every item — "list every author" —
 say how many items that is before you start, and stop at a page if the user
 did not ask for the walk.
@@ -70,7 +66,7 @@ address made from its `code`:
 https://keepr.cloud/i/<code>
 ```
 
-The MCP tools hand it to you as `url`; `items`, `get` and `search` print it.
+The MCP tools hand it to you as `url`.
 Give that link exactly as it comes — never build one from ids. (An item keepr
 has not given a code yet has `url: null`; its long address,
 `https://keepr.cloud/collections/<collectionId>/items/<itemId>`, still works.) Use the title when you talk about a
@@ -91,8 +87,8 @@ not "mid-March"); a measurement in the unit it was entered in; a choice by
 its value or label as the schema names it. Round or convert only when asked,
 and say so.
 
-**Tags are the person's labels — report them by name.** `items` and `get`
-show each item's tags (and `keepr_get_items` returns them); filter with
+**Tags are the person's labels — report them by name.** `keepr_get_items`
+returns each item's tags; filter with
 `tags = <name>` (`kql.md`), which also matches the tags beneath it. A tag "by a
 rule" was applied automatically. **My tags** are the person's own private
 tags: only they see them, so mention them to them and nobody else. A tag shown

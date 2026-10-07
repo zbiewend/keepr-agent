@@ -9,16 +9,13 @@ Worked examples. Copy the shapes, not the field names — always read the real
 
 > "Log that I finished Piranesi today, 5 stars."
 
-```bash
-python3 scripts/keepr.py schema --collection "Reading log"
-```
-
+`keepr_schema` for "Reading log"
 tells you the card is `book` with `title`, `author`, `rating`, `finished`,
 `status`. So:
 
 ```json
 {
-  "source": { "system": "claude-chat" },
+  "source": { "system": "assistant-chat" },
   "items": [
     { "card": "book",
       "elements": { "title": "Piranesi", "rating": 5, "finished": "2026-09-18", "status": "done" },
@@ -30,37 +27,28 @@ tells you the card is `book` with `title`, `author`, `rating`, `finished`,
 Note what is *not* there: no author, because the user didn't say one. Today's
 date is resolved by you, not left as "today".
 
-```bash
-python3 scripts/keepr.py ingest --rows rows.json --dry-run && \
-python3 scripts/keepr.py ingest --rows rows.json
-```
+`keepr_ingest` with `dry_run: true`, then — the dry run clean — with
+`dry_run: false`.
 
 ---
 
 ## B. A spreadsheet
 
-```bash
-python3 scripts/keepr.py csv --file books.csv --card book \
-  --collection "Reading log" --id-column ISBN --system goodreads-export \
-  --map "Date Read=finished" --map "My Rating=rating" --out rows.json
+Turn each row of the sheet into an item for `keepr_ingest`, the ISBN as its
+external id and each column under the element it fills, and dry-run it.
 
-python3 scripts/keepr.py ingest --rows rows.json --dry-run
-```
+Read the dry run before committing. keepr names each failed row's problem in
+its own words; the usual first-pass ones, and what to do:
 
-Read the dry run before committing. The usual first-pass failures:
-
-| failure | fix |
+| what the dry run says | fix |
 | --- | --- |
-| `type: expected number, got "n/a"` | the column uses `n/a` for blanks — clear those cells, or drop the column |
-| `invalid_choice` | the sheet's words aren't the card's choice values — map them in the rows file |
-| `type` on a date | the sheet has `12/05/2024`; decide the order and rewrite as ISO |
-| `unknown_element` | a column matched no element — drop it, or add the element to the card |
+| a number element got `"n/a"` | the column uses `n/a` for blanks — clear those cells, or drop the column |
+| a word that is not one of the element's choices | the sheet's words aren't the card's choice values — map them in the rows file |
+| a date it will not read | the sheet has `12/05/2024`; decide the order and rewrite it the way the schema asks |
+| no element of that name | a column matched no element — drop it, or ask whether to add the element to the card |
 
 Committed, then the user fixes three rows in the sheet and wants a re-run:
-
-```bash
-python3 scripts/keepr.py ingest --rows rows.json --mode upsert
-```
+`keepr_ingest` with `mode: "upsert"`
 
 Unchanged rows come back `skipped`; the three changed ones come back `updated`.
 Nothing is duplicated, because every row carries an ISBN as its external id.
@@ -91,7 +79,7 @@ Contacts and the notes about them. Parents first, children referencing them:
 }
 ```
 
-The note's `about` element is a `card-lookup` at the `contact` card. If a
+The note's `about` element is an item lookup at the `contact` card. If a
 contact already exists in keepr under the same `system` and `externalId`, the
 `$ref` finds it there — so a second import that adds only notes still links
 correctly.
@@ -115,33 +103,19 @@ intake/
 
 **The external id is the hinge.** It has to identify the record *and* be
 derivable from the file layout. Here the folder and file names are slugs, so
-slugs are the ids:
-
-```bash
-python3 scripts/keepr.py csv --file intake/residents.csv --card resident \
-  --collection "Intake" --id-column slug --system intake-2026 --out rows.json
-
-python3 scripts/keepr.py ingest --rows rows.json --dry-run
-python3 scripts/keepr.py ingest --rows rows.json
-```
-
-`rows.results.json` now maps every external id to the item it created. Pair the
-photos against it, look, then upload:
-
-```bash
-python3 scripts/keepr.py attach --results rows.results.json --dir intake/photos --dry-run
-# 4 file(s) → 2 item(s)
-#   leah-park: leah-park.jpg, leah-park-2.jpg
-#   molly-blake: front.jpg, back.jpg
-
-python3 scripts/keepr.py attach --results rows.results.json --dir intake/photos
-```
+slugs are the ids. Import the residents with `keepr_ingest` (each slug as its
+external id, and as the value of a `slug` element the card has), then give
+`keepr_attach_folder` the photos folder with `collection: "Intake"` and
+`match_element: "slug"`: a subfolder names its resident, and a file at the top
+its filename without the counter. Dry-run it and show the person the match
+before the run.
 
 When the CSV has no slug column, derive one and put it in the rows yourself —
 the same string the photos use. When the photos are camera names
 (`IMG_4471.jpg`) and nothing connects them to a subject but the user's
-knowledge, **ask**: either they tell you the mapping, or you write it down as
-`--map map.json` from whatever the document says.
+knowledge, **ask**: either they tell you the mapping, or you write it down as a `map`
+from whatever the document says — the items' ids to their files for
+`keepr_attach_folder`.
 
 ```json
 { "molly-blake": ["IMG_4471.jpg", "IMG_4472.jpg"],
@@ -158,12 +132,8 @@ Things that will happen on a real folder, and what to do:
 | `HTTP 415` | an executable or script. The platform refuses those. |
 | `HTTP 413` | over the per-file or per-account storage cap. |
 
-A single document that produced one item (a receipt, a contract) is the same
-command with `--item`:
-
-```bash
-python3 scripts/keepr.py attach --item 65a1b2c3d4e5f6a7b8c9d0e1 --file invoice-4471.pdf
-```
+A single document that produced one item (a receipt, a contract) goes up with
+`keepr_attach_local_file`, with the item's `item_id` and the file's path.
 
 Keep the extracted values and the original together — the attachment is the
 provenance for every number you pulled out of it.
@@ -172,13 +142,13 @@ provenance for every number you pulled out of it.
 
 ## E. Card specs to start from
 
-Pass any of these to `create-card --spec` (list form creates several in order;
+Pass any of these to `keepr_propose_card` as its `cards` (list form creates several in order;
 `lookupCard` names another card by key, in this spec or already in the
-collection). **Show the user before `--apply`.**
+collection). **Show the user the proposal before you apply it.**
 
 ### Reading log
 
-```json
+```json example
 [
   { "name": "Shelf", "key": "shelf",
     "elements": [
@@ -203,7 +173,7 @@ collection). **Show the user before `--apply`.**
 
 ### Expenses
 
-```json
+```json example
 {
   "name": "Expense", "key": "expense",
   "elements": [
@@ -223,7 +193,7 @@ collection). **Show the user before `--apply`.**
 
 ### Contacts and notes
 
-```json
+```json example
 [
   { "name": "Contact", "key": "contact",
     "elements": [

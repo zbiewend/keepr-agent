@@ -14,30 +14,30 @@ or nothing**. The preview is what the person agrees to — so read it to them.
 
 | the person wants… | use |
 | --- | --- |
-| a new card, or a field added to one card | `keepr_propose_card` / `keepr.py create-card`, `change-card` (`references/cards.md`) |
+| a new card, or a field added to one card | `keepr_propose_card` (`references/cards.md`) |
 | a list, table, form or page laid out differently | a setup |
 | filters or quick adds for everyone | a setup |
 | "when X happens, do Y" — stamp a date, notify me, update linked records, make a task every week | a setup (automations) |
 | a notification for the collection | a setup (notifications) |
 | new cards **and** their layouts, filters and rules together | a setup — one preview, one apply |
-| to see what rules run, pause one, or see who changed something | `keepr_automations`, `keepr_history` (below) |
+| to see what rules run, pause one, or see who changed something | `keepr_automations`, `keepr_set_automation_state`, `keepr_history` (below) |
 
 ## Commands and tools
 
-| | CLI | MCP tool |
-| --- | --- | --- |
-| read the collection's cards and its rules | `keepr.py schema --collection X`, `keepr.py automations --collection X` | `keepr_schema` |
-| read each card's layouts (what a layout entry would replace) | — (the MCP tool only) | `keepr_schema` with `include_layouts: true` |
-| propose a setup | `keepr.py setup --collection X --spec setup.json` (prints keepr's preview and a fingerprint; writes nothing) | `keepr_propose_setup` |
-| apply it | `keepr.py setup --collection X --spec setup.json --apply --expect FINGERPRINT` | `keepr_apply_setup` with the token and the collection name typed back |
-| list rules, a rule's runs, pause one | `keepr.py automations --collection X [--runs RULE] [--pause RULE]` | `keepr_automations` (`list`, `runs`, `pause`, `turn_on`) |
-| who changed what | `keepr.py history --item ID` · `--card KEY --collection X` · `--collection X` | `keepr_history` |
+| | MCP tool |
+| --- | --- |
+| read the collection's cards and its rules | `keepr_schema` |
+| read each card's layouts (what a layout entry would replace) | `keepr_schema` with `include_layouts: true` |
+| propose a setup | `keepr_propose_setup` |
+| apply it | `keepr_apply_setup` with the token and the collection name typed back |
+| list rules, a rule's runs | `keepr_automations` (`list`, `runs`) |
+| pause one, or turn one on | `keepr_set_automation_state` (`pause`, `turn_on`) |
+| who changed what | `keepr_history` |
 
 The apply sends exactly the setup that was previewed, and **checks the plan has
 not moved**: if something was added or renamed in the collection since the
 preview (so an "adds" would now be a "changes"), nothing is applied and you
-propose again. A tool token lasts 30 minutes and is used once; the CLI's
-`--expect` is the fingerprint the preview printed.
+propose again. A tool token lasts 30 minutes and is used once.
 
 ## The setup document
 
@@ -64,7 +64,7 @@ blueprint — so there is nothing to translate. Every section is optional:
 **New cards** are written as `references/cards.md` teaches — an element's
 `isTitle`, `required`, `choices` and other options beside its name, a lookup as
 `"lookupCard": "<key>"` — or in keepr's own shape with them under `options`;
-the tool and `keepr.py` move them into place before anything is sent.
+keepr's tools put them in place before anything is sent.
 
 **Naming a card.** `{ "ref": "bug" }` is a card this setup makes (its
 `localId`); `{ "key": "task" }` is one the collection has (from `schema`);
@@ -79,8 +79,7 @@ shows by `chartId`. The preview marks every entry `adds`, `CHANGES` (with
 what changes, before and after) or `unchanged`; an unchanged one is not
 written. An entry says the whole of what it sets: give every key you mean to
 keep. A filter keepr stores may name an element by its id (`#k7f3q2xa`,
-`kql.md`): `keepr_propose_setup` names each one at the end of its preview, and
-with the CLI you find it in `schema`. Tell the person the element, not the id.
+`kql.md`): `keepr_propose_setup` names each one at the end of its preview. Tell the person the element, not the id.
 
 ## Layouts
 
@@ -88,7 +87,7 @@ Each entry: `{ "kind": "tile" | "table" | "form" | "page", "cardRef": …,
 "scope": "collection" | "card", "body": … }`. On a card the collection owns,
 `scope: "card"` sets it wherever the card is used; by default the layout
 belongs to this collection, and `scope: "card"` on a card the collection does
-not own is refused (`layout_tier`), not moved. A form layout is card-tier
+not own is refused, not moved. A form layout is card-tier
 only, on a card the collection owns. A page layout also has a `name`.
 
 **Tile** — the card as it appears in the item list. A grid of **3 columns and at
@@ -101,8 +100,8 @@ once:
                       [ { "element": "due", "span": 1 }, { "element": "owner", "span": 2 } ] ] } }
 ```
 
-Every type needs room to be read, and a span narrower than that is refused
-(`span_too_narrow`), never quietly widened:
+Every type needs room to be read, and a span narrower than that is refused,
+never quietly widened:
 
 | element type | span at least |
 | --- | --- |
@@ -176,8 +175,7 @@ off **runs as soon as it is applied**. A rule that **notifies anyone, changes
 other records, creates records, or runs on a schedule arrives PAUSED**, and so
 does every notification — whoever applies the setup. It stays paused, marked
 as waiting for the person, until **they** turn it on in keepr. keepr refuses an
-assistant or an API key that tries (`person_must_enable`), and that is the
-design. Changing what a running rule of that kind does — who it tells, what it
+assistant or an API key that tries, and that is the design. Changing what a running rule of that kind does — who it tells, what it
 says, which records it changes — pauses it again; a rename does not.
 
 **Reading the preview aloud.** For each rule the preview gives keepr's own
@@ -193,7 +191,7 @@ tag's rule: **in keepr › Settings › Tags.**)
 
 **Never promise that a paused rule will run**, or that it is "set up and
 working". It is set up; it is not on. If the person says "turn it on", call
-`keepr_automations` with `turn_on` once — keepr answers that it is theirs to do,
+`keepr_set_automation_state` with `turn_on` once — keepr answers that it is theirs to do,
 and you say the sentence above. Do not retry, and do not look for another way.
 
 A rule naming a card the setup makes cannot be previewed until the card
@@ -206,18 +204,19 @@ A collection notification is a definition everyone in the collection may
 receive: `{ "key": "work-waiting", "name": "Work is waiting", "severity":
 "info", "category": "items", "trigger": { … }, "audience": { … }, "channels":
 [], "template": { "title": "…" } }`. **Always send `channels`**: `[]` is the
-inbox only, and leaving it out means email — it leaves keepr. A key keepr's own notifications use is refused
-(`notification_key_taken`) — pick another. Every notification arrives paused.
+inbox only, and leaving it out means email — it leaves keepr. A key keepr's own notifications use is refused —
+pick another. Every notification arrives paused.
 
 ## Reading and switching rules
 
-`keepr_automations` (`keepr.py automations`) lists a collection's rules and
+`keepr_automations` lists a collection's rules and
 notifications: what each does, whether it is **ON**, **PAUSED**, or **WAITING**
 for the person, and who made it — a person, an API key, an assistant. It reads
-a rule's recent runs, and it **pauses** one by id or exact name. Pausing is
+a rule's recent runs, and changes nothing. `keepr_set_automation_state`
+**pauses** one by id or exact name. Pausing is
 always open; turning on is the person's when keepr says so.
 
-`keepr_history` (`keepr.py history`) reads who changed what and when — an
+`keepr_history` reads who changed what and when — an
 item's, a card's, or the collection's. It reads only.
 
 ## What is not here

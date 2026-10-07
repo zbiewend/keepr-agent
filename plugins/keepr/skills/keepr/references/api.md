@@ -1,7 +1,6 @@
 # The keepr API, as the skill uses it
 
-Everything `scripts/keepr.py` does is these calls. Drive them directly when you
-cannot run Python. Base URL `https://api.keepr.cloud` unless the user
+Base URL `https://api.keepr.cloud` unless the user
 self-hosts. Every call carries the key:
 
 ```
@@ -15,12 +14,9 @@ authority — never a new account, never admin.
 
 | | |
 | --- | --- |
-| scope `read` | every GET |
-| scope `write` | item writes too (write implies read) |
-| scope `cards` | **Can change cards**: creating and changing card definitions, element sets and card layouts. Needs `read`; does not imply `write`. A key without it gets **403** `insufficient_scope` with `requiredScope: "cards"` on those routes |
-| scope `delete` | **Can delete records**, off by default: every DELETE that removes something, bulk `op: delete`/`reject`, an intake reject, a **replace** write that carries `elements` (`PUT /api/items/{id}`, a bulk update or an ingest `upsert` whose effective `merge` is false — it blanks what it leaves out), and a collection `PUT` that drops a card from `cards[]` — asked **beside** `write` (or `cards` on a card route), never instead of it. A key without it gets **403** `insufficient_scope` with `requiredScope: "delete"`. Keys made before 2026-09-24 do not have it. A key with it may hard-delete at most 500 items a UTC day (`limits.deletesPerKeyPerDay` in the contract); past that, **429** `delete_budget_exhausted` with `limit`, `used`, `remaining`, `requested`, `resetsAt` — nothing was deleted, and retrying before `resetsAt` repeats the answer. This skill never deletes |
+| scopes | each scope a key can carry, and what it allows, is in the contract's `auth.scopes` (§ 7). A call the key's scopes do not cover is refused with **403**, and `requiredScope` names the one it lacks. This skill never deletes |
 | collection allowlist | the key sees only the collections it was created for; everything else answers **404**, exactly as an unshared collection would |
-| closed to keys entirely | sharing and grants, collection delete/transfer, share links, password/email changes, managing API keys, all `/api/admin/*` — **403** `code: session_required` whatever the key holds; no scope fixes it |
+| closed to keys entirely | the surfaces only a person signed in to keepr may use (sharing, keys, deleting a collection and others — the contract's `auth.notes` lists them) refuse a key whatever it holds; no scope fixes it. Send the person to keepr |
 | archived collection | readable, but every write answers **403** |
 
 Revoking a key takes effect on the next request.
@@ -39,7 +35,7 @@ curl -s -H "Authorization: Bearer $KEEPR_API_KEY" \
 key can learn its own authority, because the key-management routes are
 session-only:
 
-```jsonc
+```jsonc example
 { "email": "ada@example.com", "fullName": "Ada Lovelace",
   "auth": { "kind": "api-key", "scopes": ["read", "write"], "collectionIds": ["65a1…"] } }
 ```
@@ -66,7 +62,7 @@ reconstruct card inheritance yourself — rendered twice from one source:
 `elements[]` for reading, and `jsonSchema` (draft-07) per card, which is the
 better thing to hand a model composing rows.
 
-```jsonc
+```jsonc example
 {
   "collection": { "id": "…", "name": "My Books", "allowAttachments": true, "status": "active" },
   "cards": [
@@ -89,16 +85,17 @@ better thing to hand a model composing rows.
 }
 ```
 
-Nothing is cached server-side — ask right before you write. A card marked
-`driven` on an element means the platform owns that value; sending one fails
-the row.
+Nothing is cached server-side — ask right before you write. An element marked
+`driven` or `sequence` is written by keepr; never send one. What each element
+takes is its type plus its options; the contract's `elementTypes` (§ 7) says,
+for every type, what to send.
 
 **`tags`** is the collection's tag vocabulary: its own tags, then the ones of
 the collection above it (marked `inheritedFrom`), as far as this key may see
 them. `path` is how to name a tag that shares its name with another
 (`Genre/Sci-fi`). `restricted: true` — it decides who can see what: only a
-manager, signed in to keepr, puts it on or takes it off (a key never can:
-`session_required`), and a collection may put it on new items of chosen cards
+manager, signed in to keepr, puts it on or takes it off (a key never can),
+and a collection may put it on new items of chosen cards
 by itself. `rule: { "strict": true }` — a rule applies it and nothing else may; never
 send it. **Items used as tags are never listed** (their names are their items'
 titles): a card with `itemTags` other than `off` has them, and
@@ -128,10 +125,9 @@ curl -s -H "Authorization: Bearer $KEEPR_API_KEY" \
 
 Sorting happens before paging, and empty values sort last whichever the
 direction. The response is a **bare array** of items; the total for the whole
-filter — not the page — is the **`X-Total-Count`** header, which is where
-`keepr.py items` gets the `N of TOTAL` on its first line.
+filter — not the page — is the **`X-Total-Count`** header.
 
-```jsonc
+```jsonc example
 [
   { "_id": "66b2…", "collection_id": "65a1…", "card_id": "75a1…",
     "elements": { "title": "Dune", "author": "Frank Herbert", "rating": 5, "read-on": "2026-01-10" },
@@ -153,9 +149,10 @@ no entry is a tag this key cannot see the name of. `myTags` are the key
 owner's own private tags (only they see them; `fromCollection: true` when the
 tag is on the collection rather than the item).
 
-A `measurement` element's value is `{ "value": 8.4375, "unit": "lb-oz", "base": 3.8272 }`;
-a `currency`'s is `{ "amount": 1250, "currency": "USD" }` — amount in **minor
-units** ($12.50); a `location`'s is an address string or `{ "address", "lat", "lng" }`. The web
+Values come back as keepr stores them: a measurement as `{ value, unit, base }`,
+money as `{ amount, currency }` with the amount in **minor units** (divide by
+10 to the currency's exponent, `currencies.exponents` in the contract), a
+place as an address or `{ address, lat, lng }`. The web
 address of an item is `https://keepr.cloud/i/<code>` — its short address, from the
 item's `code` (`/c/`, `/d/`, `/t/`, `/e/` and `/f/` do the same for a collection, card,
 tag, element set and multi add). An item without a `code` yet keeps its long address,
@@ -255,18 +252,18 @@ spell yourself), `measures[]`, `values[measure][row][series]`, `totals` (the
 Overall row, keepr's own figure — never re-add the rows), `range`, `tz` and
 `notes` (`{ code, count, message }` — say them). The `card_id` is an id here:
 look it up in the schema. Values are raw: **money in minor units** (divide by
-10 to the currency's exponent — `currencies.exponents` in the contract, § 7:
-USD 2, JPY 0, BHD 3), a share 0–1, a measurement in the unit `measures[].unit`
+10 to the currency's exponent — `currencies.exponents` in the contract, § 7),
+a share 0–1, a measurement in the unit `measures[].unit`
 names (a two-part unit like `ft-in` as a decimal of its first part: 5.5 is
 5 ft 6 in — `units.twoPart` in the contract; `units.symbols` writes `C` as
 °C). A refused
 spec is a 400 with `code` and `path` (the part of the spec to fix); otherwise
-403 `email_unverified`, 429 `rate_limited` with `retryAfter` and `budget`, or
-503 `charts_busy`. What only a run can find — too many bars, a filter naming
+a 403, a 429 (with `retryAfter`) or a 503, each with a message saying what to
+do. What only a run can find — too many bars, a filter naming
 something gone, a formula too costly, the time limit — is a **200** whose
 `result` is `{ ok: false, error: { code, message } }`, on the preview as in a
-batch; a batch's runs carry the spec's refusals and `chart_unavailable` the
-same way.
+batch; a batch's runs carry the spec's refusals, and a chart that is gone,
+the same way.
 
 ## 3. Write rows
 
@@ -278,7 +275,7 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
     "mode": "create",
     "dryRun": true,
     "strict": true,
-    "source": { "system": "claude-import", "ref": "books.csv" },
+    "source": { "system": "assistant-import", "ref": "books.csv" },
     "items": [
       { "card": "book",
         "elements": { "title": "Piranesi", "author": "Susanna Clarke", "rating": 5 },
@@ -289,26 +286,26 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
 
 | field | meaning |
 | --- | --- |
-| `mode` | `create` (default) or `upsert` — upsert keys on `source.externalId`. A row that creates starts an element it leaves out at the element's default (`defaultValue` in the schema) |
+| `mode` | `create` (default) or `upsert` — upsert keys on `source.externalId`. What an omitted element does on each is the contract's `emptyValue` |
 | `dryRun` | validate and resolve everything, write nothing |
 | `strict` | default `true`: an unknown or driven element name fails the row. `false` drops it silently |
 | `source.system` | namespaces your external ids; required if any row carries an `externalId` |
-| `items` | 1–200 rows, 5 MB per call |
+| `items` | the rows. How many a call takes is `writeContract.maxBatch` in the schema, and its size limit is `limits` in the contract |
 
 A row may carry **`tags`** — the item's tags, by name, alias, path
 (`Genre/Sci-fi`) or id, from the schema's `tags`; an item used as a tag goes by
 its id. keepr resolves them and **never creates a tag**: a name that is not a
-tag there fails the row (`unknown_tag`), one that could be two tags fails with
-`ambiguous_tag` and its `candidates`, and a private tag fails with
-`private_tag_not_allowed`. On an upsert the list replaces the item's tags —
-leave `tags` out to keep them, `[]` takes them off — except that a restricted
-tag is always kept. A row that adds or takes off a restricted tag fails with
-`session_required`: only the person, in keepr, may. A row that succeeded but left a tag off (it
-was deleted meanwhile) carries `warnings: [{ "code": "tag_dropped", … }]`.
+tag there fails the row, one that could be two tags fails with its
+`candidates` (send the path), and a private tag fails. On an upsert the list
+replaces the item's tags — leave `tags` out to keep them, `[]` takes them off —
+except that a restricted tag is always kept. A row that adds or takes off a
+restricted tag fails: only the person, in keepr, may. A row that succeeded but
+left a tag off (it was deleted meanwhile) carries a `warnings` entry saying
+so.
 
 **Always 200.** Read the rows, not the status code:
 
-```jsonc
+```jsonc example
 { "runId": "…",
   "summary": { "created": 12, "updated": 3, "skipped": 0, "failed": 1 },
   "rows": [
@@ -327,7 +324,7 @@ a later row may `$ref` a row that never landed.
 
 ### Linking rows to each other
 
-Anywhere a `card-lookup` value is expected:
+Anywhere an item lookup element takes a value:
 
 ```jsonc
 { "card": "book", "elements": { "shelf": { "$ref": "shelf-scifi" } },
@@ -346,15 +343,15 @@ it into `?q=` and send `q_stored=true` when you read the target's items: the
 list then reads the filter exactly as the strict gate does (a tag by its id, a
 term naming something since removed matching nothing), so name a tag in your
 own terms there by its id too. With `strict: true` a record
-outside the filter is refused (`lookup_filtered_out`, with `itemIds`); without
-it any record of the card is accepted. A value the item already holds always
+outside the filter is refused (`itemIds` names it); without it any record of
+the card is accepted. A value the item already holds always
 saves, even if it has since left the filter.
 
 A dry run writes nothing, so an import split over several calls cannot find
-what an earlier call only validated. `keepr.py ingest --dry-run` tells each
-later call which rows the earlier ones would create (`wouldCreate`, dry runs
-only) — just the ones that call names or repeats — so a `$ref` across batches
-dry-runs as it will commit. Calling the API yourself, send the same:
+what an earlier call only validated. So each later call is told which rows the
+earlier ones would create (`wouldCreate`, dry runs only) — just the ones that
+call names or repeats — so a `$ref` across batches dry-runs as it will commit.
+Calling the API yourself, send the same:
 `"wouldCreate": [{ "card": "shelf", "externalId": "shelf-scifi" }]`.
 
 ### Upsert merges
@@ -398,18 +395,18 @@ curl -s -X PUT -H "Authorization: Bearer $KEEPR_API_KEY" -H 'Content-Type: appli
   -d '{ "elements": { "photo": "<attachmentId>" }, "merge": true }'
 ```
 
-Replacing a file already in the element deletes the old one (softly, 30 days),
-so the key needs the `delete` scope. Refusals carry `element`: `file_wrong_kind`
-(`accept: "image"` and not a photo), `file_too_large` (`limitMb`),
-`too_many_files` (20), `file_already_used`, `attachments_disabled`. A bound
-file cannot be removed with `DELETE …/attachments/{id}` (409
-`attachment_in_use`): clear the element with a PUT instead.
+Replacing a file already in the element deletes the old one (softly), so the
+key needs the scope for deleting. A refusal carries `element`, keepr's code
+and its sentence (the kind of file, the size, how many the element holds). A
+bound file cannot be removed with `DELETE …/attachments/{id}` (a 409): clear
+the element with a PUT instead.
 
 ## 6. Create a card
 
-Needs **manage** on the collection. Ask the user first — this is schema.
+Needs **manage** on the collection. Ask the user first — this changes the
+shape of their data.
 
-```bash
+```bash example
 curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
   -H 'Content-Type: application/json' \
   https://api.keepr.cloud/api/card-definitions \
@@ -422,7 +419,7 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
 ```
 
 Every element needs a `name`, a `label` (`{singular, plural}`) and a `dataType`
-from the 20 known ones. The server slugifies and de-duplicates the `key` you
+the contract's `elementTypes` lists. The server slugifies and de-duplicates the `key` you
 ask for, so read the key back from the response rather than assuming.
 
 **Several cards at once — a card blueprint** (keepr 2.1; docs/SCHEMA.md "Card
@@ -435,7 +432,7 @@ same body creates it all or nothing (201 with each card's `localId`, `id`,
 one in the blueprint (itself too), `{ "key": "work-item" }` for one the
 collection has, `{ "globalKey": "person" }` for a global card — as `parentRef`,
 an element's `options.lookupCardId`, a rollup's `options.drivenFrom.sourceCardId`,
-a layout's `cardRef`. `keepr.py create-card` builds it for you.
+a layout's `cardRef`.
 
 A blueprint may also bring **new tags** (keepr 2.2): `"collection": { "tags":
 [{ "localId": "late", "name": "Late", "parentRef"?: { "ref": "<another tag's
@@ -481,7 +478,7 @@ curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
   -d '{ "elements": [ …the full list… ] }'
 ```
 
-```jsonc
+```jsonc example
 { "card": { "id": "…", "name": "Book", "key": "book", "collectionId": "…" },
   "wouldApply": true,                    // false: the PATCH would be refused, see `refusal`
   "refusal": null,                       // or { "status": 400, "code": "invalid_options", "message": "…" }
@@ -519,23 +516,22 @@ curl -s -X PATCH -H "Authorization: Bearer $KEEPR_API_KEY" \
 ```
 
 Answers `{ "status", "payload": <the saved card>, "conversion"?, "conversions"?, "conversionWarning"? }`.
-The 400 codes are the preview's `refusal.code`s: `invalid_element_type`,
-`invalid_options`, `measure_immutable`, `conversion_unit_required`,
-`invalid_unit`; **409** `backfill_too_large` when a conversion would touch
-more than 50 000 items; **409** `values_need_conversion` when "Allow multiple"
-is turned on or off on a choice, date, date-time, card lookup or user element
-whose items hold values (send `options.convertValues: "wrap"` / `"first"` on
-the element — `first` keeps one entry per item and drops the rest: a choice's
-first in the choices' order, a date's earliest, a lookup's or user's first
-stored — so ask the user; the refusal's `items`, `multiple` and `review.query`
-say what is affected).
+A refusal is the preview's `refusal`: keepr's code and its sentence. A change
+that would turn stored single values into lists, or lists into single values,
+is refused (409) until the element's options say what to do with them; the
+refusal names the answer it waits for, where it goes, the items affected and
+a query listing them. An answer that keeps one value and drops the rest is the
+user's to choose — ask. A conversion too large to run at once is refused too,
+and says so.
 
 `DELETE /api/card-definitions/{id}` exists but this skill does not use it: a
 soft delete only an administrator can reverse, done from the web app.
 
 ## 7. The live contract (public, no key)
 
-This bundle is a copy of the contract; the server publishes the current one.
+The server publishes what it accepts, for the deployment you are talking to:
+element types and what each takes, every error code and what it means, the
+limits, the key scopes, currency exponents. This skill states none of it.
 
 ```bash
 curl -s https://api.keepr.cloud/api/docs            # what documentation exists
@@ -551,82 +547,27 @@ every call. Cache it; when it differs from the version you hold, re-fetch
 costs no extra request.
 
 `/api/docs/contract` is generated from the running server's own constants, so
-it always describes *that* deployment. If it disagrees with this file, it wins.
+it always describes *that* deployment.
 
-```bash
-python3 scripts/keepr.py contract --check   # diffs the live contract against this bundle
-```
+An older deployment may not have `/api/docs` at all — then a failure's own
+message is what it says.
 
-An older deployment may not have `/api/docs` at all — then this file is the
-contract for it.
-
-## Error codes
+## Failures
 
 A **400** means the envelope was wrong and nothing was written; its message
-names the failing rule. Row errors arrive inside a 200.
-
-### Shape — the value is wrong for the element
-
-| code | what happened |
-| --- | --- |
-| `unknown_element` | no element of that name on the card (strict mode) |
-| `driven_element` | that element is system-owned; don't send it |
-| `sequence_element` | that element is numbered by the server (`options.sequence`); don't send it |
-| `type` | the value won't coerce — `expected number, got "n/a"` |
-| `required` | a required element was left empty |
-| `invalid_choice` | not one of the element's choice values |
-| `invalid_lookup` | not a 24-hex id or `{"$ref"}`, or a list on a single-valued element |
-| `range` | a rating outside 0..max, a number past min/max, a date outside its bounds or on a disallowed weekday |
-| `invalid_unit` | not a unit of that measurement's measure, or outside its allowlist |
-| `invalid_currency` | not a currency keepr knows, an ambiguous symbol (`kr`), or not one of the element's currencies — there are no exchange rates |
-| `invalid_phone` / `invalid_email` / `invalid_location` | unparseable for that type |
-| `invalid_url` | not a link keepr stores: a scheme off its list (http, https, mailto, tel, sms, geo, facetime, spotify, zoommtg, msteams, slack), a space, or neither a link nor a host. A bare host is fine — it becomes `https://…` |
-| `too_long` | past the element's limit, which the error's `limit` names: its own `maxLength` when it sets one, else 255 characters for a short text, 20,000 long (50,000 with `extendedLength`), 100,000 rich (250,000), 2,048 for a url. Shorten it, or ask the user to change the element's type |
-| `pattern` | a short text that does not fit the element's `pattern` (the schema gives it). The message is the card author's own sentence — "A plate looks like ABC-1234". Reshape the value, never guess one the user did not give |
-| `invalid_color` | not a color keepr reads: a hex with its `#` (`#1f6feb`, `#abc`), `rgb(31, 111, 235)`, or one of the 22 choice color names (`DodgerBlue`). A translucent color, a percentage or any other name is refused — ask for the hex, never guess one |
-| `user_not_found` | no active account with that id |
-| `too_many_dates` | a date or date-and-time list (`allowMultiple`) holds more than 1,000 different dates; `limit` says 1,000. Duplicates don't count. Send fewer, or ask the user which to keep — never drop dates silently. A longer list the item already holds, sent back unchanged, still saves |
-| `file_not_settable` | a file element's value in a row: rows may only send back the value the item already holds. Files are attached with an upload (`keepr_attach_file` / `POST …/attachments`) and bound with a PUT — leave the element out of the row |
-| `file_not_found` | an id under a file element that is not a file this write may use: unknown, deleted, someone else's, or on another item |
-
-### Row — the row itself cannot be written
-
-| code | what happened | what to do |
-| --- | --- | --- |
-| `card_unknown` | no card with that key or id | read `schema` again; keys are per collection |
-| `card_not_allowed` | the card exists but isn't writable in this collection | pick one the schema listed — or, when the error carries `hint.code: card_in_sub_collection`, send the row to the sub-collection it names (`hint.collection_id`) |
-| `forbidden_card` | this key's grants don't cover that card | the user must widen the grant |
-| `forbidden_item` | upsert matched an item this key may not modify | leave it alone |
-| `duplicate` | `create` mode, and that `(system, externalId)` already exists | switch to `--mode upsert` |
-| `externalId_required` | `upsert` with no external id on the row | give every row a stable id |
-| `card_mismatch` | upsert matched an item of a different card | the id is being reused across card types |
-| `source_invalid` | an `externalId` with no `system` in effect | set `source.system` |
-| `ref_unresolved` | a `$ref` matched nothing — or its target row failed | order parents first; check the system matches |
-| `ref_wrong_card` | the target is the wrong card type for that element | link to the card the element expects |
-| `lookup_not_found` | a plain id isn't a readable item of this collection | wrong id, or not readable by this key |
-| `lookup_filtered_out` | the element is a strict lookup (`strict: true`, with a `filter` in the schema) and the record is outside its filter; `itemIds` names the refused ids | choose a record the filter offers (read the target's items with the filter in `?q=` and `q_stored=true`), or ask the user — never drop the value silently |
-| `private_not_allowed` | private items aren't allowed on that card | drop `visibility` |
-| `account_already_linked` | another item already links that account | the identity is taken |
-| `unknown_tag` | a tag name that is not a tag of this collection (or the one above it), or an id that is not one this item can carry — keepr never creates a tag | use a tag the schema lists; if the person wants a new one, ask them to add it in keepr — never invent one |
-| `ambiguous_tag` | a tag name that could be more than one tag; `candidates` lists each one's `tagId` and `path` | send the path (`Genre/Sci-fi`) or the id |
-| `private_tag_not_allowed` | a private tag — only its owner sees it, and no item carries one | leave it out; private tags are applied in keepr |
-| `restricted_tag` | adds (or takes off) a restricted tag, which only the collection's managers may | leave it out, or have a manager apply it |
-| `session_required` | a change only a person signed in to keepr may make, never a key: adding (or taking off) a restricted tag — those decide who can see what —, linking an account on a card a group built from records reads, or changing what puts that record's person in such a group (re-sending the stored values is fine) | leave that value out (an upsert keeps a restricted tag it leaves out) and ask the person to do it in keepr |
-| `rule_owned_tag` | a tag a rule applies, and only the rule | leave it out |
-| `too_many_tags` | the item would carry more than 50 tags | send fewer |
-| `invalid_tag_ids` | `tags` is not a list of names, `tagIds` is not a list of ids, or the row sends both | send one list |
-| `item_locked` | the record's card has locked it: an upsert changes its tags, or a file is attached to or removed from it | leave it as it is, or have a manager unlock it |
-| `stale` | someone changed the item's tags while the row was being written, twice | send the row again |
-| `duplicate_value` | the element is unique (`unique: true` in the schema) and another item of the card already holds this value — text and email compared ignoring case. `itemId` and `title` name that item when this key can read it | don't create a second record: update the one that holds it (an `upsert` keyed on your source id re-runs cleanly), or ask the user which value is right |
-| `account_link_needs_access` | the row sets the account link on a card a group built from records reads — or changes a field such a group's rule reads on a linked record so its person could join — and the key's person lacks, across the collection, the access that group gives | a manager makes that change in keepr |
-| `internal` | server-side failure; the row was not written | retry that row |
+names the failing rule. Row failures arrive inside a 200: each failed row has
+`errors[]`, and each error carries the `element` it is about, keepr's `code`
+and its `message`. The message is the explanation; the contract's `errorCodes`
+lists every code with its meaning on this deployment. What to do about a
+failed row is the same whichever way you reach keepr: `adding.md`, "When a
+row fails".
 
 ### HTTP statuses
 
 | status | meaning |
 | --- | --- |
 | 401 | key missing, revoked, expired, or its owner is inactive |
-| 403 | wrong scope (`code: insufficient_scope`, with `requiredScope` naming `write`, `cards` or `delete`), archived collection, or a surface closed to keys |
+| 403 | a scope the key lacks (`requiredScope` names it), an archived collection, or a surface closed to keys |
 | 404 | the collection isn't visible to this key — wrong id, or outside its allowlist |
-| 413 | over the 5 MB per-call limit; send fewer rows |
-| 429 | rate limited; honour `Retry-After` — except `code: delete_budget_exhausted`, the key's daily delete budget, which is an answer until `resetsAt` and is never retried |
+| 413 | over the per-call size limit (`limits` in the contract); send fewer rows |
+| 429 | rate limited; honour `Retry-After` — except a 429 carrying `resetsAt` (a daily budget spent), which is an answer until then and is never retried |

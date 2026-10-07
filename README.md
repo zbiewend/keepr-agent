@@ -2,88 +2,81 @@
 
 Connect an AI assistant to the records you keep in [keepr](https://keepr.cloud).
 
-This repository is the **distribution** of two things that are built and tested
-in [`zbiewend/keepr-api`](https://github.com/zbiewend/keepr-api): the `keepr`
-skill (the judgement — how to read, add and change records without guessing)
-and `keepr-mcp` (the transport — twenty tools over the keepr API in the desktop extension and the plugin). Nothing here
-is edited by hand; `skills/publish.sh` in keepr-api regenerates it.
+This repository is the **distribution** of the keepr plugin, built and tested
+in [`zbiewend/keepr-api`](https://github.com/zbiewend/keepr-api). Nothing here
+is edited by hand: keepr-api's `skills/publish.sh` regenerates it, and the API
+deploy publishes it.
 
 The guided version of everything below is at
 **[keepr.cloud/account/connect](https://keepr.cloud/account/connect)**, and the
 guide is at [keepr.cloud/docs/guides/assistants](https://keepr.cloud/docs/guides/assistants).
 
-## The simplest way: the keepr connector
+## Claude — the keepr plugin
 
-If you use **Claude** (web, desktop, phone, Cowork) or **ChatGPT**, you don't
-need anything from this repository. Add keepr as a connector —
-`https://api.keepr.cloud/mcp` — and sign in when it asks. There is no key to
-handle, you can disconnect it from your keepr account at any time, and it is
-always up to date. In Claude Code:
-`claude mcp add --transport http keepr https://api.keepr.cloud/mcp`, then `/mcp`
-to sign in.
+One plugin, three parts:
 
-The three ways below are for bringing in big files from your computer, for
-other coding agents, and for setups that can't add a connector. They use an API
-key — in keepr, **My Profile → API keys → Create key** (shown once) — and they
-are copies on your machine, so they need updating:
-[Keep your assistant up to date](https://keepr.cloud/docs/guides/assistants/update-your-assistant).
+- **the keepr skill** — how to read, add and change records without guessing;
+- **the keepr connector**, `https://mcp.keepr.cloud/mcp` — keepr's tools, run
+  by keepr, so they are always current;
+- **keepr's local file tools** — a small server that attaches files and
+  folders from your computer to your items. It runs in Claude Code, and in
+  Cowork when it runs on your computer; Claude chat leaves it out.
 
-## Three other ways in
-
-### 1. Claude Code — the plugin
+**In Claude Code:**
 
 ```
 /plugin marketplace add zbiewend/keepr-agent
 /plugin install keepr@keepr-agent
 ```
 
-To keep it current by itself: type `/plugin`, open **Marketplaces**, choose
-**keepr-agent** and pick **Enable auto-update**.
+Then type `/mcp`, choose the keepr server and authenticate: keepr's page opens
+in your browser, you sign in and press **Allow**. The first time you attach a
+file, the local file tools open the same page once for themselves. To keep the
+plugin current by itself: `/plugin`, open **Marketplaces**, choose
+**keepr-agent** and pick **Enable auto-update**. The local file tools need a
+`node` on your computer, which Claude Code itself already needs.
 
-Then, **in your own terminal**, store the key once. `keepr.py` is in the
-installed plugin (ask Claude Code where its `keepr` plugin lives), or fetch a
-copy:
+**On claude.ai, the desktop app, your phone and Cowork:** add the
+`zbiewend/keepr-agent` marketplace where your Claude manages plugins, add the
+keepr plugin, then open its **Connectors** tab and choose **Connect**.
 
-```
-curl -fsSLo keepr.py https://raw.githubusercontent.com/zbiewend/keepr-agent/main/plugins/keepr/skills/keepr/scripts/keepr.py
-python3 keepr.py login
-```
+Nobody copies a key. Every connection is listed on your keepr profile under
+**Connected assistants**, where you can disconnect it.
 
-The key is typed with no echo and stored in `~/.config/keepr/credentials`
-(mode 600). The MCP server the plugin starts reads that file, so there is no
-environment to configure. `keepr.py logout` forgets it. The plugin needs a
-`node` on your PATH, which Claude Code itself already needs.
+## Without the plugin
 
-### 2. Any other assistant — the skill on its own
+- **Any assistant that takes a connector** (Claude, ChatGPT and others): add
+  `https://mcp.keepr.cloud/mcp` and sign in when it asks. In Claude Code:
+  `claude mcp add --transport http keepr https://mcp.keepr.cloud/mcp`, then
+  `/mcp`. Connections made at `https://api.keepr.cloud/mcp` keep working.
+- **Other coding agents — the skill on its own.** Paste this to an assistant
+  that can run a script:
 
-Paste this to an assistant that can run a script:
+  > Install the keepr skill from https://api.keepr.cloud/api/docs/skill
 
-> Install the keepr skill from https://api.keepr.cloud/api/docs/skill
-
-`GET /api/docs/skill` returns every file of the skill inline with instructions
-for writing them down. The skill zip is also on each release. The assistant
-runs `keepr.py`, which makes ordinary HTTPS calls to `api.keepr.cloud`; you
-run `keepr.py login` yourself, or set `KEEPR_API_KEY`. When a new version is
-out, the skill says so and the assistant can run `keepr.py update` itself.
-
-### 3. Claude desktop — the extension
-
-Only if your Claude can't add connectors. Download
-[`keepr.mcpb`](https://github.com/zbiewend/keepr-agent/releases/latest/download/keepr.mcpb)
-and open it. Claude desktop asks for the API key in its own settings field and
-keeps it in the OS keychain. It does not update itself: download it again when
-your assistant says a new version is out.
+  `GET /api/docs/skill` returns every file of the skill inline, with
+  instructions for writing them down; the skill zip is also on each release.
+  The assistant runs `keepr.py`, which makes ordinary HTTPS calls to
+  `api.keepr.cloud`. A copy installed this way updates itself with
+  `keepr.py update`.
+- **The Claude desktop extension**,
+  [`keepr.mcpb`](https://github.com/zbiewend/keepr-agent/releases/latest/download/keepr.mcpb),
+  is still built for the people who use it, and is being retired. It does not
+  update itself.
 
 ## What is in here
 
 ```
-.claude-plugin/marketplace.json    the marketplace Claude Code adds
+.claude-plugin/marketplace.json    the marketplace Claude adds
 plugins/keepr/                     the plugin
   .claude-plugin/plugin.json
-  .mcp.json                        starts server/keepr-mcp.js with node (channel: plugin)
-  skills/keepr/                    the skill, as published
-  server/keepr-mcp.js              keepr-mcp, one file, SDK inlined
-mcpb/manifest.json                 the extension manifest, for reference
+  .mcp.json                        the connector (keepr) and the local file tools (keepr-files)
+  README.md                        what the plugin does, and everything it runs on your computer
+  LICENSE
+  skills/keepr/                    the skill, as the plugin carries it
+  server/keepr-files.sh            starts the local file tools with your Node.js
+  server/keepr-files.js            the local file tools, one readable file
+mcpb/manifest.json                 the desktop extension's manifest, for reference
 CHANGELOG.md
 ```
 
@@ -91,24 +84,26 @@ The `.mcpb` and the skill zip are release assets, not files in this
 repository. Each release also carries them as `keepr.mcpb` and `keepr.zip`, so
 `releases/latest/download/keepr.mcpb` (and `…/keepr.zip`) is always the newest.
 
+The skill in the plugin leaves out what only a copy installed on its own
+needs: how to update itself, the setup walkthrough and its tests.
+
 ## Versions
 
-The plugin's version is the **skill's** version — the skill is what the
+The plugin's version is the **skill's** version: the skill is what the
 assistant reads, and it is the contract with the people running it. The
 server's own version is `metadata.server` in `plugin.json` and the `version`
 in `mcpb/manifest.json`. Both are listed per release in `CHANGELOG.md`.
 
 ## What it will not do
 
-`delete_item`, `delete_card` and `archive_collection` are not exposed. Those
-stay human actions in the keepr web app. Every write is dry-run first and
-shown before it is committed, and a card change that would lose data says so
-before it can be applied.
+Nothing here deletes an item, a card or a collection. Those stay human actions
+in the keepr web app, with sharing and keys. Every write is previewed first
+and shown before it is committed, and a card change that would lose data says
+so before it can be applied.
 
 ## Reporting a problem
 
 [Issues](https://github.com/zbiewend/keepr-agent/issues) here. Never paste a
-key; the first ten characters (`kpr_` + six) are what keepr itself shows and
-are enough to identify one.
+key or a token.
 
 MIT — see [LICENSE](LICENSE).

@@ -3,6 +3,12 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.10.0 — 2026-10-06
+
+Skill 2.10.0, keepr-mcp 0.12.0.
+
+- The keepr plugin now brings keepr's connector (https://mcp.keepr.cloud/mcp) and, in Claude Code and Cowork on your computer, small local tools that attach files and folders from it — so it keeps itself current, and nothing in it reads a key. keepr.py signs in through keepr's page in your browser instead of a key you copy. The skill leaves every fact that changes (element types, error codes, limits) to keepr, so a copy a release behind is still right. Turning a rule on or pausing it is now its own tool, keepr_set_automation_state (keepr_automations only reads), and every tool has a title and says whether it changes anything. Fixes: keepr's local tools never save their sign-in without the shared lock, a sign-in keepr.py gave up on never reaches keepr late, and inside iCloud only iCloud Drive and each app's Documents folder can be attached.
+
 ## 2.9.1 — 2026-10-06
 
 Skill 2.9.1, keepr-mcp 0.11.1. A security fix: update the plugin and the desktop extension.

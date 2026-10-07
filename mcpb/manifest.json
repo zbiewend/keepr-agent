@@ -2,7 +2,7 @@
 	"manifest_version": "0.3",
 	"name": "keepr",
 	"display_name": "keepr",
-	"version": "0.11.1",
+	"version": "0.12.0",
 	"description": "Read, add and change the records you keep in keepr, from Claude.",
 	"long_description": "Connects Claude to your keepr account through its API. Read your collections, add records from a sentence, a list or a spreadsheet, and propose changes to cards — each write is dry-run first and shown to you before anything is committed. No key needed: the first time, Claude opens keepr in your browser and you click Allow. Or paste an API key from keepr (My Profile → API keys); it is stored by Claude, never in a file.",
 	"author": {
@@ -52,23 +52,23 @@
 	"tools": [
 		{
 			"name": "keepr_collections",
-			"description": "Who this API key acts as, its scopes (read, write, cards, delete), and every keepr collection it can reach, with the access level, whether writing is possible in each, and whether cards can be changed."
+			"description": "Who this connection acts as, what it may do (read, write, change cards, delete), and every keepr collection it can reach: the access level in each, whether items can be written there, and whether its cards can be changed."
 		},
 		{
 			"name": "keepr_schema",
-			"description": "What a keepr collection accepts: its cards (record types), every element (field) on each with its id (#k7f3q2xa — how keepr's stored filters name it), the data type each element wants, which elements are written by the server and must never be sent, and the tags its items can carry."
+			"description": "What a keepr collection accepts: its cards (record types), each card's elements (fields) with the type and id of each (#k7f3q2xa, how keepr's stored filters name an element), which elements keepr fills in itself, and the tags its items can carry."
 		},
 		{
 			"name": "keepr_get_items",
-			"description": "Read records from a keepr collection: list them, filter with KQL, count them, or fetch specific items by id."
+			"description": "Reads items from a keepr collection: a page of them, a count, or specific items by id, each with its tags by name (private tags included)."
 		},
 		{
 			"name": "keepr_search",
-			"description": "Find something by text across every keepr collection this key can reach — collections, card types, items, and tags (tags by name, and items used as tags by title, with the id to apply them by)."
+			"description": "Finds things by text across every keepr collection this connection can reach: collections, cards, items, and tags (tags by name, and items used as tags by title, with the id to apply them by)."
 		},
 		{
 			"name": "keepr_chart",
-			"description": "Ask keepr for totals, counts and averages over a collection's items, answered as a table."
+			"description": "Asks keepr for totals, counts and averages over a collection's items, answered as a table: how much, how many, the average, earliest and latest, shares of yes, money per currency, measurements in one unit, by month or by category."
 		},
 		{
 			"name": "keepr_history",
@@ -76,39 +76,43 @@
 		},
 		{
 			"name": "keepr_ingest",
-			"description": "Write records into a keepr collection."
+			"description": "Adds items to a keepr collection, or updates them by external_id (mode: \"upsert\")."
 		},
 		{
 			"name": "keepr_update_item",
-			"description": "Change specific elements on an existing keepr item, or add and take off its tags, addressed by its id."
+			"description": "Changes elements on existing keepr items, and adds or takes off their tags."
 		},
 		{
 			"name": "keepr_propose_card",
-			"description": "Work out what a new card (record type) would look like, or what a change to an existing card would do, WITHOUT changing anything."
+			"description": "Previews a new card (record type), or a change to one existing card, without changing anything: `cards` proposes new cards, `change` edits to one card, exactly one of the two."
 		},
 		{
 			"name": "keepr_apply_card",
-			"description": "Actually create or change the card(s) from a keepr_propose_card proposal."
+			"description": "Creates or changes the card(s) a keepr_propose_card proposal previewed, exactly as previewed."
 		},
 		{
 			"name": "keepr_propose_setup",
-			"description": "Work out what setting up a collection would do — new cards, and layouts (tile, table, page, form), saved filters, quick adds, element sets, tags, automations, notifications, charts and dashboards, on new cards or the cards the collection already has — WITHOUT changing anything."
+			"description": "Previews setting up a collection, without changing anything: new cards, layouts (tile, table, page, form), saved filters, quick adds, element sets, tags, automations, notifications, charts and dashboards."
 		},
 		{
 			"name": "keepr_apply_setup",
-			"description": "Apply exactly what a keepr_propose_setup proposal previewed, all or nothing."
+			"description": "Applies exactly what a keepr_propose_setup proposal previewed, all or nothing."
 		},
 		{
 			"name": "keepr_automations",
 			"description": "A collection's automations (rules) and notifications."
 		},
 		{
+			"name": "keepr_set_automation_state",
+			"description": "Pauses a collection's automation (rule) or notification, or turns one on, by id, exact name or a notification's key."
+		},
+		{
 			"name": "keepr_attach_file",
-			"description": "Attach files to a keepr item."
+			"description": "Attaches files to a keepr item."
 		},
 		{
 			"name": "keepr_request_upload",
-			"description": "Ask the person to upload files to keepr themselves, through a link — for files you cannot send: photos and documents on their computer or phone that you cannot read, or anything bigger than keepr_attach_file can carry (about a megabyte)."
+			"description": "Makes a link for the person to upload files to keepr themselves: photos and documents on their computer or phone, or anything larger than keepr_attach_file carries (about a megabyte)."
 		},
 		{
 			"name": "keepr_upload_status",
@@ -116,7 +120,7 @@
 		},
 		{
 			"name": "keepr_attach_folder",
-			"description": "Attach a whole folder of files (photos, receipts, scans, videos — up to 100 MB each) to the keepr items they belong to, straight from the disk of the computer this server runs on."
+			"description": "Attaches a whole folder of files (photos, receipts, scans, videos, up to 100 MB each) from this computer's disk to the keepr items they belong to; nothing passes through the conversation."
 		},
 		{
 			"name": "keepr_attach_status",
@@ -124,11 +128,11 @@
 		},
 		{
 			"name": "keepr_connect",
-			"description": "Connect this keepr plugin to the person's keepr account."
+			"description": "Connects this keepr server to the person's keepr account: it opens keepr in their browser, where they sign in if needed and click Allow; nothing to copy or paste."
 		},
 		{
 			"name": "keepr_disconnect",
-			"description": "Disconnect this keepr plugin from the account keepr_connect connected it to: the connection is revoked in keepr and forgotten on this computer."
+			"description": "Disconnects this keepr server from the account keepr_connect connected it to: the connection is revoked in keepr and forgotten on this computer."
 		}
 	],
 	"compatibility": {

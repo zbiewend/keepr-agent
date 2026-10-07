@@ -12,12 +12,12 @@ these questions for its own charts, over every item, in one call.
 
 | the question | ask with |
 | --- | --- |
-| one plain count with a filter — "how many are open?" | `keepr_get_items` with `mode: "count"` (`keepr.py items` prints the count) |
+| one plain count with a filter — "how many are open?" | `keepr_get_items` with `mode: "count"` |
 | a total, an average, a median, earliest or latest, a share of yes — or anything "by month", "by category", "per customer" | `keepr_chart` |
 | a question the person already saved as a chart | `keepr_chart` with `chart: "<name>"` (`list: true` lists them) |
 | the records themselves — "show me", "which ones" | `keepr_get_items` (`reading.md`) |
 
-No MCP tools in this session? `keepr.py` has no chart command; `api.md`
+No MCP tools in this session? `api.md`
 § 2d has the two HTTP calls. Every call sends `"grade": "export"`.
 
 ## What keepr counts, and what it tells you
@@ -35,8 +35,8 @@ No MCP tools in this session? `keepr.py` has no chart command; `api.md`
   unit, also in the heading.
 - **Days are the collection's days**, in its time zone, which the answer
   names.
-- Past 50,000 items keepr **counts a sample** and says so: totals and counts
-  are estimates, and the headings say `estimated`. Say "about".
+- On a very large collection keepr **counts a sample** and says so: totals
+  and counts are estimates, and the headings say `estimated`. Say "about".
 
 ## A saved chart first
 
@@ -57,9 +57,10 @@ each element, each choice in a filter — comes from it.
    counted with it). `null` counts every card, but only by the system fields
    (`count`, and grouping by `created`, `updated`, `created.by`, `card` or
    `collection`).
-2. **The measures** — 1 to 4, each `{ "key": "m1", "op": "…", "element": "…" }`
-   (`key` is your name for it: a letter, then up to 23 letters, digits or
-   `_` — no hyphens).
+2. **The measures** — each `{ "key": "m1", "op": "…", "element": "…" }`
+   (`keepr_chart`'s description says how many, and every op)
+   (`key` is your name for it: a letter, then letters, digits or `_` — no
+   hyphens).
    `count` counts items and takes no element. What else an element allows
    depends on its type, and keepr is the authority — the table is
    docs/SCHEMA.md, "Charts" › "What a chart may ask of each data type". The
@@ -67,36 +68,35 @@ each element, each choice in a filter — comes from it.
    (a rating and a temperature are never summed); a yes/no `countYes` or
    `shareYes`; a date its earliest (`min`) or latest (`max`); a choice or text
    `countNonBlank` or `distinct`; an item lookup or a person `distinct` only.
-   Anything else is refused by name
-   (`measure_not_allowed`) — change the op, never the element's meaning.
+   Anything else keepr refuses, naming the op — change the op, never the
+   element's meaning.
    `blanks: "zero"` counts a blank as 0 where that makes sense; the default
    leaves blanks out and says how many.
 3. **The time** — `time: { "on": "<date element>" | "created" | "updated",
-   "range": { "preset": "thisYear" } }`. Presets: `today`, `last7d`,
-   `last30d`, `last90d`, `last12m`, `thisWeek`, `thisMonth`, `thisQuarter`,
-   `thisYear`, `lastMonth`, `lastYear`, `all` (a `this…` preset runs from its
+   "range": { "preset": "thisYear" } }`. A preset is a named period
+   (`keepr_chart`'s description lists them; a `this…` preset runs from its
    start to today, not to its end); or `{ "from", "to" }` as `YYYY-MM-DD`, both
    days included.
 4. **The rows** — `groupBy: { "on": "<element>" }`. A date needs a `bucket`:
-   `day`, `week`, `month`, `quarter`, `year` (a date-time adds `hour`); or a
+   `day`, `week`, `month`, `quarter`, `year` (a date and time adds `hour`); or a
    part that repeats — `weekday`, `monthOfYear`, and on `created`, `updated`
-   or a date-time `hourOfDay` — one row for each day of the week (Sunday
+   or a date and time `hourOfDay` — one row for each day of the week (Sunday
    first), month or hour, every one listed, read in the collection's time
    zone ("which day do I log the most?"); a time-of-day element `hourOfDay`
    or `halfHour`. `"on": "created.by"` makes a row per person who added the
-   items (the 10 who added most, the rest in Other; Not set for an item with
+   items (those who added most, the rest in Other; Not set for an item with
    no author). A number, an amount or a
    measurement needs ranges: `bins: { "size": 50 }` or `{ "count": 8 }`. A
    choice, yes/no, rating, item lookup or person is grouped by its values
    (`top` keeps the largest, the rest fold into Other). `splitBy`, the same
-   shape, makes columns inside each row (at most 6 kept).
+   shape, makes columns inside each row.
 5. **Calculations.** A per-item formula instead of an element:
    `{ "key": "pace", "op": "avg", "perItem": "{{minutes}} / {{miles}}" }`. A
    formula across the measures above it: `{ "key": "avg_order", "formula":
    "{{m1}} / {{m2}}" }` (mark an input it reads `"hidden": true` if it should
-   not be its own column). A formula that reads or answers money or a
-   measurement is refused `not_offered_yet` — tell the person keepr cannot
-   chart it yet; don't work it out from a page.
+   not be its own column). A formula keepr cannot chart yet is refused with a
+   sentence saying so — tell the person keepr cannot chart it yet; don't work
+   it out from a page.
 6. **The form** — leave `show` out: you get a table. To compare with the
    previous period, add `"compare": "previous"` to `time` and
    `"show": { "type": "number" }` (one figure) or `{ "type": "line" }` (by a

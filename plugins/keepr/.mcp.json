@@ -1,8 +1,12 @@
 {
 	"mcpServers": {
 		"keepr": {
-			"command": "node",
-			"args": ["${CLAUDE_PLUGIN_ROOT}/server/keepr-mcp.js"],
+			"type": "http",
+			"url": "https://mcp.keepr.cloud/mcp"
+		},
+		"keepr-files": {
+			"command": "sh",
+			"args": ["${CLAUDE_PLUGIN_ROOT}/server/keepr-files.sh"],
 			"env": {
 				"KEEPR_CLIENT_CHANNEL": "plugin"
 			}
