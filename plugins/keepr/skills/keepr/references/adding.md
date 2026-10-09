@@ -183,6 +183,24 @@ only the collection's own items, and it never deletes.
 Items with an external id are better changed with `keepr_ingest` in `upsert`
 mode.
 
+## Saying "me too" for the person
+
+Some cards carry a **Me too** element (its label may read "I see this too" or
+"+1"): how many people confirmed the item. keepr keeps that count — never
+send a value for it. When the person asks you to back an item ("me too on
+the pothole on 5th", "+1 that feature"), say it for them with
+`keepr_update_item`, one item, in a call of its own:
+
+```
+keepr_update_item  { item_id: "<24-hex>", confirmations: { "me-too": true } }    # false takes it back
+```
+
+It counts once per person, so repeating it changes nothing. The answer is the
+count keepr holds now. Who else confirmed is for the collection's managers
+only: you never see it, so never guess at it. If keepr refuses (the
+collection does not let readers confirm, or the person's email is not
+confirmed yet), say so in keepr's words; there is no way around it.
+
 ## Attachments — files onto the items you just made
 
 Only when the collection has attachments on (`schema` says so; otherwise every

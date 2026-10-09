@@ -3,6 +3,12 @@
 Each release lists the two versions it carries: the skill's (which is also the
 plugin's) and the server's.
 
+## 2.12.0 — 2026-10-09
+
+Skill 2.12.0, keepr-mcp 0.14.0.
+
+- Your assistant can say "me too" for you. On an item whose card has a Me too element, it can confirm it, or take your confirmation back, as you, once each, and it reads how many people have confirmed. keepr keeps that count itself, so an assistant never types it, and who confirmed stays with the people who manage the collection.
+
 ## 2.11.0 — 2026-10-06
 
 Skill 2.11.0, keepr-mcp 0.13.0.

@@ -20,7 +20,9 @@ meant, and asking when you cannot tell.
   lacks it and the schema gives no default, tell the person the record cannot
   be written as it is, and ask what belongs there.
 - **Elements keepr writes itself** (the schema marks them as never sent:
-  computed, numbered) stay out of every row.
+  computed, numbered, counted) stay out of every row. A **Me too** count is
+  one: keepr counts the people who said it, and a person says it themselves
+  (`keepr_update_item` with `confirmations`, below in `adding.md`).
 
 ## Values that could mean two things
 

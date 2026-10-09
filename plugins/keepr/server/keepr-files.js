@@ -1248,7 +1248,7 @@ async function within(promise, ms) {
 
 // dist/src/contract.snapshot.json
 var contract_snapshot_default = {
-  version: "f46a89e19a60",
+  version: "e34b7c13c2cc",
   title: "keepr write contract",
   summary: "What keepr accepts from a machine client: the element types, the batch envelope, and every error code a row can come back with. Generated from the running server, so it describes THIS deployment.",
   loop: [
@@ -1304,7 +1304,11 @@ var contract_snapshot_default = {
     resolveCode: "GET /api/codes/{kind}/{code}",
     uploadRequestCreate: "POST /api/upload-requests",
     uploadRequestRead: "GET /api/upload-requests/{id}",
-    uploadRequestCancel: "DELETE /api/upload-requests/{id}"
+    uploadRequestCancel: "DELETE /api/upload-requests/{id}",
+    itemConfirm: "POST /api/items/{id}/confirmations/{element}",
+    itemUnconfirm: "DELETE /api/items/{id}/confirmations/{element}",
+    itemConfirmations: "GET /api/items/{id}/confirmations",
+    itemConfirmers: "GET /api/items/{id}/confirmations/{element}/people"
   },
   recordCodes: {
     url: "A record's short web address is ${APP_BASE_URL}/<letter>/<code>. A code is 7 or more characters of lowercase Crockford base32 and reads in any case (i and l as 1, o as 0). Every id stays valid; a code is a second name for the record, never a permission.",
@@ -1786,6 +1790,11 @@ var contract_snapshot_default = {
       name: "file",
       send: "nothing: an attachment of this item, set with keepr_attach_file (element) or the item form",
       note: "stored as a 24-hex attachment id, or an array of up to 20 with allowMultiple; an import row, a bulk edit or an automation may only re-send the stored value unchanged (anything else, a blank included, is file_not_settable)"
+    },
+    {
+      name: "confirmations",
+      send: 'nothing: how many people said "me too" \u2014 a person confirms or takes it back with POST or DELETE /api/items/{id}/confirmations/{element} (endpoints itemConfirm, itemUnconfirm), once each',
+      note: "stored as a whole number, absent until the first confirmation and read as 0 when absent (filters, sorting, charts); a row may re-send the stored count unchanged and nothing else (confirmations_not_settable); who confirmed is never in an item \u2014 only a collection's managers can list them (itemConfirmers)"
     }
   ],
   emptyValue: 'null or "" means empty. Omitting the key means empty too, except on a CREATE, where an element the row omits starts at its default (defaultValue, defaultToToday or defaultToNow in the schema; a default that no longer fits the element is left out and the element starts empty). On upsert, an omitted key KEEPS its stored value while "" overwrites it; a default never applies to an update.',
@@ -1798,6 +1807,10 @@ var contract_snapshot_default = {
       {
         code: "attachments_disabled",
         means: "a new or changed file value while the collection's attachments are switched off (the stored value, unchanged, still saves)"
+      },
+      {
+        code: "confirmations_not_settable",
+        means: "a value for a confirmations element: keepr keeps that count from the people who confirmed \u2014 leave it out (the stored count re-sent unchanged is fine), and confirm with POST /api/items/{id}/confirmations/{element}"
       },
       {
         code: "driven_element",
@@ -1914,6 +1927,10 @@ var contract_snapshot_default = {
         means: "a tags name could be more than one tag; candidates lists each one's tagId and path \u2014 send the path or the id"
       },
       {
+        code: "attestation_required",
+        means: "the record's card requires a signature on every change (record.attest in the schema) and the upsert row would change it without one: no X-Attestation header, an expired one, another person's, or one minted for another card or collection \u2014 nothing is written (as PUT answers 428). A person signed in to keepr signs (POST /api/auth/attest); an API key or an assistant cannot, so ask the person to make the change in keepr. A row that changes nothing is skipped, never refused"
+      },
+      {
         code: "card_in_sub_collection",
         means: "hint.code on a card_not_allowed row: the card belongs to a sub-collection (hint.collection_id, hint.name) \u2014 ingest the row there"
       },
@@ -1959,7 +1976,7 @@ var contract_snapshot_default = {
       },
       {
         code: "item_locked",
-        means: "the record's card has locked it: an upsert row that changes its tags, or an attachment added to or removed from it, is refused (as PUT refuses); a manager's unlock reopens it"
+        means: "the record's card has locked it (record.lock in the schema): an upsert row that would change it \u2014 an element value, its visibility, its tags \u2014 or an attachment added to or removed from it, is refused and nothing is written (as PUT refuses); a row that changes nothing is skipped, never refused. A manager's unlock reopens it, and the write that lands closes it again. A dry run refuses what its commit will: a row repeating a record an earlier row of the request creates, or one whose unlock an earlier row spends, is judged against that record as the commit will meet it"
       },
       {
         code: "lookup_filtered_out",
@@ -2732,7 +2749,7 @@ This is a bug in keepr-mcp, not something the user did.`)) : guard(def, ctx, arg
 
 // dist/src/server.js
 var SERVER_NAME = "keepr";
-var SERVER_VERSION = "0.13.0";
+var SERVER_VERSION = "0.14.0";
 var WEBSITE_URL = "https://keepr.cloud";
 var KQL_REFERENCE_URL = `${WEBSITE_URL}/docs/guides/finding-and-lists/kql-reference`;
 function brandIcons(publicUrl = process.env.KEEPR_PUBLIC_URL || "https://api.keepr.cloud") {

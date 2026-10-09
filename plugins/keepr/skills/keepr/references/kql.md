@@ -213,6 +213,9 @@ reached only through publishing or a link have no author, so
   blank ones). For "has welding but not rigging" write
   `skills = welding and skills != rigging`.
 - **number**, **rating**: numeric. A rating is `0` to its max.
+- **Me too** (a count of confirmations): numeric, and an item nobody has
+  confirmed reads as `0` — `me-too > 10` is the well-backed ones,
+  `me-too = 0` the ones nobody has backed yet. `~` is refused.
 - **date**, **date and time**, **time**: ranges compare as dates; blanks are excluded
   from ranges (`due < today` does not match an empty due date — add
   `or due is empty` if you mean that).

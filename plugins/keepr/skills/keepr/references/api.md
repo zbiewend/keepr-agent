@@ -364,6 +364,21 @@ stored `source` never changes, and `card` cannot change on upsert.
 `merge: false` (replace, blanking what a row omits) needs the `delete` scope;
 this skill never sends it.
 
+### Me too — the person's own
+
+A **Me too** count is keepr's: never in a row. The person (or a key acting
+for them) says it, or takes it back, through its own door — once each:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $KEEPR_API_KEY" \
+  "https://api.keepr.cloud/api/items/<itemId>/confirmations/<element>"     # DELETE takes it back
+curl -s -H "Authorization: Bearer $KEEPR_API_KEY" \
+  "https://api.keepr.cloud/api/items/<itemId>/confirmations"               # the counts, and whether you did
+```
+
+Both answer the count keepr holds now. Who confirmed is the collection's
+managers' alone; the contract names the doors and what each refusal means.
+
 ## 4. Audit
 
 ```bash
